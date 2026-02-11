@@ -208,11 +208,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       },
       onNotification: (method, params) => {
         get().appendLog(`← notification: ${method}`);
-        console.warn('[Store] notification:', method, JSON.stringify(params)?.substring(0, 200));
         // Handle session/update notifications
         if (method === 'session/update' || method === 'notifications/session/update') {
           const actions = parseSessionUpdate(params);
-          console.warn('[Store] parsed actions:', actions.length, actions.map(a => a.type).join(','));
           const state = get();
           const { messages, streamingMessageId, stopReason } = applySessionUpdate(
             state.chatMessages,

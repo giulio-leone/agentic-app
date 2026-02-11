@@ -1,18 +1,19 @@
 /**
- * Message composer component (text input + send button).
+ * Message composer — themed, with haptic feedback.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   TextInput,
   TouchableOpacity,
   Text,
   StyleSheet,
-  ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Colors, FontSize, Spacing } from '../utils/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
 
 interface Props {
   value: string;
@@ -33,37 +34,51 @@ export function MessageComposer({
   isDisabled,
   placeholder = 'Message the agent…',
 }: Props) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const canSend = value.trim().length > 0 && !isStreaming && !isDisabled;
 
+  const handleSend = useCallback(() => {
+    if (!canSend) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onSend();
+  }, [canSend, onSend]);
+
+  const handleCancel = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onCancel?.();
+  }, [onCancel]);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.inputContainer}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.separator, paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
+      <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground }]}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { color: colors.text }]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={Colors.systemGray2}
+          placeholderTextColor={colors.systemGray2}
           multiline
           maxLength={10000}
           editable={!isDisabled}
-          onSubmitEditing={() => {
-            if (canSend) onSend();
-          }}
+          onSubmitEditing={handleSend}
           blurOnSubmit={false}
         />
         {isStreaming ? (
           <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={onCancel}
+            style={[styles.cancelButton, { backgroundColor: colors.destructive }]}
+            onPress={handleCancel}
             activeOpacity={0.7}
           >
             <View style={styles.stopIcon} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
-            onPress={onSend}
+            style={[
+              styles.sendButton,
+              { backgroundColor: canSend ? colors.primary : colors.systemGray4 },
+            ]}
+            onPress={handleSend}
             disabled={!canSend}
             activeOpacity={0.7}
           >
@@ -78,61 +93,55 @@ export function MessageComposer({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.background,
+    paddingTop: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.separator,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: Colors.systemGray6,
-    borderRadius: 20,
-    paddingLeft: Spacing.md,
-    paddingRight: Spacing.xs,
-    paddingVertical: Platform.OS === 'ios' ? Spacing.sm : Spacing.xs,
-    minHeight: 40,
+    borderRadius: Radius.xl + 2,
+    paddingLeft: Spacing.lg,
+    paddingRight: Spacing.xs + 2,
+    paddingVertical: Platform.OS === 'ios' ? Spacing.sm + 2 : Spacing.sm,
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
   textInput: {
     flex: 1,
     fontSize: FontSize.body,
-    color: Colors.text,
-    maxHeight: 110,
-    paddingTop: Platform.OS === 'ios' ? 0 : Spacing.xs,
+    maxHeight: 120,
+    paddingTop: Platform.OS === 'ios' ? 2 : Spacing.xs,
     paddingBottom: 0,
+    lineHeight: 22,
   },
   sendButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: Colors.primary,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: Spacing.xs,
+    marginLeft: Spacing.sm,
     marginBottom: 1,
-  },
-  sendButtonDisabled: {
-    backgroundColor: Colors.systemGray4,
   },
   sendIcon: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: -2,
+    marginTop: -1,
   },
   cancelButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: Colors.destructive,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: Spacing.xs,
+    marginLeft: Spacing.sm,
     marginBottom: 1,
   },
   stopIcon: {
-    width: 10,
-    height: 10,
+    width: 12,
+    height: 12,
     borderRadius: 2,
     backgroundColor: '#FFFFFF',
   },

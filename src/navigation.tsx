@@ -1,86 +1,142 @@
 /**
- * Navigation configuration – React Navigation stack.
+ * Navigation — Drawer + Stack layout.
+ * Drawer sidebar holds server selector & session list.
+ * Main area holds the chat view (SessionDetailScreen).
+ * AddServer and Settings are presented as modals from a root stack.
  */
 
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { TouchableOpacity, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { HomeScreen } from './screens/HomeScreen';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
 import { AddServerScreen } from './screens/AddServerScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { DrawerContent } from './components/sidebar/DrawerContent';
 import { ACPServerConfiguration } from './acp/models/types';
-import { Colors } from './utils/theme';
+import { useTheme, Spacing } from './utils/theme';
+import { useAppStore } from './stores/appStore';
 
 export type RootStackParamList = {
+  Main: undefined;
   Home: undefined;
   Session: undefined;
   AddServer: { editingServer?: ACPServerConfiguration } | undefined;
   Settings: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+export type DrawerParamList = {
+  Chat: undefined;
+};
 
-export function AppNavigator() {
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+const Drawer = createDrawerNavigator<DrawerParamList>();
+
+function DrawerNavigator() {
+  const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Home"
+    <Drawer.Navigator
+      drawerContent={(props) => <DrawerContent {...props} />}
+      screenOptions={{
+        drawerType: width >= 768 ? 'permanent' : 'front',
+        drawerStyle: {
+          width: Math.min(300, width * 0.78),
+          backgroundColor: colors.sidebarBackground,
+        },
+        overlayColor: 'rgba(0,0,0,0.35)',
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerShadowVisible: false,
+        headerTitleStyle: { fontWeight: '600', fontSize: 17 },
+        sceneStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Drawer.Screen
+        name="Chat"
+        component={SessionDetailScreen}
+        options={({ navigation }) => ({
+          title: 'Chat',
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+              style={styles.hamburger}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.hamburgerText, { color: colors.text }]}>☰</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+    </Drawer.Navigator>
+  );
+}
+
+function AppContent() {
+  const { colors, dark } = useTheme();
+  const loadServers = useAppStore(s => s.loadServers);
+
+  useEffect(() => {
+    loadServers();
+  }, [loadServers]);
+
+  const navTheme = dark
+    ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
+    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } };
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      <RootStack.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: Colors.background },
-          headerTintColor: Colors.primary,
-          headerShadowVisible: false,
+          headerShown: false,
         }}
       >
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={({ navigation }) => ({
-            title: 'Agmente',
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Settings')}
-                style={styles.headerButton}
-              >
-                <Text style={styles.headerButtonText}>⚙️</Text>
-              </TouchableOpacity>
-            ),
-          })}
-        />
-        <Stack.Screen
-          name="Session"
-          component={SessionDetailScreen}
-          options={{
-            title: 'Chat',
-            headerBackTitle: 'Back',
-          }}
-        />
-        <Stack.Screen
+        <RootStack.Screen name="Main" component={DrawerNavigator} />
+        <RootStack.Screen
           name="AddServer"
           component={AddServerScreen}
           options={{
+            headerShown: true,
             title: 'Add Server',
             presentation: 'modal',
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.primary,
+            headerShadowVisible: false,
           }}
         />
-        <Stack.Screen
+        <RootStack.Screen
           name="Settings"
           component={SettingsScreen}
           options={{
+            headerShown: true,
             title: 'Settings',
+            presentation: 'modal',
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.primary,
+            headerShadowVisible: false,
           }}
         />
-      </Stack.Navigator>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }
 
+export function AppNavigator() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppContent />
+    </GestureHandlerRootView>
+  );
+}
+
 const styles = StyleSheet.create({
-  headerButton: {
-    padding: 4,
+  hamburger: {
+    paddingHorizontal: Spacing.md,
   },
-  headerButtonText: {
-    fontSize: 20,
+  hamburgerText: {
+    fontSize: 22,
   },
 });

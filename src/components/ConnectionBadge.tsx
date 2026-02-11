@@ -1,11 +1,11 @@
 /**
- * Connection status badge component.
+ * Connection status badge component — themed.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ACPConnectionState } from '../acp/models/types';
-import { Colors, FontSize, Spacing } from '../utils/theme';
+import { useTheme, FontSize, Spacing, ThemeColors } from '../utils/theme';
 
 interface Props {
   state: ACPConnectionState;
@@ -13,7 +13,8 @@ interface Props {
 }
 
 export function ConnectionBadge({ state, isInitialized }: Props) {
-  const { color, label } = getStatusInfo(state, isInitialized);
+  const { colors } = useTheme();
+  const { color, label } = getStatusInfo(state, isInitialized, colors);
 
   return (
     <View style={styles.container}>
@@ -23,20 +24,20 @@ export function ConnectionBadge({ state, isInitialized }: Props) {
   );
 }
 
-function getStatusInfo(state: ACPConnectionState, isInitialized: boolean) {
+function getStatusInfo(state: ACPConnectionState, isInitialized: boolean, colors: ThemeColors) {
   switch (state) {
     case ACPConnectionState.Connected:
       return {
-        color: isInitialized ? Colors.healthyGreen : Colors.orange,
-        label: isInitialized ? 'Initialized' : 'Connected',
+        color: isInitialized ? colors.healthyGreen : colors.orange,
+        label: isInitialized ? 'Ready' : 'Connected',
       };
     case ACPConnectionState.Connecting:
-      return { color: Colors.yellow, label: 'Connecting…' };
+      return { color: colors.yellow, label: 'Connecting…' };
     case ACPConnectionState.Failed:
-      return { color: Colors.destructive, label: 'Failed' };
+      return { color: colors.destructive, label: 'Failed' };
     case ACPConnectionState.Disconnected:
     default:
-      return { color: Colors.systemGray, label: 'Disconnected' };
+      return { color: colors.systemGray, label: 'Offline' };
   }
 }
 

@@ -1,9 +1,9 @@
 /**
- * Session detail screen – chat transcript + message composer.
- * Mirrors SessionDetailView from the Swift app.
+ * Session detail screen — chat transcript + message composer.
+ * Themed, with typing indicator and smart auto-scroll.
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import {
   View,
   FlatList,
@@ -11,14 +11,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   Text,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useAppStore } from '../stores/appStore';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
+import { TypingIndicator } from '../components/TypingIndicator';
 import { ChatMessage, ACPConnectionState } from '../acp/models/types';
-import { Colors, FontSize, Spacing } from '../utils/theme';
+import { useTheme, FontSize, Spacing } from '../utils/theme';
 
 export function SessionDetailScreen() {
+  const { colors } = useTheme();
   const {
     chatMessages,
     promptText,
@@ -36,18 +41,55 @@ export function SessionDetailScreen() {
   const isConnected =
     connectionState === ACPConnectionState.Connected && isInitialized;
 
+  // Smart auto-scroll: only scroll when user is near the bottom
+  const isNearBottom = useRef(true);
+  const prevMessageCount = useRef(chatMessages.length);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - contentOffset.y - layoutMeasurement.height;
+      isNearBottom.current = distanceFromBottom < 120;
+    },
+    [],
+  );
+
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    if (chatMessages.length > 0) {
+    if (chatMessages.length > prevMessageCount.current && isNearBottom.current) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }, 80);
     }
-  }, [chatMessages.length, chatMessages[chatMessages.length - 1]?.content]);
+    prevMessageCount.current = chatMessages.length;
+  }, [chatMessages.length]);
+
+  // Also scroll when streaming content updates (user at bottom)
+  const lastContent = chatMessages[chatMessages.length - 1]?.content;
+  useEffect(() => {
+    if (isStreaming && isNearBottom.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }, 50);
+    }
+  }, [lastContent, isStreaming]);
+
+  // Haptic on new response
+  const prevStreaming = useRef(isStreaming);
+  useEffect(() => {
+    if (!prevStreaming.current && isStreaming) {
+      // Agent started responding
+    }
+    if (prevStreaming.current && !isStreaming && chatMessages.length > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    prevStreaming.current = isStreaming;
+  }, [isStreaming, chatMessages.length]);
 
   const handleSend = useCallback(() => {
     const text = promptText.trim();
     if (!text) return;
+    isNearBottom.current = true;
     sendPrompt(text);
   }, [promptText, sendPrompt]);
 
@@ -59,22 +101,28 @@ export function SessionDetailScreen() {
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>
+        <Text style={styles.emptyEmoji}>
+          {isConnected ? '💬' : '🔌'}
+        </Text>
+        <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
           {isConnected ? 'Start a conversation' : 'Not connected'}
         </Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
           {isConnected
-            ? 'Type a message below to begin'
-            : 'Connect to an agent to start chatting'}
+            ? 'Type a message below to chat with the agent'
+            : 'Open the sidebar to connect to a server'}
         </Text>
       </View>
     ),
-    [isConnected],
+    [isConnected, colors],
   );
+
+  const showTyping = isStreaming && chatMessages.length > 0 &&
+    chatMessages[chatMessages.length - 1]?.role === 'user';
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
@@ -84,21 +132,19 @@ export function SessionDetailScreen() {
         keyExtractor={item => item.id}
         renderItem={renderMessage}
         ListEmptyComponent={renderEmpty}
+        ListFooterComponent={showTyping ? <TypingIndicator /> : null}
         contentContainerStyle={
-          chatMessages.length === 0
-            ? styles.emptyList
-            : styles.messageList
+          chatMessages.length === 0 ? styles.emptyList : styles.messageList
         }
-        onContentSizeChange={() => {
-          if (chatMessages.length > 0) {
-            flatListRef.current?.scrollToEnd({ animated: false });
-          }
-        }}
+        onScroll={handleScroll}
+        scrollEventThrottle={100}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
       />
 
       {stopReason && !isStreaming && (
         <View style={styles.stopReasonContainer}>
-          <Text style={styles.stopReasonText}>
+          <Text style={[styles.stopReasonText, { color: colors.textTertiary }]}>
             {stopReason === 'end_turn'
               ? 'Agent finished'
               : `Stopped: ${stopReason}`}
@@ -121,10 +167,10 @@ export function SessionDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.systemGray6,
   },
   messageList: {
     paddingVertical: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   emptyList: {
     flex: 1,
@@ -136,15 +182,18 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingHorizontal: Spacing.xxl,
   },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: Spacing.sm,
+  },
   emptyTitle: {
     fontSize: FontSize.title3,
     fontWeight: '600',
-    color: Colors.textSecondary,
   },
   emptySubtitle: {
     fontSize: FontSize.body,
-    color: Colors.textTertiary,
     textAlign: 'center',
+    lineHeight: 22,
   },
   stopReasonContainer: {
     paddingVertical: Spacing.xs,
@@ -153,7 +202,6 @@ const styles = StyleSheet.create({
   },
   stopReasonText: {
     fontSize: FontSize.caption,
-    color: Colors.textTertiary,
     fontStyle: 'italic',
   },
 });

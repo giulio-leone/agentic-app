@@ -1,5 +1,5 @@
 /**
- * Settings screen – dev mode, logs viewer, about.
+ * Settings screen — themed.
  */
 
 import React from 'react';
@@ -8,55 +8,56 @@ import {
   Text,
   Switch,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
 import { useAppStore } from '../stores/appStore';
-import { Colors, FontSize, Spacing } from '../utils/theme';
+import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 
 export function SettingsScreen() {
+  const { colors } = useTheme();
   const { devModeEnabled, toggleDevMode, developerLogs, clearLogs } =
     useAppStore();
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Dev Mode */}
-      <View style={styles.section}>
+      <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
         <View style={styles.settingRow}>
-          <View>
-            <Text style={styles.settingTitle}>Developer Mode</Text>
-            <Text style={styles.settingSubtitle}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.settingTitle, { color: colors.text }]}>Developer Mode</Text>
+            <Text style={[styles.settingSubtitle, { color: colors.textTertiary }]}>
               Show raw JSON-RPC messages in logs
             </Text>
           </View>
           <Switch
             value={devModeEnabled}
             onValueChange={toggleDevMode}
-            trackColor={{ true: Colors.primary }}
+            trackColor={{ true: colors.primary, false: colors.systemGray4 }}
+            thumbColor="#FFFFFF"
           />
         </View>
       </View>
 
       {/* Developer Logs */}
       {devModeEnabled && (
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Developer Logs</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Developer Logs</Text>
             <TouchableOpacity onPress={clearLogs}>
-              <Text style={styles.clearButton}>Clear</Text>
+              <Text style={[styles.clearButton, { color: colors.primary }]}>Clear</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.logsContainer}>
+          <View style={[styles.logsContainer, { backgroundColor: colors.codeBackground }]}>
             {developerLogs.length === 0 ? (
-              <Text style={styles.emptyLogs}>No logs yet</Text>
+              <Text style={[styles.emptyLogs, { color: colors.textTertiary }]}>No logs yet</Text>
             ) : (
               developerLogs
                 .slice()
                 .reverse()
                 .map((log, index) => (
-                  <Text key={index} style={styles.logEntry} selectable>
+                  <Text key={index} style={[styles.logEntry, { color: colors.codeText }]} selectable>
                     {log}
                   </Text>
                 ))
@@ -66,19 +67,15 @@ export function SettingsScreen() {
       )}
 
       {/* About */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+      <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
         <View style={styles.aboutRow}>
-          <Text style={styles.aboutLabel}>App</Text>
-          <Text style={styles.aboutValue}>{APP_DISPLAY_NAME} v{APP_VERSION}</Text>
+          <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>App</Text>
+          <Text style={[styles.aboutValue, { color: colors.text }]}>{APP_DISPLAY_NAME} v{APP_VERSION}</Text>
         </View>
         <View style={styles.aboutRow}>
-          <Text style={styles.aboutLabel}>Version</Text>
-          <Text style={styles.aboutValue}>1.0.0</Text>
-        </View>
-        <View style={styles.aboutRow}>
-          <Text style={styles.aboutLabel}>Platform</Text>
-          <Text style={styles.aboutValue}>React Native</Text>
+          <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>Platform</Text>
+          <Text style={[styles.aboutValue, { color: colors.text }]}>React Native (Expo)</Text>
         </View>
       </View>
     </ScrollView>
@@ -88,13 +85,11 @@ export function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.systemGray6,
   },
   section: {
     marginTop: Spacing.lg,
     marginHorizontal: Spacing.lg,
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     padding: Spacing.lg,
     gap: Spacing.md,
   },
@@ -106,7 +101,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: FontSize.headline,
     fontWeight: '600',
-    color: Colors.text,
   },
   settingRow: {
     flexDirection: 'row',
@@ -115,28 +109,23 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: FontSize.body,
-    color: Colors.text,
     fontWeight: '500',
   },
   settingSubtitle: {
     fontSize: FontSize.caption,
-    color: Colors.textTertiary,
     marginTop: 2,
   },
   clearButton: {
     fontSize: FontSize.footnote,
-    color: Colors.primary,
     fontWeight: '600',
   },
   logsContainer: {
     maxHeight: 300,
-    backgroundColor: Colors.systemGray6,
-    borderRadius: 8,
+    borderRadius: Radius.sm,
     padding: Spacing.sm,
   },
   emptyLogs: {
     fontSize: FontSize.footnote,
-    color: Colors.textTertiary,
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: Spacing.lg,
@@ -144,7 +133,6 @@ const styles = StyleSheet.create({
   logEntry: {
     fontSize: 11,
     fontFamily: 'monospace',
-    color: Colors.textSecondary,
     paddingVertical: 1,
   },
   aboutRow: {
@@ -153,11 +141,9 @@ const styles = StyleSheet.create({
   },
   aboutLabel: {
     fontSize: FontSize.body,
-    color: Colors.textSecondary,
   },
   aboutValue: {
     fontSize: FontSize.body,
-    color: Colors.text,
     fontWeight: '500',
   },
 });

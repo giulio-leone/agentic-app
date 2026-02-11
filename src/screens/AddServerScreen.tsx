@@ -1,30 +1,33 @@
 /**
- * Add/Edit Server screen.
- * Mirrors AddServerView from the Swift app.
+ * Add/Edit Server screen — themed.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Alert,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
-import { ACPServerConfiguration, ServerType } from '../acp/models/types';
-import { Colors, FontSize, Spacing } from '../utils/theme';
+import { ServerType } from '../acp/models/types';
+import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'AddServer'>;
 
 export function AddServerScreen() {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddServer'>>();
   const editingServer = route.params?.editingServer;
@@ -52,8 +55,8 @@ export function AddServerScreen() {
 
   const handleSave = useCallback(async () => {
     const hostValue = host.trim();
-    console.warn('[AddServer] handleSave called, host:', JSON.stringify(hostValue), 'name:', JSON.stringify(name));
     if (!hostValue) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Missing Field', 'Please enter a host address (e.g. localhost:8765)');
       return;
     }
@@ -70,16 +73,15 @@ export function AddServerScreen() {
     };
 
     try {
-      console.warn('[AddServer] Saving server...', JSON.stringify(serverData));
       if (isEditing && editingServer) {
         await updateServer({ ...serverData, id: editingServer.id });
       } else {
         await addServer(serverData);
       }
-      console.warn('[AddServer] Server saved, navigating back');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (error) {
-      console.warn('[AddServer] Error:', (error as Error).message);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', `Failed to save server: ${(error as Error).message}`);
     }
   }, [
@@ -98,31 +100,41 @@ export function AddServerScreen() {
     navigation,
   ]);
 
+  const inputStyle = [
+    styles.input,
+    {
+      backgroundColor: colors.cardBackground,
+      color: colors.text,
+      borderColor: colors.separator,
+    },
+  ];
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, Spacing.lg) + Spacing.lg }]}
         keyboardShouldPersistTaps="handled"
       >
         {/* Server Type Picker */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Protocol</Text>
-          <View style={styles.segmentedControl}>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>Protocol</Text>
+          <View style={[styles.segmentedControl, { backgroundColor: colors.systemGray5 }]}>
             <TouchableOpacity
               style={[
                 styles.segment,
-                serverType === ServerType.ACP && styles.segmentSelected,
+                serverType === ServerType.ACP && [styles.segmentSelected, { backgroundColor: colors.cardBackground }],
               ]}
               onPress={() => setServerType(ServerType.ACP)}
             >
               <Text
                 style={[
                   styles.segmentText,
-                  serverType === ServerType.ACP && styles.segmentTextSelected,
+                  { color: colors.textSecondary },
+                  serverType === ServerType.ACP && { color: colors.primary, fontWeight: '600' },
                 ]}
               >
                 ACP
@@ -131,14 +143,15 @@ export function AddServerScreen() {
             <TouchableOpacity
               style={[
                 styles.segment,
-                serverType === ServerType.Codex && styles.segmentSelected,
+                serverType === ServerType.Codex && [styles.segmentSelected, { backgroundColor: colors.cardBackground }],
               ]}
               onPress={() => setServerType(ServerType.Codex)}
             >
               <Text
                 style={[
                   styles.segmentText,
-                  serverType === ServerType.Codex && styles.segmentTextSelected,
+                  { color: colors.textSecondary },
+                  serverType === ServerType.Codex && { color: colors.primary, fontWeight: '600' },
                 ]}
               >
                 Codex
@@ -149,31 +162,35 @@ export function AddServerScreen() {
 
         {/* Name */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Name</Text>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>Name</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             value={name}
             onChangeText={setName}
             placeholder="My Agent"
-            placeholderTextColor={Colors.systemGray2}
+            placeholderTextColor={colors.systemGray2}
             autoCapitalize="none"
           />
         </View>
 
         {/* Scheme */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Scheme</Text>
-          <View style={styles.segmentedControl}>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>Scheme</Text>
+          <View style={[styles.segmentedControl, { backgroundColor: colors.systemGray5 }]}>
             {['ws', 'wss'].map(s => (
               <TouchableOpacity
                 key={s}
-                style={[styles.segment, scheme === s && styles.segmentSelected]}
+                style={[
+                  styles.segment,
+                  scheme === s && [styles.segmentSelected, { backgroundColor: colors.cardBackground }],
+                ]}
                 onPress={() => setScheme(s)}
               >
                 <Text
                   style={[
                     styles.segmentText,
-                    scheme === s && styles.segmentTextSelected,
+                    { color: colors.textSecondary },
+                    scheme === s && { color: colors.primary, fontWeight: '600' },
                   ]}
                 >
                   {s}
@@ -185,13 +202,13 @@ export function AddServerScreen() {
 
         {/* Host */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Host</Text>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>Host</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             value={host}
             onChangeText={setHost}
             placeholder="localhost:8765"
-            placeholderTextColor={Colors.systemGray2}
+            placeholderTextColor={colors.systemGray2}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -200,13 +217,13 @@ export function AddServerScreen() {
 
         {/* Token */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Bearer Token (optional)</Text>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>Bearer Token (optional)</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             value={token}
             onChangeText={setToken}
             placeholder="Enter token"
-            placeholderTextColor={Colors.systemGray2}
+            placeholderTextColor={colors.systemGray2}
             autoCapitalize="none"
             autoCorrect={false}
             secureTextEntry
@@ -215,13 +232,13 @@ export function AddServerScreen() {
 
         {/* Working Directory */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Working Directory (optional)</Text>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>Working Directory (optional)</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             value={workingDirectory}
             onChangeText={setWorkingDirectory}
             placeholder="/path/to/workspace"
-            placeholderTextColor={Colors.systemGray2}
+            placeholderTextColor={colors.systemGray2}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -232,7 +249,7 @@ export function AddServerScreen() {
           style={styles.advancedToggle}
           onPress={() => setShowAdvanced(!showAdvanced)}
         >
-          <Text style={styles.advancedToggleText}>
+          <Text style={[styles.advancedToggleText, { color: colors.textTertiary }]}>
             {showAdvanced ? '▼' : '▶'} Cloudflare Access
           </Text>
         </TouchableOpacity>
@@ -240,25 +257,25 @@ export function AddServerScreen() {
         {showAdvanced && (
           <>
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>CF-Access-Client-Id</Text>
+              <Text style={[styles.label, { color: colors.textTertiary }]}>CF-Access-Client-Id</Text>
               <TextInput
-                style={styles.input}
+                style={inputStyle}
                 value={cfAccessClientId}
                 onChangeText={setCfAccessClientId}
                 placeholder="Client ID"
-                placeholderTextColor={Colors.systemGray2}
+                placeholderTextColor={colors.systemGray2}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
             </View>
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>CF-Access-Client-Secret</Text>
+              <Text style={[styles.label, { color: colors.textTertiary }]}>CF-Access-Client-Secret</Text>
               <TextInput
-                style={styles.input}
+                style={inputStyle}
                 value={cfAccessClientSecret}
                 onChangeText={setCfAccessClientSecret}
                 placeholder="Client Secret"
-                placeholderTextColor={Colors.systemGray2}
+                placeholderTextColor={colors.systemGray2}
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry
@@ -268,7 +285,10 @@ export function AddServerScreen() {
         )}
 
         {/* Save Button */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          onPress={handleSave}
+        >
           <Text style={styles.saveButtonText}>
             {isEditing ? 'Update Server' : 'Add Server'}
           </Text>
@@ -281,39 +301,33 @@ export function AddServerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.systemGray6,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: Spacing.lg,
-    gap: Spacing.md,
+    gap: Spacing.lg,
   },
   fieldGroup: {
-    gap: Spacing.xs,
+    gap: Spacing.xs + 2,
   },
   label: {
     fontSize: FontSize.footnote,
     fontWeight: '600',
-    color: Colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     fontSize: FontSize.body,
-    color: Colors.text,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.separator,
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: Colors.systemGray5,
-    borderRadius: 8,
+    borderRadius: Radius.sm,
     padding: 2,
   },
   segment: {
@@ -323,7 +337,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   segmentSelected: {
-    backgroundColor: Colors.cardBackground,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -333,26 +346,19 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: FontSize.footnote,
     fontWeight: '500',
-    color: Colors.textSecondary,
-  },
-  segmentTextSelected: {
-    color: Colors.primary,
-    fontWeight: '600',
   },
   advancedToggle: {
     paddingVertical: Spacing.sm,
   },
   advancedToggleText: {
     fontSize: FontSize.footnote,
-    color: Colors.textTertiary,
     fontWeight: '500',
   },
   saveButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md + 2,
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
   saveButtonText: {
     color: '#FFFFFF',
