@@ -66,9 +66,15 @@ export function ChatBubble({ message }: Props) {
           )}
 
           {message.segments && message.segments.length > 0 ? (
-            message.segments.map((segment, index) => (
-              <SegmentView key={index} segment={segment} colors={colors} isUser={isUser} mdStyles={mdStyles} />
-            ))
+            <>
+              {message.segments.map((segment, index) => (
+                <SegmentView key={index} segment={segment} colors={colors} isUser={isUser} mdStyles={mdStyles} />
+              ))}
+              {/* Text content after tool calls (model's summary/explanation) */}
+              {message.content ? (
+                <Markdown style={mdStyles}>{message.content}</Markdown>
+              ) : null}
+            </>
           ) : isUser ? (
             <Text
               style={[styles.messageText, { color: colors.userBubbleText }]}
@@ -130,13 +136,20 @@ function SegmentView({
           activeOpacity={0.7}
         >
           <View style={styles.toolCallHeader}>
-            <Text style={[styles.toolCallIcon, { color: colors.textTertiary }]}>🔧</Text>
-            <Text style={[styles.toolCallName, { color: colors.textSecondary }]}>{segment.toolName}</Text>
+            <Text style={[styles.toolCallIcon, { color: colors.textTertiary }]}>
+              {segment.isComplete ? '🔧' : '⏳'}
+            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.toolCallName, { color: colors.textSecondary }]}>{segment.toolName}</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 11 }}>
+                {segment.isComplete ? 'Completed' : 'Running…'}
+              </Text>
+            </View>
             {!segment.isComplete && (
-              <ActivityIndicator size="small" color={colors.textTertiary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             )}
             {segment.isComplete && (
-              <Text style={{ color: colors.healthyGreen, fontSize: 12 }}>✓</Text>
+              <Text style={{ color: colors.healthyGreen, fontSize: 14 }}>✓</Text>
             )}
             <Text style={[styles.chevron, { color: colors.textTertiary }]}>
               {expanded ? '▾' : '▸'}
@@ -152,8 +165,8 @@ function SegmentView({
                 <>
                   <Text style={[styles.toolCallLabel, { color: colors.textTertiary }]}>Result:</Text>
                   <Text style={[styles.toolCallCode, { color: colors.codeText, backgroundColor: colors.codeBackground }]} selectable>
-                    {segment.result.substring(0, 500)}
-                    {segment.result.length > 500 ? '…' : ''}
+                    {segment.result.substring(0, 1000)}
+                    {segment.result.length > 1000 ? '…' : ''}
                   </Text>
                 </>
               )}
