@@ -125,9 +125,10 @@ function toCoreMessages(messages: ChatMessage[]): ModelMessage[] {
         if (!att.base64) continue;
 
         if (att.mediaType.startsWith('image/')) {
+          // Use data URI format for maximum provider compatibility
           parts.push({
             type: 'image',
-            image: att.base64,
+            image: `data:${att.mediaType};base64,${att.base64}`,
             mediaType: att.mediaType,
           });
         } else {
@@ -231,7 +232,13 @@ export function streamChat(
         onComplete('abort');
         return;
       }
-      onError(err instanceof Error ? err : new Error(String(err)));
+      // Provide user-friendly error messages for common issues
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('image input')) {
+        onError(new Error(`This model doesn't support image input. Try a vision model (e.g. gpt-4o, gemini-2.5-flash, claude-sonnet-4).`));
+      } else {
+        onError(err instanceof Error ? err : new Error(msg));
+      }
     }
   })();
 

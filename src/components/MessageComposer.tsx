@@ -12,7 +12,6 @@ import {
   Platform,
   Image,
   ScrollView,
-  ActionSheetIOS,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme, FontSize, Spacing } from '../utils/theme';
 import { Attachment } from '../acp/models/types';
 import { useFilePicker } from '../hooks/useFilePicker';
+import { AttachmentSheet } from './AttachmentSheet';
 
 // File type icons
 function getFileIcon(mediaType: string): string {
@@ -64,6 +64,7 @@ export function MessageComposer({
   const { colors, dark } = useTheme();
   const insets = useSafeAreaInsets();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const { pickImage, pickCamera, pickDocument } = useFilePicker();
 
   const canSend = (value.trim().length > 0 || attachments.length > 0) && !isStreaming && !isDisabled;
@@ -84,69 +85,61 @@ export function MessageComposer({
     setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  const handleAttach = useCallback(async () => {
+  const handleAttach = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const options = ['Photo Library', 'Camera', 'Document', 'Cancel'];
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 3 },
-        async (index) => {
-          try {
-            if (index === 0) {
-              const imgs = await pickImage();
-              setAttachments(prev => [...prev, ...imgs]);
-            } else if (index === 1) {
-              const photo = await pickCamera();
-              if (photo) setAttachments(prev => [...prev, photo]);
-            } else if (index === 2) {
-              const docs = await pickDocument();
-              setAttachments(prev => [...prev, ...docs]);
-            }
-          } catch (err) {
-            Alert.alert('Error', (err as Error).message);
-          }
-        },
-      );
-    } else {
-      // Android: simple alert-based menu
-      Alert.alert('Add Attachment', undefined, [
-        {
-          text: 'Photo Library',
-          onPress: async () => {
-            try {
-              const imgs = await pickImage();
-              setAttachments(prev => [...prev, ...imgs]);
-            } catch (err) {
-              Alert.alert('Error', (err as Error).message);
-            }
-          },
-        },
-        {
-          text: 'Camera',
-          onPress: async () => {
-            try {
-              const photo = await pickCamera();
-              if (photo) setAttachments(prev => [...prev, photo]);
-            } catch (err) {
-              Alert.alert('Error', (err as Error).message);
-            }
-          },
-        },
-        {
-          text: 'Document',
-          onPress: async () => {
-            try {
-              const docs = await pickDocument();
-              setAttachments(prev => [...prev, ...docs]);
-            } catch (err) {
-              Alert.alert('Error', (err as Error).message);
-            }
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+    setSheetVisible(true);
+  }, []);
+
+  const handlePickImage = useCallback(async () => {
+    try {
+      const imgs = await pickImage();
+      setAttachments(prev => [...prev, ...imgs]);
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message);
     }
-  }, [pickImage, pickCamera, pickDocument]);
+  }, [pickImage]);
+
+  const handlePickCamera = useCallback(async () => {
+    try {
+      const photo = await pickCamera();
+      if (photo) setAttachments(prev => [...prev, photo]);
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message);
+    }
+  }, [pickCamera]);
+
+  const handlePickDocument = useCallback(async () => {
+    try {
+      const docs = await pickDocument();
+      setAttachments(prev => [...prev, ...docs]);
+    } catch (err) {
+      Alert.alert('Error', (err as Error).message);
+    }
+  }, [pickDocument]);
+
+  const attachmentOptions = [
+    {
+      icon: '🖼️',
+      label: 'Photo Library',
+      subtitle: 'Choose from your gallery',
+      color: '#10A37F22',
+      onPress: handlePickImage,
+    },
+    {
+      icon: '📷',
+      label: 'Camera',
+      subtitle: 'Take a photo',
+      color: '#3B82F622',
+      onPress: handlePickCamera,
+    },
+    {
+      icon: '📄',
+      label: 'Document',
+      subtitle: 'PDF, DOCX, XLSX, CSV and more',
+      color: '#F59E0B22',
+      onPress: handlePickDocument,
+    },
+  ];
 
   const content = (
     <View style={[styles.inner, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
@@ -235,16 +228,30 @@ export function MessageComposer({
   // Glass effect on iOS, solid on Android
   if (Platform.OS === 'ios') {
     return (
-      <BlurView intensity={80} tint={dark ? 'dark' : 'light'} style={styles.container}>
-        {content}
-      </BlurView>
+      <>
+        <BlurView intensity={80} tint={dark ? 'dark' : 'light'} style={styles.container}>
+          {content}
+        </BlurView>
+        <AttachmentSheet
+          visible={sheetVisible}
+          onClose={() => setSheetVisible(false)}
+          options={attachmentOptions}
+        />
+      </>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: dark ? 'rgba(33,33,33,0.95)' : 'rgba(255,255,255,0.95)' }]}>
-      {content}
-    </View>
+    <>
+      <View style={[styles.container, { backgroundColor: dark ? 'rgba(33,33,33,0.95)' : 'rgba(255,255,255,0.95)' }]}>
+        {content}
+      </View>
+      <AttachmentSheet
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+        options={attachmentOptions}
+      />
+    </>
   );
 }
 
