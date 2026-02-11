@@ -12,6 +12,7 @@ import {
   Text,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Animated,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useAppStore } from '../stores/appStore';
@@ -97,20 +98,36 @@ export function SessionDetailScreen() {
     [],
   );
 
+  // Pulsing animation for empty state icon
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (chatMessages.length === 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 1500, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        ]),
+      ).start();
+    }
+  }, [chatMessages.length, pulseAnim]);
+
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
+        <Animated.View style={[styles.emptyIcon, { backgroundColor: colors.primary, transform: [{ scale: pulseAnim }] }]}>
+          <Text style={styles.emptyIconText}>✦</Text>
+        </Animated.View>
         <Text style={[styles.emptyTitle, { color: colors.text }]}>
-          {isConnected ? 'Agentic' : 'Not connected'}
+          {isConnected ? 'How can I help you today?' : 'Not connected'}
         </Text>
         <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
           {isConnected
-            ? 'How can I help you today?'
+            ? 'Type a message to start a conversation'
             : 'Open the sidebar to connect to a server'}
         </Text>
       </View>
     ),
-    [isConnected, colors],
+    [isConnected, colors, pulseAnim],
   );
 
   const showTyping = isStreaming && chatMessages.length > 0 &&
@@ -174,13 +191,24 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.md,
     paddingHorizontal: Spacing.xxl,
   },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  emptyIconText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+  },
   emptyTitle: {
-    fontSize: FontSize.title1,
+    fontSize: FontSize.title3,
     fontWeight: '600',
-    marginBottom: Spacing.xs,
   },
   emptySubtitle: {
     fontSize: FontSize.body,

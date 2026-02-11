@@ -1,5 +1,5 @@
 /**
- * Message composer — ChatGPT style: pill-shaped input with embedded send button.
+ * Message composer — ChatGPT style: pill-shaped input with glass bottom bar.
  */
 
 import React, { useCallback } from 'react';
@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useTheme, FontSize, Spacing } from '../utils/theme';
 
@@ -34,7 +35,7 @@ export function MessageComposer({
   isDisabled,
   placeholder = 'Message',
 }: Props) {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const insets = useSafeAreaInsets();
   const canSend = value.trim().length > 0 && !isStreaming && !isDisabled;
 
@@ -49,8 +50,8 @@ export function MessageComposer({
     onCancel?.();
   }, [onCancel]);
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
+  const content = (
+    <View style={[styles.inner, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
       <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
         <TextInput
           style={[styles.textInput, { color: colors.text }]}
@@ -82,18 +83,35 @@ export function MessageComposer({
             disabled={!canSend}
             activeOpacity={0.7}
           >
-            <Text style={[styles.sendIcon, { color: colors.sendButtonIcon }]}>↑</Text>
+            <Text style={[styles.sendIcon, { color: canSend ? colors.sendButtonIcon : colors.textTertiary }]}>↑</Text>
           </TouchableOpacity>
         )}
       </View>
+    </View>
+  );
+
+  // Glass effect on iOS, solid on Android
+  if (Platform.OS === 'ios') {
+    return (
+      <BlurView intensity={80} tint={dark ? 'dark' : 'light'} style={styles.container}>
+        {content}
+      </BlurView>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: dark ? 'rgba(33,33,33,0.95)' : 'rgba(255,255,255,0.95)' }]}>
+      {content}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
+  },
+  inner: {
+    paddingHorizontal: Spacing.md,
   },
   inputContainer: {
     flexDirection: 'row',

@@ -1,13 +1,14 @@
 /**
- * Navigation — Drawer + Stack layout, ChatGPT-style header.
+ * Navigation — Drawer + Stack layout, ChatGPT-style header with glass effects.
  */
 
 import React, { useEffect } from 'react';
-import { TouchableOpacity, Text, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, useWindowDimensions, View, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BlurView } from 'expo-blur';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
 import { AddServerScreen } from './screens/AddServerScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -46,22 +47,33 @@ function HeaderTitle() {
   );
 }
 
+function GlassHeader({ children, tint }: { children: React.ReactNode; tint: 'light' | 'dark' }) {
+  if (Platform.OS === 'android') {
+    return <>{children}</>;
+  }
+  return (
+    <BlurView intensity={80} tint={tint} style={StyleSheet.absoluteFill}>
+      {children}
+    </BlurView>
+  );
+}
+
 function DrawerNavigator() {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const { width } = useWindowDimensions();
-  const { createSession } = useAppStore();
+  const { createSession, isInitialized } = useAppStore();
 
   return (
     <Drawer.Navigator
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={{
-        drawerType: width >= 768 ? 'permanent' : 'front',
+        drawerType: width >= 768 ? 'permanent' : 'slide',
         drawerStyle: {
           width: Math.min(300, width * 0.78),
           backgroundColor: colors.sidebarBackground,
         },
         overlayColor: 'rgba(0,0,0,0.5)',
-        headerStyle: { backgroundColor: colors.surface },
+        headerStyle: { backgroundColor: dark ? 'rgba(33,33,33,0.85)' : 'rgba(255,255,255,0.85)' },
         headerTintColor: colors.text,
         headerShadowVisible: false,
         headerTitleStyle: { fontWeight: '500', fontSize: FontSize.subheadline },
@@ -73,6 +85,16 @@ function DrawerNavigator() {
         component={SessionDetailScreen}
         options={({ navigation }) => ({
           headerTitle: () => <HeaderTitle />,
+          headerTransparent: Platform.OS === 'ios',
+          headerBackground: Platform.OS === 'ios'
+            ? () => (
+                <BlurView
+                  intensity={80}
+                  tint={dark ? 'dark' : 'light'}
+                  style={StyleSheet.absoluteFill}
+                />
+              )
+            : undefined,
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
@@ -84,11 +106,11 @@ function DrawerNavigator() {
           ),
           headerRight: () => (
             <TouchableOpacity
-              onPress={() => createSession()}
+              onPress={() => { if (isInitialized) createSession(); }}
               style={styles.newChatHeaderButton}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={[styles.newChatHeaderIcon, { color: colors.text }]}>✎</Text>
+              <Text style={[styles.newChatHeaderIcon, { color: colors.text, opacity: isInitialized ? 1 : 0.3 }]}>✎</Text>
             </TouchableOpacity>
           ),
         })}
