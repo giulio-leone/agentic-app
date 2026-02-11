@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useAppStore } from '../stores/appStore';
 import { Colors, FontSize, Spacing } from '../utils/theme';
+import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 
 export function SettingsScreen() {
   const { devModeEnabled, toggleDevMode, developerLogs, clearLogs } =
@@ -69,7 +70,7 @@ export function SettingsScreen() {
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.aboutRow}>
           <Text style={styles.aboutLabel}>App</Text>
-          <Text style={styles.aboutValue}>Agmente RN</Text>
+          <Text style={styles.aboutValue}>{APP_DISPLAY_NAME} v{APP_VERSION}</Text>
         </View>
         <View style={styles.aboutRow}>
           <Text style={styles.aboutLabel}>Version</Text>

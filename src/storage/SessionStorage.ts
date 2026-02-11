@@ -6,10 +6,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ACPServerConfiguration, SessionSummary, ChatMessage, ServerType } from '../acp/models/types';
 
-const SERVERS_KEY = '@agmente/servers';
-const sessionsKey = (serverId: string) => `@agmente/sessions/${serverId}`;
+const SERVERS_KEY = '@agentic/servers';
+const sessionsKey = (serverId: string) => `@agentic/sessions/${serverId}`;
 const messagesKey = (serverId: string, sessionId: string) =>
-  `@agmente/messages/${serverId}/${sessionId}`;
+  `@agentic/messages/${serverId}/${sessionId}`;
 
 export const SessionStorage = {
   // --- Server Operations ---

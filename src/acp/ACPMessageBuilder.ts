@@ -4,6 +4,7 @@
  */
 
 import { JSONValue } from './models';
+import { ACP_CLIENT_NAME, ACP_CLIENT_VERSION } from '../constants/app';
 
 export interface InitializeParams {
   clientInfo?: { name: string; version: string };
@@ -50,7 +51,7 @@ export function buildInitializeParams(opts?: InitializeParams): JSONValue {
 
   params.protocolVersion = 1;
 
-  const clientInfo = opts?.clientInfo ?? { name: 'Agmente RN', version: '1.0.0' };
+  const clientInfo = opts?.clientInfo ?? { name: ACP_CLIENT_NAME, version: ACP_CLIENT_VERSION };
   params.clientInfo = clientInfo as unknown as JSONValue;
 
   const capabilities = opts?.capabilities ?? {
