@@ -2,6 +2,8 @@
  * ACP protocol types – mirrors the Swift ACPClient models.
  */
 
+import type { AIProviderConfig } from '../../ai/types';
+
 export enum ACPConnectionState {
   Disconnected = 'disconnected',
   Connecting = 'connecting',
@@ -12,6 +14,7 @@ export enum ACPConnectionState {
 export enum ServerType {
   ACP = 'acp',
   Codex = 'codex',
+  AIProvider = 'ai_provider',
 }
 
 export interface ACPServerConfiguration {
@@ -24,6 +27,7 @@ export interface ACPServerConfiguration {
   cfAccessClientSecret: string;
   workingDirectory: string;
   serverType: ServerType;
+  aiProviderConfig?: AIProviderConfig;
 }
 
 export interface SessionSummary {

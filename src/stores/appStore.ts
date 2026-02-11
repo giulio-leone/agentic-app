@@ -24,6 +24,9 @@ import {
 } from '../acp/SessionUpdateHandler';
 import { JSONValue, isNotification, ACPWireMessage } from '../acp/models';
 import { SessionStorage } from '../storage/SessionStorage';
+import { streamChat } from '../ai/AIService';
+import { getApiKey } from '../storage/SecureStorage';
+import { getProviderInfo } from '../ai/providers';
 
 // ─── Store State ───
 
@@ -57,7 +60,7 @@ interface AppState {
 interface AppActions {
   // Server management
   loadServers: () => Promise<void>;
-  addServer: (server: Omit<ACPServerConfiguration, 'id'>) => Promise<void>;
+  addServer: (server: Omit<ACPServerConfiguration, 'id'>) => Promise<string>;
   updateServer: (server: ACPServerConfiguration) => Promise<void>;
   deleteServer: (id: string) => Promise<void>;
   selectServer: (id: string | null) => void;
@@ -90,6 +93,7 @@ interface AppActions {
 
 // ─── Private state ───
 let _service: ACPService | null = null;
+let _aiAbortController: AbortController | null = null;
 
 // ─── Store ───
 
@@ -125,6 +129,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     };
     await SessionStorage.saveServer(server);
     set(state => ({ servers: [...state.servers, server] }));
+    return server.id;
   },
 
   updateServer: async (server) => {
@@ -186,6 +191,26 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     const state = get();
     const server = state.servers.find(s => s.id === state.selectedServerId);
     if (!server) return;
+
+    // AI Provider servers don't need WebSocket — mark as connected immediately
+    if (server.serverType === ServerType.AIProvider) {
+      const providerInfo = server.aiProviderConfig
+        ? getProviderInfo(server.aiProviderConfig.providerType)
+        : null;
+      set({
+        connectionState: ACPConnectionState.Connected,
+        isInitialized: true,
+        connectionError: null,
+        agentInfo: {
+          name: providerInfo ? `${providerInfo.icon} ${providerInfo.name}` : 'AI Provider',
+          version: server.aiProviderConfig?.modelId ?? '',
+          capabilities: { promptCapabilities: { image: false } },
+          modes: [],
+        },
+      });
+      get().loadSessions();
+      return;
+    }
 
     const endpoint = `${server.scheme}://${server.host}`;
     const config: ACPClientConfig = {
@@ -333,12 +358,38 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   },
 
   createSession: async (cwd?) => {
-    if (!_service) return;
     const state = get();
+    const server = state.servers.find(s => s.id === state.selectedServerId);
+    if (!server) return;
+
+    // AI Provider: create a local-only session (no server call)
+    if (server.serverType === ServerType.AIProvider) {
+      const sessionId = uuidv4();
+      const newSession: SessionSummary = {
+        id: sessionId,
+        title: undefined,
+        updatedAt: new Date().toISOString(),
+      };
+      set(s => ({
+        sessions: [newSession, ...s.sessions],
+        selectedSessionId: sessionId,
+        chatMessages: [],
+        streamingMessageId: null,
+        stopReason: null,
+        isStreaming: false,
+      }));
+      if (state.selectedServerId) {
+        await SessionStorage.saveSession(newSession, state.selectedServerId);
+      }
+      get().appendLog(`✓ AI session created: ${sessionId}`);
+      return;
+    }
+
+    if (!_service) return;
     try {
       get().appendLog('→ session/new');
       const response = await _service.createSession({
-        cwd: cwd || state.servers.find(s => s.id === state.selectedServerId)?.workingDirectory,
+        cwd: cwd || server.workingDirectory,
       });
       const result = response.result as Record<string, JSONValue> | undefined;
       const sessionId = (result?.id as string) ?? (result?.sessionId as string);
@@ -402,7 +453,8 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
 
   sendPrompt: async (text) => {
     const state = get();
-    if (!_service || !state.selectedSessionId) return;
+    const server = state.servers.find(s => s.id === state.selectedServerId);
+    if (!server || !state.selectedSessionId) return;
 
     // Add user message
     const userMessage: ChatMessage = {
@@ -419,11 +471,10 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       stopReason: null,
     }));
 
-    // Persist
+    // Persist user message & update session title
+    const allMessages = [...state.chatMessages, userMessage];
     if (state.selectedServerId && state.selectedSessionId) {
-      const updatedMessages = [...state.chatMessages, userMessage];
-      SessionStorage.saveMessages(updatedMessages, state.selectedServerId, state.selectedSessionId);
-      // Update session title with first message
+      SessionStorage.saveMessages(allMessages, state.selectedServerId, state.selectedSessionId);
       if (state.chatMessages.length === 0) {
         const title = text.substring(0, 50);
         const session = state.sessions.find(s => s.id === state.selectedSessionId);
@@ -441,16 +492,114 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       }
     }
 
+    // ── AI Provider path ──
+    if (server.serverType === ServerType.AIProvider && server.aiProviderConfig) {
+      const config = server.aiProviderConfig;
+      try {
+        const apiKey = await getApiKey(`${server.id}_${config.providerType}`);
+        if (!apiKey) {
+          throw new Error('API key not found. Please configure your API key in server settings.');
+        }
+
+        // Create assistant streaming message
+        const assistantId = uuidv4();
+        set(s => ({
+          chatMessages: [...s.chatMessages, {
+            id: assistantId,
+            role: 'assistant' as const,
+            content: '',
+            isStreaming: true,
+            timestamp: new Date().toISOString(),
+          }],
+          streamingMessageId: assistantId,
+        }));
+
+        // Get all messages for context (excluding the streaming placeholder)
+        const contextMessages = get().chatMessages.filter(m => m.id !== assistantId);
+
+        _aiAbortController = streamChat(
+          contextMessages,
+          config,
+          apiKey,
+          // onChunk
+          (chunk) => {
+            set(s => ({
+              chatMessages: s.chatMessages.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: m.content + chunk }
+                  : m
+              ),
+            }));
+          },
+          // onComplete
+          (stopReason) => {
+            _aiAbortController = null;
+            set(s => ({
+              chatMessages: s.chatMessages.map(m =>
+                m.id === assistantId ? { ...m, isStreaming: false } : m
+              ),
+              isStreaming: false,
+              streamingMessageId: null,
+              stopReason,
+            }));
+            // Persist final messages
+            const finalState = get();
+            if (finalState.selectedServerId && finalState.selectedSessionId) {
+              SessionStorage.saveMessages(
+                finalState.chatMessages,
+                finalState.selectedServerId,
+                finalState.selectedSessionId,
+              );
+            }
+          },
+          // onError
+          (error) => {
+            _aiAbortController = null;
+            const errorMessage: ChatMessage = {
+              id: uuidv4(),
+              role: 'system',
+              content: `⚠️ Error: ${error.message}`,
+              timestamp: new Date().toISOString(),
+            };
+            set(s => ({
+              chatMessages: [
+                ...s.chatMessages.filter(m => m.id !== assistantId),
+                errorMessage,
+              ],
+              isStreaming: false,
+              streamingMessageId: null,
+            }));
+          },
+        );
+        return;
+      } catch (error) {
+        const errorMsg = (error as Error).message;
+        get().appendLog(`✗ AI prompt failed: ${errorMsg}`);
+        const errorMessage: ChatMessage = {
+          id: uuidv4(),
+          role: 'system',
+          content: `⚠️ Error: ${errorMsg}`,
+          timestamp: new Date().toISOString(),
+        };
+        set(s => ({
+          chatMessages: [...s.chatMessages, errorMessage],
+          isStreaming: false,
+        }));
+        return;
+      }
+    }
+
+    // ── ACP path (existing) ──
+    if (!_service) return;
+
     try {
       get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);
       const response = await _service.sendPrompt({
         sessionId: state.selectedSessionId,
         text,
       });
-      // The response indicates the prompt is complete
       const result = response.result as Record<string, JSONValue> | undefined;
       const stopReason = result?.stopReason as string | undefined;
-      // Mark streaming as done
       const currentState = get();
       if (currentState.streamingMessageId) {
         const idx = currentState.chatMessages.findIndex(m => m.id === currentState.streamingMessageId);
@@ -467,7 +616,6 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     } catch (error) {
       const errorMsg = (error as Error).message;
       get().appendLog(`✗ Prompt failed: ${errorMsg}`);
-      // Show error as a system message in chat
       const errorMessage: ChatMessage = {
         id: uuidv4(),
         role: 'system',
@@ -483,6 +631,16 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
 
   cancelPrompt: async () => {
     const state = get();
+
+    // AI Provider: abort via controller
+    if (_aiAbortController) {
+      _aiAbortController.abort();
+      _aiAbortController = null;
+      set({ isStreaming: false });
+      return;
+    }
+
+    // ACP path
     if (!_service || !state.selectedSessionId) return;
     try {
       await _service.cancelSession({ sessionId: state.selectedSessionId });

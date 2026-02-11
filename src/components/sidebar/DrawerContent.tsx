@@ -18,9 +18,10 @@ import { useNavigation } from '@react-navigation/native';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useAppStore } from '../../stores/appStore';
 import { ConnectionBadge } from '../ConnectionBadge';
-import { ACPConnectionState, SessionSummary } from '../../acp/models/types';
+import { ACPConnectionState, SessionSummary, ServerType } from '../../acp/models/types';
 import { useTheme, FontSize, Spacing, Radius } from '../../utils/theme';
 import { APP_DISPLAY_NAME } from '../../constants/app';
+import { getProviderInfo } from '../../ai/providers';
 
 export function DrawerContent(props: DrawerContentComponentProps) {
   const { colors } = useTheme();
@@ -151,6 +152,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           <>
             {servers.map(server => {
               const isSelected = server.id === selectedServerId;
+              const isAIProvider = server.serverType === ServerType.AIProvider;
+              const providerIcon = isAIProvider && server.aiProviderConfig
+                ? getProviderInfo(server.aiProviderConfig.providerType).icon
+                : null;
               return (
                 <TouchableOpacity
                   key={server.id}
@@ -161,6 +166,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   onPress={() => handleServerPress(server.id)}
                   activeOpacity={0.7}
                 >
+                  {providerIcon && (
+                    <Text style={styles.providerIcon}>{providerIcon}</Text>
+                  )}
                   <Text
                     style={[
                       styles.serverName,
@@ -170,14 +178,14 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   >
                     {server.name || server.host}
                   </Text>
-                  {isSelected && (
+                  {isSelected && !isAIProvider && (
                     <ConnectionBadge state={connectionState} isInitialized={isInitialized} />
                   )}
                 </TouchableOpacity>
               );
             })}
 
-            {selectedServer && (
+            {selectedServer && selectedServer.serverType !== ServerType.AIProvider && (
               <View style={styles.connectRow}>
                 <TouchableOpacity
                   style={[
@@ -321,6 +329,10 @@ const styles = StyleSheet.create({
   },
   serverChipSelected: {
     backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  providerIcon: {
+    fontSize: 14,
+    marginRight: 4,
   },
   serverName: {
     fontSize: FontSize.footnote,
