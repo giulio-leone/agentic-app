@@ -206,6 +206,7 @@ function MCPServerRow({
           <TouchableOpacity
             style={[styles.mcpActionBtn, { borderColor: colors.separator }]}
             onPress={onDisconnect}
+            accessibilityLabel={`Disconnect from ${server.name}`}
           >
             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Disconnect</Text>
           </TouchableOpacity>
@@ -214,13 +215,15 @@ function MCPServerRow({
             style={[styles.mcpActionBtn, { backgroundColor: colors.primary }]}
             onPress={onConnect}
             disabled={isConnecting}
+            accessibilityLabel={`Connect to ${server.name}`}
           >
-            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '600' }}>Connect</Text>
+            <Text style={{ color: colors.contrastText, fontSize: 13, fontWeight: '600' }}>Connect</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           style={[styles.mcpActionBtn, { borderColor: colors.destructive }]}
           onPress={onRemove}
+          accessibilityLabel={`Remove ${server.name}`}
         >
           <Text style={{ color: colors.destructive, fontSize: 13 }}>Remove</Text>
         </TouchableOpacity>
@@ -313,7 +316,7 @@ function AddMCPServerForm({
             ]}
             onPress={() => setAuthType(at.type)}
           >
-            <Text style={{ color: authType === at.type ? '#FFF' : colors.text, fontSize: 13 }}>
+            <Text style={{ color: authType === at.type ? colors.contrastText : colors.text, fontSize: 13 }}>
               {at.label}
             </Text>
           </TouchableOpacity>
@@ -371,6 +374,7 @@ function AddMCPServerForm({
         <TouchableOpacity
           style={[styles.formBtn, { borderColor: colors.separator }]}
           onPress={onCancel}
+          accessibilityLabel="Cancel adding MCP server"
         >
           <Text style={{ color: colors.textSecondary }}>Cancel</Text>
         </TouchableOpacity>
@@ -378,11 +382,12 @@ function AddMCPServerForm({
           style={[styles.formBtn, { backgroundColor: colors.primary }]}
           onPress={handleSave}
           disabled={saving}
+          accessibilityLabel="Add and connect MCP server"
         >
           {saving ? (
-            <ActivityIndicator size="small" color="#FFF" />
+            <ActivityIndicator size="small" color={colors.contrastText} />
           ) : (
-            <Text style={{ color: '#FFF', fontWeight: '600' }}>Add & Connect</Text>
+            <Text style={{ color: colors.contrastText, fontWeight: '600' }}>Add & Connect</Text>
           )}
         </TouchableOpacity>
       </View>
