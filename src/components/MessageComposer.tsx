@@ -2,7 +2,7 @@
  * Message composer — ChatGPT style: pill-shaped input with attachment support.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -104,7 +104,7 @@ export function MessageComposer({
     }
   }, [pickDocument]);
 
-  const attachmentOptions = [
+  const attachmentOptions = useMemo(() => [
     {
       icon: '🖼️',
       label: 'Photo Library',
@@ -126,7 +126,12 @@ export function MessageComposer({
       color: '#F59E0B22',
       onPress: handlePickDocument,
     },
-  ];
+  ], [handlePickImage, handlePickCamera, handlePickDocument]);
+
+  const handleVoiceToggle = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onToggleVoice?.();
+  }, [onToggleVoice]);
 
   const content = (
     <View style={[styles.inner, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
@@ -209,10 +214,7 @@ export function MessageComposer({
               styles.sendButton,
               { backgroundColor: isListening ? colors.destructive : colors.sendButtonDisabledBg },
             ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onToggleVoice();
-            }}
+            onPress={handleVoiceToggle}
             activeOpacity={0.7}
           >
             <Text style={[styles.sendIcon, { color: isListening ? '#FFF' : colors.textTertiary }]}>

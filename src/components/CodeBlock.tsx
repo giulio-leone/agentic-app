@@ -3,7 +3,7 @@
  * Uses simple token-based highlighting (no external dependency).
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme, type ThemeColors, FontSize, Spacing, Radius } from '../utils/theme';
@@ -162,19 +162,34 @@ interface CodeBlockProps {
   language?: string;
 }
 
-export function CodeBlock({ code, language = '' }: CodeBlockProps) {
+export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: CodeBlockProps) {
   const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const tokens = useMemo(() => tokenize(code, language), [code, language]);
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   }, [code]);
 
   const displayLang = language ? language.toUpperCase() : '';
+
+  // Memoize rendered tokens to avoid re-creating Text elements on every render
+  const renderedTokens = useMemo(() =>
+    tokens.map((token, i) => (
+      <Text key={i} style={{ color: getTokenColor(token.type, colors), fontFamily: 'monospace', fontSize: FontSize.caption }}>
+        {token.value}
+      </Text>
+    )),
+    [tokens, colors],
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.codeBackground }]}>
@@ -193,16 +208,12 @@ export function CodeBlock({ code, language = '' }: CodeBlockProps) {
       {/* Code content */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <Text style={styles.codeText} selectable>
-          {tokens.map((token, i) => (
-            <Text key={i} style={{ color: getTokenColor(token.type, colors), fontFamily: 'monospace', fontSize: FontSize.caption }}>
-              {token.value}
-            </Text>
-          ))}
+          {renderedTokens}
         </Text>
       </ScrollView>
     </View>
   );
-}
+});
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 

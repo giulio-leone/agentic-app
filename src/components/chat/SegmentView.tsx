@@ -55,14 +55,14 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
             <Text style={[styles.toolIcon, { color: colors.textTertiary }]}>
               {segment.isComplete ? '🔧' : '⏳'}
             </Text>
-            <View style={{ flex: 1 }}>
+            <View style={styles.toolHeaderInfo}>
               <Text style={[styles.toolName, { color: colors.textSecondary }]}>{segment.toolName}</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: 11 }}>
+              <Text style={[styles.toolStatus, { color: colors.textTertiary }]}>
                 {segment.isComplete ? 'Completed' : 'Running…'}
               </Text>
             </View>
             {!segment.isComplete && <ActivityIndicator size="small" color={colors.primary} />}
-            {segment.isComplete && <Text style={{ color: colors.healthyGreen, fontSize: 14 }}>✓</Text>}
+            {segment.isComplete && <Text style={[styles.toolCheck, { color: colors.healthyGreen }]}>✓</Text>}
             <Text style={[styles.chevron, { color: colors.textTertiary }]}>
               {expanded ? '▾' : '▸'}
             </Text>
@@ -133,6 +133,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: FontSize.footnote,
     fontFamily: 'monospace',
+  },
+  toolHeaderInfo: {
+    flex: 1,
+  },
+  toolStatus: {
+    fontSize: 11,
+  },
+  toolCheck: {
+    fontSize: 14,
   },
   chevron: {
     fontSize: 14,

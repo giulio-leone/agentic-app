@@ -2,7 +2,7 @@
  * Compact model picker bar — shows current model and lets user change it inline.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ interface Props {
   server: ACPServerConfiguration;
 }
 
-export function ModelPickerBar({ server }: Props) {
+export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Props) {
   const { colors } = useTheme();
   const updateServer = useAppStore(s => s.updateServer);
   const [modalVisible, setModalVisible] = useState(false);
@@ -33,6 +33,9 @@ export function ModelPickerBar({ server }: Props) {
   const [filtered, setFiltered] = useState<FetchedModel[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   if (server.serverType !== ServerType.AIProvider || !server.aiProviderConfig) {
     return null;
@@ -48,6 +51,7 @@ export function ModelPickerBar({ server }: Props) {
 
     // Try cached first
     const cached = await getCachedModels(config.providerType);
+    if (!mountedRef.current) return;
     if (cached && cached.length > 0) {
       setModels(cached);
       setFiltered(cached);
@@ -57,12 +61,14 @@ export function ModelPickerBar({ server }: Props) {
     // Fetch fresh
     try {
       const apiKey = await getApiKey(`${server.id}_${config.providerType}`);
+      if (!mountedRef.current) return;
       if (apiKey) {
         const fresh = await fetchModelsFromProvider(
           config.providerType,
           apiKey,
           config.baseUrl ?? providerInfo.defaultBaseUrl,
         );
+        if (!mountedRef.current) return;
         if (fresh.length > 0) {
           setModels(fresh);
           setFiltered(fresh);
@@ -71,7 +77,7 @@ export function ModelPickerBar({ server }: Props) {
     } catch {
       // keep cached
     }
-    setLoading(false);
+    if (mountedRef.current) setLoading(false);
   }, [config, server.id, providerInfo]);
 
   const selectModel = useCallback(async (modelId: string) => {
@@ -92,7 +98,7 @@ export function ModelPickerBar({ server }: Props) {
   }, [search, models]);
 
   // Temperature chips
-  const tempOptions = [0, 0.3, 0.7, 1.0, 1.5];
+  const tempOptions = useMemo(() => [0, 0.3, 0.7, 1.0, 1.5], []);
 
   const setTemperature = useCallback(async (temp: number) => {
     await updateServer({
@@ -100,6 +106,32 @@ export function ModelPickerBar({ server }: Props) {
       aiProviderConfig: { ...config, temperature: temp },
     });
   }, [server, config, updateServer]);
+
+  const renderModelItem = useCallback(({ item }: { item: FetchedModel }) => {
+    const isSelected = item.id === config.modelId;
+    return (
+      <TouchableOpacity
+        style={[styles.modelRow, isSelected && { backgroundColor: colors.primary + '18' }]}
+        onPress={() => selectModel(item.id)}
+        activeOpacity={0.6}
+      >
+        <View style={styles.modelRowInfo}>
+          <Text
+            style={[styles.modelRowText, { color: isSelected ? colors.primary : colors.text }]}
+            numberOfLines={1}
+          >
+            {item.id}
+          </Text>
+          <View style={styles.modelBadges}>
+            {item.supportsVision && <Text style={styles.badge}>👁</Text>}
+            {item.supportsTools && <Text style={styles.badge}>🔧</Text>}
+            {item.supportsReasoning && <Text style={styles.badge}>🧠</Text>}
+          </View>
+        </View>
+        {isSelected && <Text style={[styles.checkMark, { color: colors.primary }]}>✓</Text>}
+      </TouchableOpacity>
+    );
+  }, [config.modelId, colors, selectModel]);
 
   return (
     <>
@@ -159,31 +191,7 @@ export function ModelPickerBar({ server }: Props) {
               <FlatList
                 data={filtered}
                 keyExtractor={item => item.id}
-                renderItem={({ item }) => {
-                  const isSelected = item.id === config.modelId;
-                  return (
-                    <TouchableOpacity
-                      style={[styles.modelRow, isSelected && { backgroundColor: colors.primary + '18' }]}
-                      onPress={() => selectModel(item.id)}
-                      activeOpacity={0.6}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={[styles.modelRowText, { color: isSelected ? colors.primary : colors.text }]}
-                          numberOfLines={1}
-                        >
-                          {item.id}
-                        </Text>
-                        <View style={styles.modelBadges}>
-                          {item.supportsVision && <Text style={styles.badge}>👁</Text>}
-                          {item.supportsTools && <Text style={styles.badge}>🔧</Text>}
-                          {item.supportsReasoning && <Text style={styles.badge}>🧠</Text>}
-                        </View>
-                      </View>
-                      {isSelected && <Text style={{ color: colors.primary }}>✓</Text>}
-                    </TouchableOpacity>
-                  );
-                }}
+                renderItem={renderModelItem}
                 ListEmptyComponent={
                   <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
                     {search ? 'No models match' : 'No models available'}
@@ -214,7 +222,7 @@ export function ModelPickerBar({ server }: Props) {
       </Modal>
     </>
   );
-}
+});
 
 const styles = StyleSheet.create({
   bar: {
@@ -307,6 +315,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     flex: 1,
     marginRight: Spacing.sm,
+  },
+  modelRowInfo: {
+    flex: 1,
+  },
+  checkMark: {
+    fontSize: 14,
   },
   modelBadges: {
     flexDirection: 'row',

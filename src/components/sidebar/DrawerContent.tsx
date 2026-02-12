@@ -165,7 +165,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClear}>
-            <Text style={{ color: colors.sidebarTextSecondary, fontSize: 16 }}>✕</Text>
+            <Text style={[styles.searchClearIcon, { color: colors.sidebarTextSecondary }]}>✕</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -284,10 +284,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
       {/* Sessions list */}
       <FlatList
-        data={sessions}
+        data={filteredSessions}
         keyExtractor={item => item.id}
         renderItem={renderSessionItem}
-        contentContainerStyle={sessions.length === 0 ? styles.emptySessionsList : styles.sessionsList}
+        contentContainerStyle={filteredSessions.length === 0 ? styles.emptySessionsList : styles.sessionsList}
         ListEmptyComponent={
           <Text style={[styles.emptySessionsText, { color: colors.sidebarTextSecondary }]}>
             {isInitialized ? 'No chats yet' : 'Connect to start'}
@@ -341,6 +341,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: Spacing.md + 8,
     padding: 4,
+  },
+  searchClearIcon: {
+    fontSize: 16,
   },
   newChatButton: {
     flexDirection: 'row',
