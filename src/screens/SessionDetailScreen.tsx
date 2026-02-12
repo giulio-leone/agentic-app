@@ -171,7 +171,7 @@ export function SessionDetailScreen() {
     () => (
       <View style={styles.emptyContainer}>
         <Animated.View style={emptyIconStyle}>
-          <Text style={styles.emptyIconText}>✦</Text>
+          <Text style={[styles.emptyIconText, { color: colors.contrastText }]}>✦</Text>
         </Animated.View>
         <Text style={emptyTitleStyle}>
           {isConnected ? 'How can I help you today?' : 'Not connected'}
@@ -229,7 +229,11 @@ export function SessionDetailScreen() {
         <View style={styles.stopReasonContainer}>
           <Text style={stopReasonStyle}>
             {stopReason === 'end_turn'
-              ? 'Agent finished'
+              ? 'Response complete'
+              : stopReason === 'max_tokens'
+              ? 'Reached token limit'
+              : stopReason === 'cancelled'
+              ? 'Cancelled'
               : `Stopped: ${stopReason}`}
           </Text>
         </View>
@@ -280,7 +284,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   emptyIconText: {
-    color: '#FFFFFF',
     fontSize: 22,
   },
   emptyTitle: {

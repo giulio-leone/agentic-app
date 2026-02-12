@@ -33,7 +33,7 @@ export const TypingIndicator = React.memo(function TypingIndicator() {
     <View style={[styles.container, { backgroundColor: colors.assistantMessageBg }]}>
       <View style={styles.row}>
         <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.avatarIcon}>✦</Text>
+          <Text style={[styles.avatarIcon, { color: colors.contrastText }]}>✦</Text>
         </View>
         <Animated.View style={[styles.dot, { backgroundColor: colors.textTertiary, opacity: pulse }]} />
       </View>
@@ -59,7 +59,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarIcon: {
-    color: '#FFFFFF',
     fontSize: 14,
   },
   dot: {

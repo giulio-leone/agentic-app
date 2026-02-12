@@ -103,6 +103,7 @@ export function SettingsScreen() {
             onValueChange={toggleDevMode}
             trackColor={{ true: colors.primary, false: colors.systemGray4 }}
             thumbColor="#FFFFFF"
+            accessibilityLabel="Developer mode"
           />
         </View>
       </View>
@@ -361,6 +362,7 @@ function AddMCPServerForm({
           onValueChange={setAutoConnect}
           trackColor={{ true: colors.primary, false: colors.systemGray4 }}
           thumbColor="#FFFFFF"
+          accessibilityLabel="Auto-connect on startup"
         />
       </View>
 

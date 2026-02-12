@@ -65,7 +65,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         {!isUser && !isSystem && (
           <View style={styles.avatarContainer}>
             <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarIcon}>✦</Text>
+              <Text style={[styles.avatarIcon, { color: colors.contrastText }]}>✦</Text>
             </View>
           </View>
         )}
@@ -196,7 +196,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarIcon: {
-    color: '#FFFFFF',
     fontSize: 14,
   },
   contentContainer: {

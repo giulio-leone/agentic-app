@@ -176,6 +176,7 @@ export function MessageComposer({
           disabled={isDisabled || isStreaming}
           activeOpacity={0.6}
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          accessibilityLabel="Add attachment"
         >
           <Text style={[styles.attachIcon, { color: isDisabled ? colors.textTertiary : colors.textSecondary }]}>+</Text>
         </TouchableOpacity>
@@ -191,12 +192,14 @@ export function MessageComposer({
           editable={!isDisabled}
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
+          returnKeyType="send"
         />
         {isStreaming ? (
           <TouchableOpacity
             style={[styles.cancelButton, { backgroundColor: colors.text }]}
             onPress={handleCancel}
             activeOpacity={0.7}
+            accessibilityLabel="Stop generating"
           >
             <View style={[styles.stopIcon, { backgroundColor: colors.background }]} />
           </TouchableOpacity>
@@ -205,6 +208,7 @@ export function MessageComposer({
             style={[styles.sendButton, { backgroundColor: colors.sendButtonBg }]}
             onPress={handleSend}
             activeOpacity={0.7}
+            accessibilityLabel="Send message"
           >
             <Text style={[styles.sendIcon, { color: colors.sendButtonIcon }]}>↑</Text>
           </TouchableOpacity>
@@ -216,8 +220,9 @@ export function MessageComposer({
             ]}
             onPress={handleVoiceToggle}
             activeOpacity={0.7}
+            accessibilityLabel={isListening ? 'Stop recording' : 'Start voice input'}
           >
-            <Text style={[styles.sendIcon, { color: isListening ? '#FFF' : colors.textTertiary }]}>
+            <Text style={[styles.sendIcon, { color: isListening ? colors.contrastText : colors.textTertiary }]}>
               {isListening ? '⏹' : '🎙'}
             </Text>
           </TouchableOpacity>

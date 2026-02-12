@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Platform,
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -18,13 +19,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
 import { ConnectionBadge } from '../components/ConnectionBadge';
 import { ACPConnectionState, SessionSummary } from '../acp/models/types';
-import { Colors, FontSize, Spacing } from '../utils/theme';
+import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export function HomeScreen() {
   const navigation = useNavigation<NavProp>();
+  const { colors } = useTheme();
   const {
     servers,
     selectedServerId,
@@ -98,15 +100,20 @@ export function HomeScreen() {
       const isSelected = item.id === selectedServerId;
       return (
         <TouchableOpacity
-          style={[styles.serverItem, isSelected && styles.serverItemSelected]}
+          style={[
+            styles.serverItem,
+            { backgroundColor: colors.cardBackground, borderRadius: Radius.md, ...Platform.select({ android: { elevation: 1 } }) },
+            isSelected && { backgroundColor: `${colors.primary}15`, borderWidth: 1, borderColor: colors.primary },
+          ]}
           onPress={() => handleServerPress(item.id)}
           activeOpacity={0.7}
+          accessibilityLabel={`Server: ${item.name || item.host}`}
         >
           <View style={styles.serverInfo}>
-            <Text style={styles.serverName} numberOfLines={1}>
+            <Text style={[styles.serverName, { color: colors.text }]} numberOfLines={1}>
               {item.name || item.host}
             </Text>
-            <Text style={styles.serverHost} numberOfLines={1}>
+            <Text style={[styles.serverHost, { color: colors.textTertiary }]} numberOfLines={1}>
               {item.scheme}://{item.host}
             </Text>
           </View>
@@ -119,7 +126,7 @@ export function HomeScreen() {
         </TouchableOpacity>
       );
     },
-    [selectedServerId, connectionState, isInitialized, handleServerPress],
+    [selectedServerId, connectionState, isInitialized, handleServerPress, colors],
   );
 
   const renderSessionItem = useCallback(
@@ -127,47 +134,56 @@ export function HomeScreen() {
       const isSelected = item.id === selectedSessionId;
       return (
         <TouchableOpacity
-          style={[styles.sessionItem, isSelected && styles.sessionItemSelected]}
+          style={[
+            styles.sessionItem,
+            { backgroundColor: colors.cardBackground, borderRadius: Radius.md, ...Platform.select({ android: { elevation: 1 } }) },
+            isSelected && { backgroundColor: `${colors.primary}15` },
+          ]}
           onPress={() => handleSessionPress(item)}
           onLongPress={() => handleDeleteSession(item.id)}
           activeOpacity={0.7}
+          accessibilityLabel={`Session: ${item.title || 'New Session'}`}
         >
-          <Text style={styles.sessionTitle} numberOfLines={1}>
+          <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>
             {item.title || 'New Session'}
           </Text>
           {item.updatedAt && (
-            <Text style={styles.sessionDate}>
+            <Text style={[styles.sessionDate, { color: colors.textTertiary }]}>
               {new Date(item.updatedAt).toLocaleDateString()}
             </Text>
           )}
         </TouchableOpacity>
       );
     },
-    [selectedSessionId, handleSessionPress, handleDeleteSession],
+    [selectedSessionId, handleSessionPress, handleDeleteSession, colors],
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.systemGray6 }]}>
       {/* Server List */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Servers</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Servers</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('AddServer')}
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            accessibilityLabel="Add server"
           >
-            <Text style={styles.addButtonText}>+</Text>
+            <Text style={[styles.addButtonText, { color: colors.surface }]}>+</Text>
           </TouchableOpacity>
         </View>
 
         {servers.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No servers configured</Text>
+            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+              Get started by adding your first server
+            </Text>
             <TouchableOpacity
-              style={styles.emptyButton}
+              style={[styles.emptyButton, { backgroundColor: colors.primary, borderRadius: Radius.md }]}
               onPress={() => navigation.navigate('AddServer')}
+              accessibilityLabel="Add server"
             >
-              <Text style={styles.emptyButtonText}>Add Server</Text>
+              <Text style={[styles.emptyButtonText, { color: colors.surface }]}>Add Server</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -184,35 +200,49 @@ export function HomeScreen() {
       {selectedServer && (
         <View style={styles.serverActions}>
           {connectionError && (
-            <Text style={styles.errorText} numberOfLines={2}>
-              {connectionError}
-            </Text>
+            <>
+              <Text style={[styles.errorText, { color: colors.destructive }]} numberOfLines={2}>
+                {connectionError}
+              </Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { borderColor: colors.destructive, borderRadius: Radius.md }]}
+                onPress={() => connect()}
+                accessibilityLabel="Retry connection"
+              >
+                <Text style={[styles.retryButtonText, { color: colors.destructive }]}>Retry</Text>
+              </TouchableOpacity>
+            </>
           )}
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                isConnected ? styles.disconnectButton : styles.connectButton,
+                { borderRadius: Radius.md },
+                isConnected
+                  ? { backgroundColor: colors.destructive }
+                  : { backgroundColor: colors.primary },
               ]}
               onPress={handleConnect}
+              accessibilityLabel={isConnected ? 'Disconnect from server' : 'Connect to server'}
             >
-              <Text style={styles.actionButtonText}>
+              <Text style={[styles.actionButtonText, { color: colors.surface }]}>
                 {isConnected ? 'Disconnect' : 'Connect'}
               </Text>
             </TouchableOpacity>
 
             {isInitialized && (
               <TouchableOpacity
-                style={[styles.actionButton, styles.newSessionButton]}
+                style={[styles.actionButton, { backgroundColor: colors.healthyGreen, borderRadius: Radius.md }]}
                 onPress={handleNewSession}
+                accessibilityLabel="Create new session"
               >
-                <Text style={styles.actionButtonText}>New Session</Text>
+                <Text style={[styles.actionButtonText, { color: colors.surface }]}>New Session</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {agentInfo && (
-            <Text style={styles.agentInfoText}>
+            <Text style={[styles.agentInfoText, { color: colors.textTertiary }]}>
               {agentInfo.name} {agentInfo.version}
             </Text>
           )}
@@ -222,7 +252,7 @@ export function HomeScreen() {
       {/* Session List */}
       {selectedServer && sessions.length > 0 && (
         <View style={[styles.section, { flex: 1 }]}>
-          <Text style={styles.sectionTitle}>Sessions</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Sessions</Text>
           <FlatList
             data={sessions}
             keyExtractor={item => item.id}
@@ -244,7 +274,6 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.systemGray6,
   },
   section: {
     marginBottom: Spacing.sm,
@@ -259,18 +288,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: FontSize.headline,
     fontWeight: '600',
-    color: Colors.text,
   },
   addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addButtonText: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '600',
     marginTop: -2,
@@ -284,15 +310,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.cardBackground,
     marginHorizontal: Spacing.lg,
     marginVertical: 2,
-    borderRadius: 10,
-  },
-  serverItemSelected: {
-    backgroundColor: `${Colors.primary}15`,
-    borderWidth: 1,
-    borderColor: Colors.primary,
   },
   serverInfo: {
     flex: 1,
@@ -301,11 +320,9 @@ const styles = StyleSheet.create({
   serverName: {
     fontSize: FontSize.body,
     fontWeight: '500',
-    color: Colors.text,
   },
   serverHost: {
     fontSize: FontSize.caption,
-    color: Colors.textTertiary,
     marginTop: 2,
   },
   serverActions: {
@@ -320,32 +337,29 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     paddingVertical: Spacing.sm,
-    borderRadius: 10,
     alignItems: 'center',
   },
-  connectButton: {
-    backgroundColor: Colors.primary,
-  },
-  disconnectButton: {
-    backgroundColor: Colors.destructive,
-  },
-  newSessionButton: {
-    backgroundColor: Colors.healthyGreen,
-  },
   actionButtonText: {
-    color: '#FFFFFF',
     fontSize: FontSize.body,
     fontWeight: '600',
   },
   agentInfoText: {
     fontSize: FontSize.caption,
-    color: Colors.textTertiary,
     textAlign: 'center',
   },
   errorText: {
     fontSize: FontSize.caption,
-    color: Colors.destructive,
     textAlign: 'center',
+  },
+  retryButton: {
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    borderWidth: 1,
+  },
+  retryButtonText: {
+    fontSize: FontSize.caption,
+    fontWeight: '600',
   },
   sessionList: {
     flex: 1,
@@ -353,25 +367,18 @@ const styles = StyleSheet.create({
   sessionItem: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.cardBackground,
     marginHorizontal: Spacing.lg,
     marginVertical: 2,
-    borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sessionItemSelected: {
-    backgroundColor: `${Colors.primary}15`,
-  },
   sessionTitle: {
     fontSize: FontSize.body,
-    color: Colors.text,
     flex: 1,
   },
   sessionDate: {
     fontSize: FontSize.caption,
-    color: Colors.textTertiary,
     marginLeft: Spacing.sm,
   },
   emptyState: {
@@ -381,16 +388,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: FontSize.body,
-    color: Colors.textTertiary,
   },
   emptyButton: {
-    backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.sm,
-    borderRadius: 10,
   },
   emptyButtonText: {
-    color: '#FFFFFF',
     fontSize: FontSize.body,
     fontWeight: '600',
   },

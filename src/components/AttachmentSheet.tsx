@@ -80,7 +80,7 @@ export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, on
     animateClose(option.onPress);
   };
 
-  const sheetBg = dark ? '#2F2F2F' : '#FFFFFF';
+  const sheetBg = colors.cardBackground;
   const handleColor = dark ? '#555' : '#D1D5DB';
 
   return (

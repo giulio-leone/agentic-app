@@ -124,6 +124,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           onPress={() => handleSessionPress(item)}
           onLongPress={() => handleDeleteSession(item.id)}
           activeOpacity={0.6}
+          accessibilityLabel={`Chat: ${item.title || 'New chat'}`}
+          accessibilityHint="Long press to delete"
         >
           <Text
             style={[styles.sessionTitle, { color: colors.sidebarText }]}
@@ -146,6 +148,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           onPress={handleNewSession}
           disabled={!isInitialized}
           activeOpacity={0.7}
+          accessibilityLabel="Start new chat"
         >
           <Text style={[styles.newChatIcon, { color: colors.sidebarText, opacity: isInitialized ? 1 : 0.4 }]}>✎</Text>
           <Text style={[styles.newChatText, { color: colors.sidebarText, opacity: isInitialized ? 1 : 0.4 }]}>New chat</Text>

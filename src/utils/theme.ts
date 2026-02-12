@@ -68,6 +68,9 @@ const LightPalette = {
   sendButtonIcon: '#FFFFFF',
   sendButtonDisabledBg: '#D9D9E3',
 
+  // Contrast text for use on primary/colored backgrounds
+  contrastText: '#FFFFFF',
+
   statusBarStyle: 'dark' as 'dark' | 'light',
 };
 
@@ -130,6 +133,9 @@ const DarkPalette: typeof LightPalette = {
   sendButtonBg: '#FFFFFF',
   sendButtonIcon: '#000000',
   sendButtonDisabledBg: '#424242',
+
+  // Contrast text for use on primary/colored backgrounds
+  contrastText: '#FFFFFF',
 
   statusBarStyle: 'light' as const,
 };

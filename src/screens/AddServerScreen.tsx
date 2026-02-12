@@ -397,6 +397,7 @@ export function AddServerScreen() {
                   onPress={handleFetchModels}
                   disabled={isFetchingModels}
                   activeOpacity={0.7}
+                  accessibilityLabel={fetchedModels ? 'Refresh models list' : 'Fetch available models'}
                 >
                   {isFetchingModels ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
@@ -426,6 +427,8 @@ export function AddServerScreen() {
                         setSelectedModel(model.id);
                       }}
                       activeOpacity={0.7}
+                      accessibilityLabel={`Select model: ${model.name}`}
+                      accessibilityState={{ selected: isSelected }}
                     >
                       <View style={styles.modelInfo}>
                         <Text style={[styles.modelName, { color: colors.text }]}>{model.name}</Text>
@@ -775,6 +778,7 @@ export function AddServerScreen() {
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: colors.primary }]}
           onPress={handleSave}
+          accessibilityLabel={isEditing ? 'Update server' : 'Save new server'}
         >
           <Text style={styles.saveButtonText}>
             {isEditing ? 'Update Server' : 'Add Server'}
