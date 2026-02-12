@@ -3,7 +3,7 @@
  * Compiler-optimized: styles are extracted at build time.
  */
 
-import { styled, View, Text } from 'tamagui';
+import { styled, View, Text, XStack } from 'tamagui';
 
 export const Card = styled(View, {
   backgroundColor: '$cardBackground',
@@ -99,4 +99,35 @@ export const ChipText = styled(Text, {
       },
     },
   } as const,
+});
+
+export const FormCard = styled(View, {
+  backgroundColor: '$cardBackground',
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  overflow: 'hidden',
+});
+
+export const CardLabel = styled(Text, {
+  color: '$colorMuted',
+  fontSize: 12,
+  fontWeight: '600',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+  paddingTop: 12,
+  paddingBottom: 8,
+});
+
+export const FieldRow = styled(XStack, {
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingVertical: 12,
+  minHeight: 44,
+});
+
+export const FieldLabel = styled(Text, {
+  color: '$color',
+  fontSize: 16,
+  fontWeight: '400',
+  width: 90,
 });

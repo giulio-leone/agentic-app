@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Text as RNText, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { YStack, XStack, Text } from 'tamagui';
 import * as Clipboard from 'expo-clipboard';
 import { useDesignSystem } from '../utils/designSystem';
 import { type ThemeColors, FontSize, Spacing, Radius } from '../utils/theme';
@@ -182,72 +183,36 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
 
   const displayLang = language ? language.toUpperCase() : '';
 
-  // Memoize rendered tokens to avoid re-creating Text elements on every render
+  // Memoize rendered tokens — use RN Text for safe nesting inside Tamagui Text
   const renderedTokens = useMemo(() =>
     tokens.map((token, i) => (
-      <Text key={i} style={{ color: getTokenColor(token.type, colors), fontFamily: 'monospace', fontSize: FontSize.caption }}>
+      <RNText key={i} style={{ color: getTokenColor(token.type, colors), fontFamily: 'monospace', fontSize: FontSize.caption }}>
         {token.value}
-      </Text>
+      </RNText>
     )),
     [tokens, colors],
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.codeBackground }]}>
+    <YStack borderRadius={Radius.sm} marginVertical={4} overflow="hidden" backgroundColor={colors.codeBackground}>
       {/* Header with language + copy */}
-      <View style={[styles.header, { borderBottomColor: 'rgba(255,255,255,0.08)' }]}>
-        <Text style={[styles.langLabel, { color: colors.textTertiary }]}>
+      <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={Spacing.sm + 2} paddingVertical={6} borderBottomWidth={StyleSheet.hairlineWidth} borderBottomColor="rgba(255,255,255,0.08)">
+        <Text fontSize={FontSize.caption - 1} fontWeight="600" letterSpacing={0.5} color={colors.textTertiary}>
           {displayLang}
         </Text>
-        <TouchableOpacity onPress={handleCopy} style={styles.copyButton} activeOpacity={0.7}>
-          <Text style={[styles.copyText, { color: copied ? '#10A37F' : colors.textTertiary }]}>
+        <TouchableOpacity onPress={handleCopy} style={{ paddingHorizontal: 8, paddingVertical: 2 }} activeOpacity={0.7}>
+          <Text fontSize={FontSize.caption} fontWeight="500" color={copied ? '#10A37F' : colors.textTertiary}>
             {copied ? '✓ Copied' : '⎘ Copy'}
           </Text>
         </TouchableOpacity>
-      </View>
+      </XStack>
 
       {/* Code content */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Text style={styles.codeText} selectable>
+        <Text padding={Spacing.md} fontFamily="monospace" fontSize={FontSize.caption} selectable>
           {renderedTokens}
         </Text>
       </ScrollView>
-    </View>
+    </YStack>
   );
-});
-
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: Radius.sm,
-    marginVertical: 4,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  langLabel: {
-    fontSize: FontSize.caption - 1,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  copyButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  copyText: {
-    fontSize: FontSize.caption,
-    fontWeight: '500',
-  },
-  codeText: {
-    padding: Spacing.md,
-    fontFamily: 'monospace',
-    fontSize: FontSize.caption,
-  },
 });
