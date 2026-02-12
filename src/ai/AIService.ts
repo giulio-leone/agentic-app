@@ -1,14 +1,9 @@
 /**
  * Core AI service — creates provider models and streams chat completions.
+ * Provider SDKs are lazily loaded to reduce initial bundle size.
  */
 
 import { streamText, stepCountIs, type ModelMessage, type LanguageModel, type JSONValue } from 'ai';
-import { createOpenAI as createOpenAIProvider } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createXai } from '@ai-sdk/xai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { buildMCPTools } from '../mcp/MCPToolAdapter';
 import { buildSearchTools } from '../search/SearchTools';
 
@@ -25,41 +20,96 @@ import { AIProviderType, type AIProviderConfig } from './types';
 import { getProviderInfo } from './providers';
 import type { ChatMessage } from '../acp/models/types';
 
+// ── lazy provider cache ──────────────────────────────────────────────────────
+
+type ProviderFactory = (opts: Record<string, unknown>) => (modelId: string) => LanguageModel;
+const _providerCache = new Map<string, ProviderFactory>();
+
+async function getOpenAIProvider(): Promise<ProviderFactory> {
+  if (!_providerCache.has('openai')) {
+    const { createOpenAI } = await import('@ai-sdk/openai');
+    _providerCache.set('openai', createOpenAI as unknown as ProviderFactory);
+  }
+  return _providerCache.get('openai')!;
+}
+
+async function getAnthropicProvider(): Promise<ProviderFactory> {
+  if (!_providerCache.has('anthropic')) {
+    const { createAnthropic } = await import('@ai-sdk/anthropic');
+    _providerCache.set('anthropic', createAnthropic as unknown as ProviderFactory);
+  }
+  return _providerCache.get('anthropic')!;
+}
+
+async function getGoogleProvider(): Promise<ProviderFactory> {
+  if (!_providerCache.has('google')) {
+    const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+    _providerCache.set('google', createGoogleGenerativeAI as unknown as ProviderFactory);
+  }
+  return _providerCache.get('google')!;
+}
+
+async function getXaiProvider(): Promise<ProviderFactory> {
+  if (!_providerCache.has('xai')) {
+    const { createXai } = await import('@ai-sdk/xai');
+    _providerCache.set('xai', createXai as unknown as ProviderFactory);
+  }
+  return _providerCache.get('xai')!;
+}
+
+async function getOpenRouterProvider(): Promise<any> {
+  if (!_providerCache.has('openrouter')) {
+    const { createOpenRouter } = await import('@openrouter/ai-sdk-provider');
+    _providerCache.set('openrouter', createOpenRouter as unknown as ProviderFactory);
+  }
+  return _providerCache.get('openrouter')!;
+}
+
+async function getOpenAICompatibleProvider(): Promise<any> {
+  if (!_providerCache.has('openai-compatible')) {
+    const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
+    _providerCache.set('openai-compatible', createOpenAICompatible as unknown as ProviderFactory);
+  }
+  return _providerCache.get('openai-compatible')!;
+}
+
 // ── model factory ────────────────────────────────────────────────────────────
 
 /**
  * Build an AI SDK `LanguageModel` from the given config + API key.
+ * Provider SDKs are loaded on first use and cached.
  */
-export function createModel(
+export async function createModel(
   config: AIProviderConfig,
   apiKey: string,
-): LanguageModel {
+): Promise<LanguageModel> {
   const { providerType, modelId, baseUrl } = config;
   const fetchOpt = expoFetch ? { fetch: expoFetch } : {};
 
   switch (providerType) {
     case AIProviderType.OpenAI: {
-      const provider = createOpenAIProvider({ apiKey, ...fetchOpt });
-      return provider(modelId);
+      const create = await getOpenAIProvider();
+      return create({ apiKey, ...fetchOpt })(modelId);
     }
 
     case AIProviderType.Anthropic: {
-      const provider = createAnthropic({ apiKey, ...fetchOpt });
-      return provider(modelId);
+      const create = await getAnthropicProvider();
+      return create({ apiKey, ...fetchOpt })(modelId);
     }
 
     case AIProviderType.Google: {
-      const provider = createGoogleGenerativeAI({ apiKey, ...fetchOpt });
-      return provider(modelId);
+      const create = await getGoogleProvider();
+      return create({ apiKey, ...fetchOpt })(modelId);
     }
 
     case AIProviderType.xAI: {
-      const provider = createXai({ apiKey, ...fetchOpt });
-      return provider(modelId);
+      const create = await getXaiProvider();
+      return create({ apiKey, ...fetchOpt })(modelId);
     }
 
     case AIProviderType.OpenRouter: {
-      const provider = createOpenRouter({ apiKey, ...fetchOpt });
+      const create = await getOpenRouterProvider();
+      const provider = create({ apiKey, ...fetchOpt });
       return provider.chat(modelId);
     }
 
@@ -80,13 +130,13 @@ export function createModel(
           `Base URL is required for provider "${providerType}".`,
         );
       }
-      const provider = createOpenAICompatible({
+      const create = await getOpenAICompatibleProvider();
+      return create({
         baseURL: effectiveBaseUrl,
         apiKey,
         name: providerType,
         ...fetchOpt,
-      });
-      return provider(modelId);
+      })(modelId);
     }
 
     default: {
@@ -169,23 +219,19 @@ export function streamChat(
 ): AbortController {
   const controller = new AbortController();
 
-  const model = createModel(config, apiKey);
-  const coreMessages = toCoreMessages(messages);
-
-  // Build provider-specific options for reasoning
-  const providerOptions = buildProviderOptions(config);
-
-  // Build MCP tools from connected servers
-  const mcpTools = buildMCPTools();
-  // Build web search tools
-  const searchTools = config.webSearchEnabled !== false ? buildSearchTools() : {};
-  // Merge all tools
-  const allTools = { ...mcpTools, ...searchTools };
-  const hasTools = Object.keys(allTools).length > 0;
-
   // Fire-and-forget async IIFE — errors are forwarded via onError.
   (async () => {
     try {
+      const model = await createModel(config, apiKey);
+      const coreMessages = toCoreMessages(messages);
+      const providerOptions = buildProviderOptions(config);
+
+      // Build tools (MCP + search)
+      const mcpTools = buildMCPTools();
+      const searchTools = config.webSearchEnabled !== false ? buildSearchTools() : {};
+      const allTools = { ...mcpTools, ...searchTools };
+      const hasTools = Object.keys(allTools).length > 0;
+
       const result = streamText({
         model,
         messages: coreMessages,

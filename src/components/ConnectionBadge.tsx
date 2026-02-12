@@ -12,7 +12,7 @@ interface Props {
   isInitialized: boolean;
 }
 
-export function ConnectionBadge({ state, isInitialized }: Props) {
+export const ConnectionBadge = React.memo(function ConnectionBadge({ state, isInitialized }: Props) {
   const { colors } = useTheme();
   const color = getDotColor(state, isInitialized, colors);
 
@@ -21,7 +21,7 @@ export function ConnectionBadge({ state, isInitialized }: Props) {
       <View style={[styles.dot, { backgroundColor: color }]} />
     </View>
   );
-}
+});
 
 function getDotColor(state: ACPConnectionState, isInitialized: boolean, colors: ThemeColors): string {
   switch (state) {

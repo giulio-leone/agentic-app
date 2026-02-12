@@ -39,7 +39,7 @@ interface Props {
   options: AttachmentOption[];
 }
 
-export function AttachmentSheet({ visible, onClose, options }: Props) {
+export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, onClose, options }: Props) {
   const { colors, dark } = useTheme();
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
@@ -164,7 +164,7 @@ export function AttachmentSheet({ visible, onClose, options }: Props) {
       </View>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   modalContainer: {

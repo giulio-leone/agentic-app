@@ -6,7 +6,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { useTheme, Spacing } from '../utils/theme';
 
-export function TypingIndicator() {
+export const TypingIndicator = React.memo(function TypingIndicator() {
   const { colors } = useTheme();
   const pulse = useRef(new Animated.Value(0.4)).current;
 
@@ -39,7 +39,7 @@ export function TypingIndicator() {
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
