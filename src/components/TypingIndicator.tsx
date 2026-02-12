@@ -3,9 +3,12 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
+import { Animated } from 'react-native';
+import { XStack, Text, YStack } from 'tamagui';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { Spacing } from '../utils/theme';
+
+const dotStyle = { width: 8, height: 8, borderRadius: 4 } as const;
 
 export const TypingIndicator = React.memo(function TypingIndicator() {
   const { ds } = useDesignSystem();
@@ -31,25 +34,13 @@ export const TypingIndicator = React.memo(function TypingIndicator() {
   }, [pulse]);
 
   return (
-    <View style={[styles.container, ds.bgAssistantMessage]}>
-      <View style={[layout.row, layout.centerH, layout.gapMd]}>
-        <View style={ds.avatar}>
+    <YStack paddingHorizontal={Spacing.lg} paddingVertical={Spacing.md} style={ds.bgAssistantMessage}>
+      <XStack alignItems="center" gap={Spacing.md}>
+        <YStack style={ds.avatar}>
           <Text style={ds.avatarIcon}>✦</Text>
-        </View>
-        <Animated.View style={[styles.dot, ds.bgSystemGray5, { opacity: pulse }]} />
-      </View>
-    </View>
+        </YStack>
+        <Animated.View style={[dotStyle, ds.bgSystemGray5, { opacity: pulse }]} />
+      </XStack>
+    </YStack>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
 });

@@ -4,16 +4,14 @@
 
 import React, { useCallback, useState, useMemo } from 'react';
 import {
-  View,
   TextInput,
   TouchableOpacity,
-  Text,
-  StyleSheet,
   Platform,
   Image,
   ScrollView,
   Alert,
 } from 'react-native';
+import { YStack, XStack, Text } from 'tamagui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -135,55 +133,100 @@ export function MessageComposer({
   }, [onToggleVoice]);
 
   const content = (
-    <View style={[styles.inner, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
+    <YStack paddingHorizontal={Spacing.md} paddingBottom={Math.max(insets.bottom, Spacing.sm)}>
       {/* Attachment preview strip */}
       {attachments.length > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.attachmentStrip}
-          contentContainerStyle={styles.attachmentStripContent}
+          style={{ marginBottom: Spacing.xs, maxHeight: 80 }}
+          contentContainerStyle={{ gap: Spacing.xs, paddingHorizontal: 2 }}
         >
           {attachments.map(att => (
-            <View key={att.id} style={[styles.attachmentPreview, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+            <XStack
+              key={att.id}
+              alignItems="center"
+              borderRadius={12}
+              borderWidth={1}
+              paddingRight={Spacing.sm}
+              overflow="hidden"
+              maxWidth={200}
+              backgroundColor={colors.inputBackground}
+              borderColor={colors.inputBorder}
+            >
               {att.mediaType.startsWith('image/') ? (
-                <Image source={{ uri: att.uri }} style={styles.attachmentThumb} />
+                <Image
+                  source={{ uri: att.uri }}
+                  style={{ width: 52, height: 52, borderTopLeftRadius: 11, borderBottomLeftRadius: 11 }}
+                />
               ) : (
-                <View style={styles.attachmentFileIcon}>
-                  <Text style={styles.fileIconText}>{getFileIcon(att.mediaType)}</Text>
-                </View>
+                <YStack width={52} height={52} justifyContent="center" alignItems="center">
+                  <Text fontSize={24}>{getFileIcon(att.mediaType)}</Text>
+                </YStack>
               )}
-              <View style={styles.attachmentInfo}>
-                <Text style={[styles.attachmentName, { color: colors.text }]} numberOfLines={1}>{att.name}</Text>
-                {att.size ? <Text style={[styles.attachmentSize, { color: colors.textTertiary }]}>{formatSize(att.size)}</Text> : null}
-              </View>
+              <YStack flex={1} paddingHorizontal={Spacing.xs} justifyContent="center">
+                <Text fontSize={12} fontWeight="500" color={colors.text} numberOfLines={1}>{att.name}</Text>
+                {att.size ? <Text fontSize={10} color={colors.textTertiary} marginTop={1}>{formatSize(att.size)}</Text> : null}
+              </YStack>
               <TouchableOpacity
-                style={[styles.removeAttachment, { backgroundColor: colors.text }]}
+                style={{
+                  width: 18, height: 18, borderRadius: 9,
+                  justifyContent: 'center', alignItems: 'center',
+                  position: 'absolute', top: 4, right: 4,
+                  backgroundColor: colors.text,
+                }}
                 onPress={() => removeAttachment(att.id)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={[styles.removeIcon, { color: colors.background }]}>✕</Text>
+                <Text fontSize={10} fontWeight="bold" color={colors.background}>✕</Text>
               </TouchableOpacity>
-            </View>
+            </XStack>
           ))}
         </ScrollView>
       )}
 
-      <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+      <XStack
+        alignItems="flex-end"
+        borderRadius={24}
+        paddingLeft={Spacing.sm}
+        paddingRight={Spacing.xs + 2}
+        paddingVertical={Platform.OS === 'ios' ? Spacing.sm + 2 : Spacing.sm}
+        minHeight={48}
+        borderWidth={1}
+        backgroundColor={colors.inputBackground}
+        borderColor={colors.inputBorder}
+      >
         {/* Attach button */}
         <TouchableOpacity
-          style={styles.attachButton}
+          style={{
+            width: 28, height: 28, borderRadius: 14,
+            justifyContent: 'center', alignItems: 'center', marginBottom: 2,
+          }}
           onPress={handleAttach}
           disabled={isDisabled || isStreaming}
           activeOpacity={0.6}
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
           accessibilityLabel="Add attachment"
         >
-          <Text style={[styles.attachIcon, { color: isDisabled ? colors.textTertiary : colors.textSecondary }]}>+</Text>
+          <Text
+            fontSize={24}
+            fontWeight="300"
+            marginTop={-2}
+            color={isDisabled ? colors.textTertiary : colors.textSecondary}
+          >+</Text>
         </TouchableOpacity>
 
         <TextInput
-          style={[styles.textInput, { color: colors.text }]}
+          style={{
+            flex: 1,
+            fontSize: FontSize.body,
+            maxHeight: 120,
+            paddingTop: Platform.OS === 'ios' ? 2 : Spacing.xs,
+            paddingBottom: 0,
+            lineHeight: 22,
+            marginLeft: Spacing.xs,
+            color: colors.text,
+          }}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -197,55 +240,72 @@ export function MessageComposer({
         />
         {isStreaming ? (
           <TouchableOpacity
-            style={[styles.cancelButton, { backgroundColor: colors.text }]}
+            style={{
+              width: 32, height: 32, borderRadius: 16,
+              justifyContent: 'center', alignItems: 'center',
+              marginLeft: Spacing.sm, marginBottom: 1,
+              backgroundColor: colors.text,
+            }}
             onPress={handleCancel}
             activeOpacity={0.7}
             accessibilityLabel="Stop generating"
           >
-            <View style={[styles.stopIcon, { backgroundColor: colors.background }]} />
+            <YStack width={12} height={12} borderRadius={2} backgroundColor={colors.background} />
           </TouchableOpacity>
         ) : canSend ? (
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: colors.sendButtonBg }]}
+            style={{
+              width: 32, height: 32, borderRadius: 16,
+              justifyContent: 'center', alignItems: 'center',
+              marginLeft: Spacing.sm, marginBottom: 1,
+              backgroundColor: colors.sendButtonBg,
+            }}
             onPress={handleSend}
             activeOpacity={0.7}
             accessibilityLabel="Send message"
           >
-            <Text style={[styles.sendIcon, { color: colors.sendButtonIcon }]}>↑</Text>
+            <Text fontSize={18} fontWeight="bold" marginTop={-1} color={colors.sendButtonIcon}>↑</Text>
           </TouchableOpacity>
         ) : onToggleVoice ? (
           <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: isListening ? colors.destructive : colors.sendButtonDisabledBg },
-            ]}
+            style={{
+              width: 32, height: 32, borderRadius: 16,
+              justifyContent: 'center', alignItems: 'center',
+              marginLeft: Spacing.sm, marginBottom: 1,
+              backgroundColor: isListening ? colors.destructive : colors.sendButtonDisabledBg,
+            }}
             onPress={handleVoiceToggle}
             activeOpacity={0.7}
             accessibilityLabel={isListening ? 'Stop recording' : 'Start voice input'}
           >
-            <Text style={[styles.sendIcon, { color: isListening ? colors.contrastText : colors.textTertiary }]}>
+            <Text fontSize={18} fontWeight="bold" marginTop={-1} color={isListening ? colors.contrastText : colors.textTertiary}>
               {isListening ? '⏹' : '🎙'}
             </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: colors.sendButtonDisabledBg }]}
+            style={{
+              width: 32, height: 32, borderRadius: 16,
+              justifyContent: 'center', alignItems: 'center',
+              marginLeft: Spacing.sm, marginBottom: 1,
+              backgroundColor: colors.sendButtonDisabledBg,
+            }}
             onPress={handleSend}
             disabled
             activeOpacity={0.7}
           >
-            <Text style={[styles.sendIcon, { color: colors.textTertiary }]}>↑</Text>
+            <Text fontSize={18} fontWeight="bold" marginTop={-1} color={colors.textTertiary}>↑</Text>
           </TouchableOpacity>
         )}
-      </View>
-    </View>
+      </XStack>
+    </YStack>
   );
 
   // Glass effect on iOS, solid on Android
   if (Platform.OS === 'ios') {
     return (
       <>
-        <BlurView intensity={80} tint={dark ? 'dark' : 'light'} style={styles.container}>
+        <BlurView intensity={80} tint={dark ? 'dark' : 'light'} style={{ paddingTop: Spacing.sm }}>
           {content}
         </BlurView>
         <AttachmentSheet
@@ -259,9 +319,12 @@ export function MessageComposer({
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: dark ? 'rgba(33,33,33,0.95)' : 'rgba(255,255,255,0.95)' }]}>
+      <YStack
+        paddingTop={Spacing.sm}
+        backgroundColor={dark ? 'rgba(33,33,33,0.95)' : 'rgba(255,255,255,0.95)'}
+      >
         {content}
-      </View>
+      </YStack>
       <AttachmentSheet
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
@@ -270,131 +333,3 @@ export function MessageComposer({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingTop: Spacing.sm,
-  },
-  inner: {
-    paddingHorizontal: Spacing.md,
-  },
-  attachmentStrip: {
-    marginBottom: Spacing.xs,
-    maxHeight: 80,
-  },
-  attachmentStripContent: {
-    gap: Spacing.xs,
-    paddingHorizontal: 2,
-  },
-  attachmentPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingRight: Spacing.sm,
-    overflow: 'hidden',
-    maxWidth: 200,
-  },
-  attachmentThumb: {
-    width: 52,
-    height: 52,
-    borderTopLeftRadius: 11,
-    borderBottomLeftRadius: 11,
-  },
-  attachmentFileIcon: {
-    width: 52,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fileIconText: {
-    fontSize: 24,
-  },
-  attachmentInfo: {
-    flex: 1,
-    paddingHorizontal: Spacing.xs,
-    justifyContent: 'center',
-  },
-  attachmentName: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  attachmentSize: {
-    fontSize: 10,
-    marginTop: 1,
-  },
-  removeAttachment: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    top: 4,
-    right: 4,
-  },
-  removeIcon: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    borderRadius: 24,
-    paddingLeft: Spacing.sm,
-    paddingRight: Spacing.xs + 2,
-    paddingVertical: Platform.OS === 'ios' ? Spacing.sm + 2 : Spacing.sm,
-    minHeight: 48,
-    borderWidth: 1,
-  },
-  attachButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  attachIcon: {
-    fontSize: 24,
-    fontWeight: '300',
-    marginTop: -2,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: FontSize.body,
-    maxHeight: 120,
-    paddingTop: Platform.OS === 'ios' ? 2 : Spacing.xs,
-    paddingBottom: 0,
-    lineHeight: 22,
-    marginLeft: Spacing.xs,
-  },
-  sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: Spacing.sm,
-    marginBottom: 1,
-  },
-  sendIcon: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: -1,
-  },
-  cancelButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: Spacing.sm,
-    marginBottom: 1,
-  },
-  stopIcon: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-  },
-});

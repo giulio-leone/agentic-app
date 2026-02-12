@@ -4,16 +4,14 @@
 
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import {
-  View,
   FlatList,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Text,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Animated,
 } from 'react-native';
+import { YStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { useAppStore } from '../stores/appStore';
 import { ChatBubble } from '../components/ChatBubble';
@@ -28,6 +26,14 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 
 // Stable key extractor avoids re-creating function per render
 const keyExtractor = (item: ChatMessage) => item.id;
+
+const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
+const messageListStyle = { paddingVertical: Spacing.sm } as const;
+
+const emptyIconBaseStyle = {
+  width: 48, height: 48, borderRadius: 24,
+  justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm,
+} as const;
 
 export function SessionDetailScreen() {
   const { colors } = useDesignSystem();
@@ -162,41 +168,35 @@ export function SessionDetailScreen() {
 
   // Memoize empty state inline styles
   const emptyIconStyle = useMemo(
-    () => [styles.emptyIcon, { backgroundColor: colors.primary, transform: [{ scale: pulseAnim }] }],
+    () => [emptyIconBaseStyle, { backgroundColor: colors.primary, transform: [{ scale: pulseAnim }] }],
     [colors.primary, pulseAnim],
   );
-  const emptyTitleStyle = useMemo(() => [styles.emptyTitle, { color: colors.text }], [colors.text]);
-  const emptySubtitleStyle = useMemo(() => [styles.emptySubtitle, { color: colors.textTertiary }], [colors.textTertiary]);
 
   const renderEmpty = useCallback(
     () => (
-      <View style={styles.emptyContainer}>
+      <YStack alignItems="center" gap={Spacing.md} paddingHorizontal={Spacing.xxl}>
         <Animated.View style={emptyIconStyle}>
-          <Text style={[styles.emptyIconText, { color: colors.contrastText }]}>✦</Text>
+          <Text fontSize={22} color={colors.contrastText}>✦</Text>
         </Animated.View>
-        <Text style={emptyTitleStyle}>
+        <Text fontSize={FontSize.title3} fontWeight="600" color={colors.text}>
           {isConnected ? 'How can I help you today?' : 'Not connected'}
         </Text>
-        <Text style={emptySubtitleStyle}>
+        <Text fontSize={FontSize.body} textAlign="center" lineHeight={22} color={colors.textTertiary}>
           {isConnected
             ? 'Type a message to start a conversation'
             : 'Open the sidebar to connect to a server'}
         </Text>
-      </View>
+      </YStack>
     ),
-    [isConnected, emptyIconStyle, emptyTitleStyle, emptySubtitleStyle],
+    [isConnected, emptyIconStyle, colors.contrastText, colors.text, colors.textTertiary],
   );
 
   const showTyping = isStreaming && chatMessages.length > 0 &&
     chatMessages[chatMessages.length - 1]?.role === 'user';
 
   const containerStyle = useMemo(
-    () => [styles.container, { backgroundColor: colors.background }],
+    () => ({ flex: 1, backgroundColor: colors.background } as const),
     [colors.background],
-  );
-  const stopReasonStyle = useMemo(
-    () => [styles.stopReasonText, { color: colors.textTertiary }],
-    [colors.textTertiary],
   );
 
   return (
@@ -213,7 +213,7 @@ export function SessionDetailScreen() {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={showTyping ? <TypingIndicator /> : null}
         contentContainerStyle={
-          chatMessages.length === 0 ? styles.emptyList : styles.messageList
+          chatMessages.length === 0 ? emptyListStyle : messageListStyle
         }
         onScroll={handleScroll}
         scrollEventThrottle={100}
@@ -227,8 +227,8 @@ export function SessionDetailScreen() {
       />
 
       {stopReason && !isStreaming && (
-        <View style={styles.stopReasonContainer}>
-          <Text style={stopReasonStyle}>
+        <YStack paddingVertical={Spacing.xs} paddingHorizontal={Spacing.md} alignItems="center">
+          <Text fontSize={FontSize.caption} fontStyle="italic" color={colors.textTertiary}>
             {stopReason === 'end_turn'
               ? 'Response complete'
               : stopReason === 'max_tokens'
@@ -237,7 +237,7 @@ export function SessionDetailScreen() {
               ? 'Cancelled'
               : `Stopped: ${stopReason}`}
           </Text>
-        </View>
+        </YStack>
       )}
 
       {/* Model picker for AI providers */}
@@ -258,51 +258,3 @@ export function SessionDetailScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  messageList: {
-    paddingVertical: Spacing.sm,
-  },
-  emptyList: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingHorizontal: Spacing.xxl,
-  },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  emptyIconText: {
-    fontSize: 22,
-  },
-  emptyTitle: {
-    fontSize: FontSize.title3,
-    fontWeight: '600',
-  },
-  emptySubtitle: {
-    fontSize: FontSize.body,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  stopReasonContainer: {
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    alignItems: 'center',
-  },
-  stopReasonText: {
-    fontSize: FontSize.caption,
-    fontStyle: 'italic',
-  },
-});

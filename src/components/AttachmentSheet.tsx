@@ -5,14 +5,13 @@
 
 import React, { useEffect } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
   StyleSheet,
+  TouchableOpacity,
   Pressable,
   Platform,
   Modal,
 } from 'react-native';
+import { YStack, XStack, Text } from 'tamagui';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +24,7 @@ import { useDesignSystem } from '../utils/designSystem';
 import { Spacing, FontSize } from '../utils/theme';
 
 const SHEET_HEIGHT = 300;
+const HAIRLINE = StyleSheet.hairlineWidth;
 
 interface AttachmentOption {
   icon: string;
@@ -39,6 +39,17 @@ interface Props {
   onClose: () => void;
   options: AttachmentOption[];
 }
+
+const backdropBaseStyle = {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: 'rgba(0,0,0,0.4)',
+} as const;
+
+const sheetBaseStyle = {
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+} as const;
 
 export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, onClose, options }: Props) {
   const { colors, dark } = useDesignSystem();
@@ -56,11 +67,11 @@ export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, on
     }
   }, [visible]);
 
-  const backdropStyle = useAnimatedStyle(() => ({
+  const backdropAnimStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
 
-  const sheetStyle = useAnimatedStyle(() => ({
+  const sheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
@@ -92,17 +103,17 @@ export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, on
       statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <View style={styles.modalContainer}>
+      <YStack flex={1} justifyContent="flex-end">
         {/* Backdrop */}
-        <Animated.View style={[styles.backdrop, backdropStyle]}>
+        <Animated.View style={[backdropBaseStyle, backdropAnimStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         </Animated.View>
 
         {/* Sheet */}
         <Animated.View
           style={[
-            styles.sheet,
-            sheetStyle,
+            sheetBaseStyle,
+            sheetAnimStyle,
             {
               backgroundColor: sheetBg,
               ...Platform.select({
@@ -120,120 +131,57 @@ export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, on
           ]}
         >
           {/* Handle */}
-          <View style={styles.handleContainer}>
-            <View style={[styles.handle, { backgroundColor: handleColor }]} />
-          </View>
+          <YStack alignItems="center" paddingVertical={10}>
+            <YStack width={36} height={4} borderRadius={2} backgroundColor={handleColor} />
+          </YStack>
 
           {/* Options */}
-          <View style={styles.optionsContainer}>
+          <YStack paddingHorizontal={Spacing.lg} paddingTop={Spacing.xs}>
             {options.map((option, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
-                  styles.optionRow,
+                  { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
                   index < options.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomWidth: HAIRLINE,
                     borderBottomColor: colors.separator,
                   },
                 ]}
                 onPress={() => handleOptionPress(option)}
                 activeOpacity={0.6}
               >
-                <View style={[styles.iconCircle, { backgroundColor: option.color || colors.primary + '18' }]}>
-                  <Text style={styles.optionIcon}>{option.icon}</Text>
-                </View>
-                <View style={styles.optionTextContainer}>
-                  <Text style={[styles.optionLabel, { color: colors.text }]}>{option.label}</Text>
+                <YStack
+                  width={48} height={48} borderRadius={24}
+                  justifyContent="center" alignItems="center"
+                  backgroundColor={option.color || colors.primary + '18'}
+                >
+                  <Text fontSize={24}>{option.icon}</Text>
+                </YStack>
+                <YStack flex={1} marginLeft={Spacing.md}>
+                  <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>{option.label}</Text>
                   {option.subtitle && (
-                    <Text style={[styles.optionSubtitle, { color: colors.textTertiary }]}>{option.subtitle}</Text>
+                    <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>{option.subtitle}</Text>
                   )}
-                </View>
-                <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
+                </YStack>
+                <Text fontSize={24} fontWeight="300" color={colors.textTertiary}>›</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </YStack>
 
           {/* Cancel button */}
           <TouchableOpacity
-            style={[styles.cancelButton, { backgroundColor: dark ? '#424242' : '#F3F4F6' }]}
+            style={{
+              marginHorizontal: Spacing.lg, marginTop: Spacing.md,
+              paddingVertical: 14, borderRadius: 14, alignItems: 'center',
+              backgroundColor: dark ? '#424242' : '#F3F4F6',
+            }}
             onPress={handleClose}
             activeOpacity={0.7}
           >
-            <Text style={[styles.cancelText, { color: colors.text }]}>Cancel</Text>
+            <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>Cancel</Text>
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </YStack>
     </Modal>
   );
-});
-
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-  },
-  handleContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-  },
-  optionsContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xs,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  optionIcon: {
-    fontSize: 24,
-  },
-  optionTextContainer: {
-    flex: 1,
-    marginLeft: Spacing.md,
-  },
-  optionLabel: {
-    fontSize: FontSize.body,
-    fontWeight: '600',
-  },
-  optionSubtitle: {
-    fontSize: FontSize.footnote,
-    marginTop: 2,
-  },
-  chevron: {
-    fontSize: 24,
-    fontWeight: '300',
-  },
-  cancelButton: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: FontSize.body,
-    fontWeight: '600',
-  },
 });
