@@ -5,24 +5,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import type { ASTNode, RenderRules } from 'react-native-markdown-display';
 import type { MessageSegment } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
-import { CodeBlock } from '../CodeBlock';
-
-// Custom render rules for syntax-highlighted code blocks
-const codeBlockRules: RenderRules = {
-  fence: (node: ASTNode) => {
-    const lang = (node as ASTNode & { sourceInfo?: string }).sourceInfo || '';
-    const code = node.content || '';
-    return <CodeBlock key={node.key} code={code.replace(/\n$/, '')} language={lang} />;
-  },
-  code_block: (node: ASTNode) => {
-    const code = node.content || '';
-    return <CodeBlock key={node.key} code={code.replace(/\n$/, '')} language="" />;
-  },
-};
+import { codeBlockRules } from './codeBlockRules';
 
 interface Props {
   segment: MessageSegment;

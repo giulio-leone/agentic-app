@@ -4,6 +4,7 @@
  */
 
 import { useAppStore } from './appStore';
+import { useShallow } from 'zustand/shallow';
 
 // ── Server selectors ─────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ export const useDeveloperLogs = () => useAppStore(s => s.developerLogs);
 
 // ── Action selectors (stable references) ─────────────────────────────────────
 
-export const useServerActions = () => useAppStore(s => ({
+export const useServerActions = () => useAppStore(useShallow(s => ({
   loadServers: s.loadServers,
   addServer: s.addServer,
   updateServer: s.updateServer,
@@ -44,9 +45,9 @@ export const useServerActions = () => useAppStore(s => ({
   connect: s.connect,
   disconnect: s.disconnect,
   initialize: s.initialize,
-}));
+})));
 
-export const useSessionActions = () => useAppStore(s => ({
+export const useSessionActions = () => useAppStore(useShallow(s => ({
   loadSessions: s.loadSessions,
   createSession: s.createSession,
   selectSession: s.selectSession,
@@ -55,19 +56,19 @@ export const useSessionActions = () => useAppStore(s => ({
   sendPrompt: s.sendPrompt,
   cancelPrompt: s.cancelPrompt,
   setPromptText: s.setPromptText,
-}));
+})));
 
-export const useMCPActions = () => useAppStore(s => ({
+export const useMCPActions = () => useAppStore(useShallow(s => ({
   loadMCPServers: s.loadMCPServers,
   addMCPServer: s.addMCPServer,
   removeMCPServer: s.removeMCPServer,
   connectMCPServer: s.connectMCPServer,
   disconnectMCPServer: s.disconnectMCPServer,
   refreshMCPStatuses: s.refreshMCPStatuses,
-}));
+})));
 
-export const useSettingsActions = () => useAppStore(s => ({
+export const useSettingsActions = () => useAppStore(useShallow(s => ({
   toggleDevMode: s.toggleDevMode,
   appendLog: s.appendLog,
   clearLogs: s.clearLogs,
-}));
+})));

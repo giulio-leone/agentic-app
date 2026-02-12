@@ -149,6 +149,23 @@ function detectArtifacts(content: string): Artifact[] {
   return artifacts;
 }
 
+// ─── Immutable Message Update Helper ───
+// Updates a single message in the chatMessages array by ID.
+// Returns the same array reference if no matching message found (avoids re-render).
+function updateMessageById(
+  messages: ChatMessage[],
+  id: string,
+  updater: (msg: ChatMessage) => ChatMessage,
+): ChatMessage[] {
+  const idx = messages.findIndex(m => m.id === id);
+  if (idx === -1) return messages;
+  const updated = updater(messages[idx]!);
+  if (updated === messages[idx]) return messages;
+  const next = messages.slice();
+  next[idx] = updated;
+  return next;
+}
+
 // ─── Store ───
 
 export const useAppStore = create<AppState & AppActions>((set, get) => ({
@@ -596,11 +613,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
           // onChunk
           (chunk) => {
             set(s => ({
-              chatMessages: s.chatMessages.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: m.content + chunk }
-                  : m
-              ),
+              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+                ...m, content: m.content + chunk,
+              })),
             }));
           },
           // onComplete
@@ -612,11 +627,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
             const artifacts = finalMessage ? detectArtifacts(finalMessage.content) : [];
 
             set(s => ({
-              chatMessages: s.chatMessages.map(m =>
-                m.id === assistantId
-                  ? { ...m, isStreaming: false, ...(artifacts.length > 0 ? { artifacts } : {}) }
-                  : m
-              ),
+              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+                ...m, isStreaming: false, ...(artifacts.length > 0 ? { artifacts } : {}),
+              })),
               isStreaming: false,
               streamingMessageId: null,
               stopReason,
@@ -652,11 +665,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
           // onReasoning
           (reasoningChunk) => {
             set(s => ({
-              chatMessages: s.chatMessages.map(m =>
-                m.id === assistantId
-                  ? { ...m, reasoning: (m.reasoning ?? '') + reasoningChunk }
-                  : m
-              ),
+              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+                ...m, reasoning: (m.reasoning ?? '') + reasoningChunk,
+              })),
             }));
           },
           // onToolCall
@@ -668,18 +679,15 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
               isComplete: false,
             };
             set(s => ({
-              chatMessages: s.chatMessages.map(m =>
-                m.id === assistantId
-                  ? { ...m, segments: [...(m.segments ?? []), segment] }
-                  : m
-              ),
+              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+                ...m, segments: [...(m.segments ?? []), segment],
+              })),
             }));
           },
           // onToolResult
           (toolName, result) => {
             set(s => ({
-              chatMessages: s.chatMessages.map(m => {
-                if (m.id !== assistantId) return m;
+              chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
                 const segments = (m.segments ?? []).map(seg =>
                   seg.type === 'toolCall' && seg.toolName === toolName && !seg.isComplete
                     ? { ...seg, result, isComplete: true }

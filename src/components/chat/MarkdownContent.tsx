@@ -3,28 +3,17 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import type { ASTNode, RenderRules } from 'react-native-markdown-display';
 import type { Artifact } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
-import { CodeBlock } from '../CodeBlock';
 import { ArtifactList } from './ArtifactDisplay';
 import { InlineImage } from './InlineImage';
+import { codeBlockRules } from './codeBlockRules';
 
-// Custom render rules for syntax-highlighted code blocks
-const codeBlockRules: RenderRules = {
-  fence: (node: ASTNode) => {
-    const lang = (node as ASTNode & { sourceInfo?: string }).sourceInfo || '';
-    const code = node.content || '';
-    return <CodeBlock key={node.key} code={code.replace(/\n$/, '')} language={lang} />;
-  },
-  code_block: (node: ASTNode) => {
-    const code = node.content || '';
-    return <CodeBlock key={node.key} code={code.replace(/\n$/, '')} language="" />;
-  },
-};
+// Re-export for convenience
+export { codeBlockRules } from './codeBlockRules';
 
 interface Props {
   content: string;

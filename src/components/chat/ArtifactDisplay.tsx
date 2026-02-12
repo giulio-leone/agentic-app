@@ -35,7 +35,7 @@ export const ArtifactCard = React.memo(function ArtifactCard({
     >
       <View style={styles.header}>
         <Text style={styles.icon}>{ARTIFACT_ICONS[artifact.type] ?? '📎'}</Text>
-        <View style={{ flex: 1 }}>
+        <View style={styles.titleContainer}>
           <Text style={[styles.title, { color: colors.text }]}>{artifact.title}</Text>
           {artifact.language && (
             <Text style={[styles.lang, { color: colors.textTertiary }]}>{artifact.language}</Text>
@@ -84,6 +84,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 20,
+  },
+  titleContainer: {
+    flex: 1,
   },
   title: {
     fontWeight: '500',
