@@ -1,4 +1,12 @@
 import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
+// Polyfill crypto.randomUUID for Hermes (deep-agents uses it)
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = {};
+}
+if (typeof globalThis.crypto.randomUUID !== 'function') {
+  (globalThis.crypto as any).randomUUID = () => uuidv4();
+}
 import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
