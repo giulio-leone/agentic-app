@@ -1,25 +1,11 @@
 /**
- * OneCrawl-lite for React Native — Web search, scraping, and agentic crawling.
- * Ported from OneCrawl (github.com/g97iulio1609/onecrawl).
+ * Search module — powered by OneCrawl (github.com/g97iulio1609/onecrawl).
+ * Re-exports OneCrawl's cross-platform API for React Native.
  */
 
-export { htmlToText, htmlToMarkdown, extractLinks, extractMedia, extractMetadata } from './content-parser';
-export type { Link, ExtractedMedia, Metadata } from './content-parser';
+// Re-export OneCrawl native API
+export { createOneCrawl } from 'onecrawl';
+export type { OneCrawl } from 'onecrawl';
 
-export { parseSearchResults, parseDuckDuckGoResults, parseGoogleResults, parseBingResults } from './search-parsers';
-export type { SearchResult } from './search-parsers';
-
-export { buildSearchUrl } from './url-builder';
-
-export { getRandomUserAgent, sleep, getRandomDelay } from './stealth';
-
-export { FetchScraper } from './FetchScraper';
-export type { ScrapeResult, ScrapeOptions } from './FetchScraper';
-
-export { SearchEngine } from './SearchEngine';
-export type { SearchResults, SearchOptions } from './SearchEngine';
-
-export { CrawlSwarm, createCrawlSwarm } from './CrawlSwarm';
-export type { SwarmConfig, CrawlResult, PrioritizedUrl } from './CrawlSwarm';
-
+// AI SDK tool integration
 export { buildSearchTools } from './SearchTools';

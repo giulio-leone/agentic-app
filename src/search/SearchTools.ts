@@ -1,15 +1,20 @@
 /**
  * Search Tools — AI SDK tool definitions for web search and scraping.
+ * Powered by OneCrawl (github.com/g97iulio1609/onecrawl).
  * These tools are automatically available to all AI Provider conversations.
  */
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import { FetchScraper } from './FetchScraper';
-import { SearchEngine } from './SearchEngine';
+import { createOneCrawl } from 'onecrawl';
 
-const scraper = new FetchScraper();
-const searchEngine = new SearchEngine(scraper);
+let _crawler: ReturnType<typeof createOneCrawl> | null = null;
+
+/** Lazy-init OneCrawl singleton */
+function getCrawler() {
+  if (!_crawler) _crawler = createOneCrawl();
+  return _crawler;
+}
 
 /**
  * Build web search + scrape tools for AI SDK streamText.
@@ -25,7 +30,8 @@ export function buildSearchTools() {
         maxResults: z.number().min(1).max(20).default(5).describe('Number of results to return'),
       }),
       execute: async ({ query, engine, maxResults }: { query: string; engine: string; maxResults: number }) => {
-        const results = await searchEngine.search(query, {
+        const crawler = getCrawler();
+        const results = await crawler.search(query, {
           engine: engine as 'duckduckgo' | 'google' | 'bing',
           maxResults,
         });
@@ -49,18 +55,41 @@ export function buildSearchTools() {
         maxLength: z.number().min(500).max(50000).default(10000).describe('Maximum content length to return'),
       }),
       execute: async ({ url, maxLength }: { url: string; maxLength: number }) => {
-        const result = await scraper.scrape(url, {
+        const crawler = getCrawler();
+        const response = await crawler.scrape(url, {
           extractMetadata: true,
           maxContentLength: maxLength,
         });
 
         return {
-          title: result.title,
-          url: result.url,
-          content: result.content,
-          description: result.metadata?.description || '',
-          loadTime: result.loadTime,
+          title: response.result.title,
+          url: response.result.url,
+          content: response.result.content,
+          markdown: response.result.markdown || '',
+          description: response.result.metadata?.description || '',
+          loadTime: response.result.loadTime,
         };
+      },
+    }),
+
+    scrape_many: tool({
+      description: 'Scrape multiple URLs in parallel with connection pooling. Use this when you need to read content from several pages at once.',
+      inputSchema: z.object({
+        urls: z.array(z.string().url()).min(1).max(10).describe('URLs to scrape (max 10)'),
+      }),
+      execute: async ({ urls }: { urls: string[] }) => {
+        const crawler = getCrawler();
+        const results = await crawler.scrapeMany(urls, { concurrency: 5 });
+
+        const pages: Array<{ url: string; title: string; content: string }> = [];
+        for (const [u, result] of results) {
+          pages.push({
+            url: u,
+            title: result.title,
+            content: result.content.slice(0, 5000),
+          });
+        }
+        return { pages, count: pages.length };
       },
     }),
   };
