@@ -59,13 +59,9 @@ async function getFileSize(uri: string): Promise<number | undefined> {
 
 export function useFilePicker() {
   const pickImage = useCallback(async (): Promise<Attachment[]> => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      throw new Error('Permission to access media library was denied');
-    }
-
+    // Permissions are handled automatically by launchImageLibraryAsync in SDK 52+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ['images'] as ImagePicker.MediaType[],
       allowsMultipleSelection: true,
       quality: 0.8,
       base64: true,
@@ -99,10 +95,11 @@ export function useFilePicker() {
   const pickCamera = useCallback(async (): Promise<Attachment | null> => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      throw new Error('Permission to access camera was denied');
+      throw new Error('Camera permission is required');
     }
 
     const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'] as ImagePicker.MediaType[],
       quality: 0.8,
       base64: true,
     });
