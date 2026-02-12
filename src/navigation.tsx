@@ -3,7 +3,8 @@
  */
 
 import React, { useEffect } from 'react';
-import { TouchableOpacity, Text, StyleSheet, useWindowDimensions, View, Platform } from 'react-native';
+import { TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { XStack, Text } from 'tamagui';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -39,12 +40,12 @@ function HeaderTitle() {
   const { agentInfo, connectionState, isInitialized } = useAppStore();
 
   return (
-    <View style={styles.headerTitleContainer}>
-      <Text style={[styles.headerTitle, { color: colors.text }]}>
+    <XStack alignItems="center" gap={Spacing.xs}>
+      <Text fontSize={FontSize.subheadline} fontWeight="500" color="$color">
         {agentInfo?.name || 'Agentic'}
       </Text>
       <ConnectionBadge state={connectionState} isInitialized={isInitialized} />
-    </View>
+    </XStack>
   );
 }
 
@@ -99,19 +100,19 @@ function DrawerNavigator() {
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-              style={styles.hamburger}
+              style={{ paddingHorizontal: Spacing.md }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={[styles.hamburgerText, { color: colors.text }]}>☰</Text>
+              <Text fontSize={20} color="$color">☰</Text>
             </TouchableOpacity>
           ),
           headerRight: () => (
             <TouchableOpacity
               onPress={() => { if (isInitialized) createSession(); }}
-              style={styles.newChatHeaderButton}
+              style={{ paddingHorizontal: Spacing.md }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={[styles.newChatHeaderIcon, { color: colors.text, opacity: isInitialized ? 1 : 0.3 }]}>✎</Text>
+              <Text fontSize={20} color="$color" opacity={isInitialized ? 1 : 0.3}>✎</Text>
             </TouchableOpacity>
           ),
         })}
@@ -178,27 +179,3 @@ export function AppNavigator() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  hamburger: {
-    paddingHorizontal: Spacing.md,
-  },
-  hamburgerText: {
-    fontSize: 20,
-  },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  headerTitle: {
-    fontSize: FontSize.subheadline,
-    fontWeight: '500',
-  },
-  newChatHeaderButton: {
-    paddingHorizontal: Spacing.md,
-  },
-  newChatHeaderIcon: {
-    fontSize: 20,
-  },
-});

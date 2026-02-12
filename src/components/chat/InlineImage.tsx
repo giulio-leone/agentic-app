@@ -3,7 +3,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Image, TouchableOpacity, Dimensions } from 'react-native';
+import { YStack, Text } from 'tamagui';
 import type { ThemeColors } from '../../utils/theme';
 import { ImageModal } from './ImageModal';
 
@@ -21,9 +22,9 @@ export const InlineImage = React.memo(function InlineImage({ url, alt, colors }:
 
   if (error) {
     return (
-      <View style={[styles.error, { borderColor: colors.separator }]}>
-        <Text style={{ color: colors.textTertiary }}>🖼️ Image failed to load</Text>
-      </View>
+      <YStack borderWidth={1} borderRadius={8} padding={12} alignItems="center" marginVertical={4} borderColor={colors.separator}>
+        <Text color={colors.textTertiary}>🖼️ Image failed to load</Text>
+      </YStack>
     );
   }
 
@@ -32,35 +33,13 @@ export const InlineImage = React.memo(function InlineImage({ url, alt, colors }:
       <TouchableOpacity onPress={() => setFullscreen(true)} activeOpacity={0.85}>
         <Image
           source={{ uri: url }}
-          style={styles.image}
+          style={{ width: SCREEN_WIDTH * 0.7, height: 200, borderRadius: 8, marginVertical: 4, alignSelf: 'flex-start' }}
           resizeMode="contain"
           onError={() => setError(true)}
         />
-        {alt ? <Text style={[styles.caption, { color: colors.textTertiary }]}>{alt}</Text> : null}
+        {alt ? <Text fontSize={12} fontStyle="italic" marginTop={2} color={colors.textTertiary}>{alt}</Text> : null}
       </TouchableOpacity>
       <ImageModal visible={fullscreen} uri={url} onClose={() => setFullscreen(false)} />
     </>
   );
-});
-
-const styles = StyleSheet.create({
-  image: {
-    width: SCREEN_WIDTH * 0.7,
-    height: 200,
-    borderRadius: 8,
-    marginVertical: 4,
-    alignSelf: 'flex-start',
-  },
-  caption: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  error: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    marginVertical: 4,
-  },
 });

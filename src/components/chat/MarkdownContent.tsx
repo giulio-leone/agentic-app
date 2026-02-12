@@ -3,7 +3,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { Artifact } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
@@ -11,6 +11,8 @@ import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { ArtifactList } from './ArtifactDisplay';
 import { InlineImage } from './InlineImage';
 import { codeBlockRules } from './codeBlockRules';
+
+const hairline = StyleSheet.hairlineWidth;
 
 // Re-export for convenience
 export { codeBlockRules } from './codeBlockRules';
@@ -176,10 +178,8 @@ export function createMarkdownStyles(colors: ThemeColors) {
     },
     td: {
       padding: 6,
-      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: hairline,
       borderColor: colors.separator,
     },
   };
 }
-
-const styles = StyleSheet.create({});

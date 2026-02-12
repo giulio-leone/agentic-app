@@ -3,7 +3,8 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { TouchableOpacity, ScrollView } from 'react-native';
+import { YStack, Text } from 'tamagui';
 
 interface Props {
   children: ReactNode;
@@ -35,80 +36,26 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <View style={styles.container}>
-          <Text style={styles.icon}>⚠️</Text>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.subtitle}>The app encountered an unexpected error.</Text>
+        <YStack flex={1} justifyContent="center" alignItems="center" padding={32} backgroundColor="#212121">
+          <Text fontSize={48} marginBottom={16}>⚠️</Text>
+          <Text fontSize={20} fontWeight="600" color="#ECECEC" marginBottom={8}>Something went wrong</Text>
+          <Text fontSize={16} color="#8E8EA0" textAlign="center" marginBottom={24}>The app encountered an unexpected error.</Text>
           {this.state.error && (
-            <ScrollView style={styles.errorBox} contentContainerStyle={styles.errorContent}>
-              <Text style={styles.errorText}>{this.state.error.message}</Text>
+            <ScrollView style={{ maxHeight: 120, width: '100%', backgroundColor: '#2F2F2F', borderRadius: 8, marginBottom: 24 }} contentContainerStyle={{ padding: 12 }}>
+              <Text fontSize={12} color="#F87171" fontFamily="monospace">{this.state.error.message}</Text>
             </ScrollView>
           )}
           <TouchableOpacity
-            style={styles.button}
+            style={{ backgroundColor: '#10A37F', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, minWidth: 120, alignItems: 'center' }}
             onPress={this.handleReset}
             accessibilityLabel="Try again"
           >
-            <Text style={styles.buttonText}>Try Again</Text>
+            <Text color="$contrastText" fontSize={16} fontWeight="600">Try Again</Text>
           </TouchableOpacity>
-        </View>
+        </YStack>
       );
     }
 
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#212121',
-  },
-  icon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ECECEC',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#8E8EA0',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  errorBox: {
-    maxHeight: 120,
-    width: '100%',
-    backgroundColor: '#2F2F2F',
-    borderRadius: 8,
-    marginBottom: 24,
-  },
-  errorContent: {
-    padding: 12,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#F87171',
-    fontFamily: 'monospace',
-  },
-  button: {
-    backgroundColor: '#10A37F',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

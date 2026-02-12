@@ -3,7 +3,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { TouchableOpacity, ActivityIndicator } from 'react-native';
+import { YStack, XStack, Text } from 'tamagui';
 import Markdown from 'react-native-markdown-display';
 import type { MessageSegment } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
@@ -23,7 +24,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
   switch (segment.type) {
     case 'text':
       return isUser ? (
-        <Text style={[styles.messageText, { color: colors.userBubbleText }]} selectable>
+        <Text fontSize={FontSize.body} lineHeight={24} color={colors.userBubbleText} selectable>
           {segment.content}
         </Text>
       ) : (
@@ -33,42 +34,42 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
     case 'toolCall':
       return (
         <TouchableOpacity
-          style={[styles.toolContainer, { borderColor: colors.separator }]}
+          style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, marginVertical: 4, borderColor: colors.separator }}
           onPress={() => setExpanded(!expanded)}
           activeOpacity={0.7}
         >
-          <View style={styles.toolHeader}>
-            <Text style={[styles.toolIcon, { color: colors.textTertiary }]}>
+          <XStack alignItems="center" gap={8}>
+            <Text fontSize={16} color={colors.textTertiary}>
               {segment.isComplete ? '🔧' : '⏳'}
             </Text>
-            <View style={styles.toolHeaderInfo}>
-              <Text style={[styles.toolName, { color: colors.textSecondary }]}>{segment.toolName}</Text>
-              <Text style={[styles.toolStatus, { color: colors.textTertiary }]}>
+            <YStack flex={1}>
+              <Text fontWeight="600" fontSize={FontSize.footnote} fontFamily="monospace" color={colors.textSecondary}>{segment.toolName}</Text>
+              <Text fontSize={11} color={colors.textTertiary}>
                 {segment.isComplete ? 'Completed' : 'Running…'}
               </Text>
-            </View>
+            </YStack>
             {!segment.isComplete && <ActivityIndicator size="small" color={colors.primary} />}
-            {segment.isComplete && <Text style={[styles.toolCheck, { color: colors.healthyGreen }]}>✓</Text>}
-            <Text style={[styles.chevron, { color: colors.textTertiary }]}>
+            {segment.isComplete && <Text fontSize={14} color={colors.healthyGreen}>✓</Text>}
+            <Text fontSize={14} fontWeight="600" paddingLeft={4} color={colors.textTertiary}>
               {expanded ? '▾' : '▸'}
             </Text>
-          </View>
+          </XStack>
           {expanded && (
-            <View style={styles.toolDetails}>
-              <Text style={[styles.toolLabel, { color: colors.textTertiary }]}>Input:</Text>
-              <Text style={[styles.toolCode, { color: colors.codeText, backgroundColor: colors.codeBackground }]} selectable>
+            <YStack marginTop={8} gap={4}>
+              <Text fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} color={colors.textTertiary}>Input:</Text>
+              <Text fontFamily="monospace" fontSize={FontSize.caption} padding={Spacing.sm} borderRadius={4} maxHeight={200} overflow="hidden" color={colors.codeText} backgroundColor={colors.codeBackground} selectable>
                 {segment.input}
               </Text>
               {segment.result && (
                 <>
-                  <Text style={[styles.toolLabel, { color: colors.textTertiary }]}>Result:</Text>
-                  <Text style={[styles.toolCode, { color: colors.codeText, backgroundColor: colors.codeBackground }]} selectable>
+                  <Text fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} color={colors.textTertiary}>Result:</Text>
+                  <Text fontFamily="monospace" fontSize={FontSize.caption} padding={Spacing.sm} borderRadius={4} maxHeight={200} overflow="hidden" color={colors.codeText} backgroundColor={colors.codeBackground} selectable>
                     {segment.result.substring(0, 1000)}
                     {segment.result.length > 1000 ? '…' : ''}
                   </Text>
                 </>
               )}
-            </View>
+            </YStack>
           )}
         </TouchableOpacity>
       );
@@ -76,15 +77,15 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
     case 'thought':
       return (
         <TouchableOpacity
-          style={styles.thoughtContainer}
+          style={{ marginVertical: 4, padding: Spacing.sm }}
           onPress={() => setExpanded(!expanded)}
           activeOpacity={0.7}
         >
-          <Text style={[styles.thoughtHeader, { color: colors.textTertiary }]}>
+          <Text fontSize={FontSize.footnote} fontWeight="500" color={colors.textTertiary}>
             {expanded ? '▾ Thinking' : '▸ Thinking…'}
           </Text>
           {expanded && (
-            <Text style={[styles.thoughtContent, { color: colors.textTertiary }]} selectable>
+            <Text fontSize={FontSize.footnote} lineHeight={20} marginTop={4} color={colors.textTertiary} selectable>
               {segment.content}
             </Text>
           )}
@@ -94,75 +95,4 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
     default:
       return null;
   }
-});
-
-const styles = StyleSheet.create({
-  messageText: {
-    fontSize: FontSize.body,
-    lineHeight: 24,
-  },
-  toolContainer: {
-    borderWidth: 1,
-    borderRadius: Radius.sm,
-    padding: Spacing.sm,
-    marginVertical: 4,
-  },
-  toolHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  toolIcon: {
-    fontSize: 16,
-  },
-  toolName: {
-    fontWeight: '600',
-    fontSize: FontSize.footnote,
-    fontFamily: 'monospace',
-  },
-  toolHeaderInfo: {
-    flex: 1,
-  },
-  toolStatus: {
-    fontSize: 11,
-  },
-  toolCheck: {
-    fontSize: 14,
-  },
-  chevron: {
-    fontSize: 14,
-    fontWeight: '600',
-    paddingLeft: 4,
-  },
-  toolDetails: {
-    marginTop: 8,
-    gap: 4,
-  },
-  toolLabel: {
-    fontSize: FontSize.caption,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  toolCode: {
-    fontFamily: 'monospace',
-    fontSize: FontSize.caption,
-    padding: Spacing.sm,
-    borderRadius: 4,
-    maxHeight: 200,
-    overflow: 'hidden',
-  },
-  thoughtContainer: {
-    marginVertical: 4,
-    padding: Spacing.sm,
-  },
-  thoughtHeader: {
-    fontSize: FontSize.footnote,
-    fontWeight: '500',
-  },
-  thoughtContent: {
-    fontSize: FontSize.footnote,
-    lineHeight: 20,
-    marginTop: 4,
-  },
 });
