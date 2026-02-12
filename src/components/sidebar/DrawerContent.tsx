@@ -22,14 +22,15 @@ import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useAppStore } from '../../stores/appStore';
 import { ConnectionBadge } from '../ConnectionBadge';
 import { ACPConnectionState, SessionSummary, ServerType } from '../../acp/models/types';
-import { useTheme, FontSize, Spacing, Radius } from '../../utils/theme';
+import { useDesignSystem } from '../../utils/designSystem';
+import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { APP_DISPLAY_NAME } from '../../constants/app';
 import { getProviderInfo } from '../../ai/providers';
 import { MCPConnectionState } from '../../mcp/types';
 import { groupSessionsByDate } from '../../utils/sessionUtils';
 
 export function DrawerContent(props: DrawerContentComponentProps) {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const navigation = props.navigation;
   const rootNav = useNavigation<any>();

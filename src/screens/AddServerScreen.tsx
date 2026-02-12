@@ -27,13 +27,14 @@ import { ALL_PROVIDERS, getProviderInfo } from '../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../ai/ModelFetcher';
 import { getCachedModels, setCachedModels } from '../ai/ModelCache';
 import { saveApiKey } from '../storage/SecureStorage';
-import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'AddServer'>;
 
 export function AddServerScreen() {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddServer'>>();

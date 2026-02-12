@@ -4,10 +4,11 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
-import { useTheme, Spacing } from '../utils/theme';
+import { useDesignSystem, layout } from '../utils/designSystem';
+import { Spacing } from '../utils/theme';
 
 export const TypingIndicator = React.memo(function TypingIndicator() {
-  const { colors } = useTheme();
+  const { ds } = useDesignSystem();
   const pulse = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
@@ -30,12 +31,12 @@ export const TypingIndicator = React.memo(function TypingIndicator() {
   }, [pulse]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.assistantMessageBg }]}>
-      <View style={styles.row}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.avatarIcon, { color: colors.contrastText }]}>✦</Text>
+    <View style={[styles.container, ds.bgAssistantMessage]}>
+      <View style={[layout.row, layout.centerH, layout.gapMd]}>
+        <View style={ds.avatar}>
+          <Text style={ds.avatarIcon}>✦</Text>
         </View>
-        <Animated.View style={[styles.dot, { backgroundColor: colors.textTertiary, opacity: pulse }]} />
+        <Animated.View style={[styles.dot, ds.bgSystemGray5, { opacity: pulse }]} />
       </View>
     </View>
   );
@@ -45,21 +46,6 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarIcon: {
-    fontSize: 14,
   },
   dot: {
     width: 8,

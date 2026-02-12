@@ -13,7 +13,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing, Radius } from '../utils/theme';
 import { ACPServerConfiguration, ServerType } from '../acp/models/types';
 import { useAppStore } from '../stores/appStore';
 import { getProviderInfo } from '../ai/providers';
@@ -26,7 +27,7 @@ interface Props {
 }
 
 export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Props) {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const updateServer = useAppStore(s => s.updateServer);
   const [modalVisible, setModalVisible] = useState(false);
   const [models, setModels] = useState<FetchedModel[]>([]);

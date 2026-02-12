@@ -21,7 +21,8 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
-import { useTheme, Spacing, FontSize } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { Spacing, FontSize } from '../utils/theme';
 
 const SHEET_HEIGHT = 300;
 
@@ -40,7 +41,7 @@ interface Props {
 }
 
 export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, onClose, options }: Props) {
-  const { colors, dark } = useTheme();
+  const { colors, dark } = useDesignSystem();
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 

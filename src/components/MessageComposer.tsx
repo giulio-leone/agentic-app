@@ -17,7 +17,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { useTheme, FontSize, Spacing } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing } from '../utils/theme';
 import { Attachment } from '../acp/models/types';
 import { useFilePicker } from '../hooks/useFilePicker';
 import { AttachmentSheet } from './AttachmentSheet';
@@ -48,7 +49,7 @@ export function MessageComposer({
   isListening,
   onToggleVoice,
 }: Props) {
-  const { colors, dark } = useTheme();
+  const { colors, dark } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [sheetVisible, setSheetVisible] = useState(false);

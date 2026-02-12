@@ -6,7 +6,8 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { useTheme, type ThemeColors, FontSize, Spacing, Radius } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { type ThemeColors, FontSize, Spacing, Radius } from '../utils/theme';
 
 // ── Token types ──────────────────────────────────────────────────────────────
 
@@ -163,7 +164,7 @@ interface CodeBlockProps {
 }
 
 export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: CodeBlockProps) {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

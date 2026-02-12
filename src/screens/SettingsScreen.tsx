@@ -15,13 +15,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAppStore } from '../stores/appStore';
-import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import { MCPAuthType, MCPConnectionState } from '../mcp/types';
 import type { MCPServerConfig } from '../mcp/types';
 
 export function SettingsScreen() {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const {
     devModeEnabled, toggleDevMode, developerLogs, clearLogs,
     mcpServers, mcpStatuses,
@@ -162,7 +163,7 @@ function MCPServerRow({
 }: {
   server: MCPServerConfig;
   status: { state: string; toolCount: number; resourceCount: number; error?: string } | undefined;
-  colors: ReturnType<typeof useTheme>['colors'];
+  colors: ThemeColors;
   onConnect: () => void;
   onDisconnect: () => void;
   onRemove: () => void;
@@ -239,7 +240,7 @@ function AddMCPServerForm({
   onAdd,
   onCancel,
 }: {
-  colors: ReturnType<typeof useTheme>['colors'];
+  colors: ThemeColors;
   onAdd: (config: Omit<MCPServerConfig, 'id'>) => Promise<void>;
   onCancel: () => void;
 }) {

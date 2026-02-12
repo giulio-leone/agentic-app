@@ -21,7 +21,8 @@ import { MessageComposer } from '../components/MessageComposer';
 import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { ChatMessage, ACPConnectionState, Attachment, ServerType } from '../acp/models/types';
-import { useTheme, FontSize, Spacing } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing } from '../utils/theme';
 import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 
@@ -29,7 +30,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 const keyExtractor = (item: ChatMessage) => item.id;
 
 export function SessionDetailScreen() {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const {
     chatMessages,
     promptText,

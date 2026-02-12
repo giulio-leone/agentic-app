@@ -19,14 +19,15 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
 import { ConnectionBadge } from '../components/ConnectionBadge';
 import { ACPConnectionState, SessionSummary } from '../acp/models/types';
-import { useTheme, FontSize, Spacing, Radius } from '../utils/theme';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const {
     servers,
     selectedServerId,

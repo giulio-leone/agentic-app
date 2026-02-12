@@ -15,7 +15,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { ChatMessage, Attachment } from '../acp/models/types';
-import { useTheme, FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
+import { useDesignSystem, layout } from '../utils/designSystem';
+import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
 import { getFileIcon } from '../utils/fileUtils';
 import { MarkdownContent, createMarkdownStyles } from './chat/MarkdownContent';
 import { ReasoningView } from './chat/ReasoningView';
@@ -29,7 +30,7 @@ interface Props {
 }
 
 export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking }: Props) {
-  const { colors } = useTheme();
+  const { ds, colors } = useDesignSystem();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
@@ -52,8 +53,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     <Animated.View
       style={[
         styles.container,
+        isUser ? ds.bgUserMessage : ds.bgAssistantMessage,
         {
-          backgroundColor: isUser ? colors.userMessageBg : colors.assistantMessageBg,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         },
@@ -64,13 +65,13 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         {/* Avatar */}
         {!isUser && !isSystem && (
           <View style={styles.avatarContainer}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.avatarIcon, { color: colors.contrastText }]}>✦</Text>
+            <View style={ds.avatar}>
+              <Text style={ds.avatarIcon}>✦</Text>
             </View>
           </View>
         )}
 
-        <View style={[styles.contentContainer, isUser && styles.userContent]}>
+        <View style={[layout.flex1, isUser && styles.userContent]}>
           {/* Attachments */}
           {isUser && message.attachments && message.attachments.length > 0 && (
             <AttachmentPreview attachments={message.attachments} colors={colors} />
@@ -100,7 +101,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
               {message.content}
             </Text>
           ) : isSystem ? (
-            <Text style={[styles.systemText, { color: colors.textTertiary }]} selectable>
+            <Text style={[styles.systemText, ds.textTertiary]} selectable>
               {message.content}
             </Text>
           ) : (
@@ -114,7 +115,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
 
           {/* TTS action bar */}
           {!isUser && !isSystem && !message.isStreaming && message.content && (
-            <View style={styles.actionBar}>
+            <View style={[layout.row, layout.gapSm, { marginTop: Spacing.xs }]}>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => onSpeak?.(message.content)}
@@ -188,19 +189,6 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
     marginTop: 2,
   },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarIcon: {
-    fontSize: 14,
-  },
-  contentContainer: {
-    flex: 1,
-  },
   userContent: {
     paddingLeft: 40,
   },
@@ -216,11 +204,6 @@ const styles = StyleSheet.create({
   streamingIndicator: {
     marginTop: Spacing.xs,
     alignSelf: 'flex-start',
-  },
-  actionBar: {
-    flexDirection: 'row',
-    marginTop: Spacing.xs,
-    gap: Spacing.sm,
   },
   actionButton: {
     padding: 4,

@@ -14,7 +14,8 @@ import { AddServerScreen } from './screens/AddServerScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DrawerContent } from './components/sidebar/DrawerContent';
 import { ACPServerConfiguration } from './acp/models/types';
-import { useTheme, Spacing, FontSize } from './utils/theme';
+import { useDesignSystem, layout } from './utils/designSystem';
+import { Spacing, FontSize } from './utils/theme';
 import { useAppStore } from './stores/appStore';
 import { ConnectionBadge } from './components/ConnectionBadge';
 
@@ -34,7 +35,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
 function HeaderTitle() {
-  const { colors } = useTheme();
+  const { colors } = useDesignSystem();
   const { agentInfo, connectionState, isInitialized } = useAppStore();
 
   return (
@@ -59,7 +60,7 @@ function GlassHeader({ children, tint }: { children: React.ReactNode; tint: 'lig
 }
 
 function DrawerNavigator() {
-  const { colors, dark } = useTheme();
+  const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
   const { createSession, isInitialized } = useAppStore();
 
@@ -120,7 +121,7 @@ function DrawerNavigator() {
 }
 
 function AppContent() {
-  const { colors, dark } = useTheme();
+  const { colors, dark } = useDesignSystem();
   const loadServers = useAppStore(s => s.loadServers);
   const loadMCPServers = useAppStore(s => s.loadMCPServers);
 
