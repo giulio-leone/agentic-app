@@ -104,10 +104,10 @@ export class ScreenWatcherService {
 
             this._frameCount++;
 
-            // Step 1: Describe current frame
-            const desc = await ImageDiffEngine.describeFrame(capture.base64);
+            // Step 1: Extract text from current frame
+            const desc = await ImageDiffEngine.extractTextFromFrame(capture.base64);
 
-            // First frame: store description as baseline
+            // First frame: store text as baseline
             if (!this._prevDesc) {
                 this._prevDesc = desc;
                 console.log(`[SW] #${this._frameCount} baseline: "${desc.substring(0, 60)}..."`);

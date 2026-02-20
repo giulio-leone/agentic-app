@@ -1,3 +1,6 @@
+if (project == rootProject) {
+    return
+}
 apply plugin: 'com.android.library'
 
 group = 'expo.modules.scenedetector'

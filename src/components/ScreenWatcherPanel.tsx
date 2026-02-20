@@ -26,7 +26,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { SmartCameraView, type SmartCameraViewHandle } from './camera/SmartCameraView';
 import { MarkdownContent } from './chat/MarkdownContent';
 import { ScreenWatcherService, type WatcherStatus } from '../services/ScreenWatcherService';
-import { ImageDiffEngine } from '../services/ImageDiffEngine';
+import * as MediaLibrary from 'expo-media-library';
 import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
@@ -50,6 +50,7 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
     const cameraRef = useRef<SmartCameraViewHandle>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [flashVisible, setFlashVisible] = useState(false);
+    const lastCaptureTime = useRef<number>(0);
 
     const {
         screenWatcherVisible,
@@ -68,8 +69,6 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
         setCustomPrompt,
         isRemoteLLMEnabled,
         setRemoteLLMEnabled,
-        localAIResponse,
-        setLocalAIResponse,
         setWatcherProcessing,
         sendPrompt,
         isStreaming,
@@ -152,20 +151,30 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                         base64,
                     };
 
-                    try {
-                        const nanoDesc = await ImageDiffEngine.describeFrame(base64);
-                        useAppStore.getState().setLocalAIResponse(nanoDesc);
-                    } catch (e) {
-                        console.warn("[ScreenWatcherPanel] Nano Extraction Failed:", e);
-                    }
+                    // FIRE AND FORGET ASYNC: Do not block the camera thread
+                    const processCaptureAsync = async () => {
+                        try {
+                            const { status } = await MediaLibrary.requestPermissionsAsync();
+                            if (status === 'granted') {
+                                // Save to the user's native phone gallery
+                                await MediaLibrary.createAssetAsync(filePath);
+                                console.log('[ScreenWatcherPanel] Captured frame saved to gallery async');
+                            }
 
-                    if (useAppStore.getState().isRemoteLLMEnabled) {
-                        const prompt = useAppStore.getState().customPrompt;
-                        sendPrompt(
-                            `[Screen Capture #${captureNumber}] ${prompt}`,
-                            [attachment],
-                        );
-                    }
+                            if (useAppStore.getState().isRemoteLLMEnabled) {
+                                const prompt = useAppStore.getState().customPrompt;
+                                sendPrompt(
+                                    `[Screen Capture #${captureNumber}] ${prompt}`,
+                                    [attachment],
+                                );
+                            }
+                        } catch (e) {
+                            console.error("[ScreenWatcherPanel] Async Process Failed:", e);
+                        }
+                    };
+
+                    // Execute without awaiting
+                    processCaptureAsync();
                 },
                 onStatusChange: (status) => {
                     setWatcherStatus(status);
@@ -248,33 +257,47 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                 onSceneChanged={async () => {
                                     // Only auto-capture if auto mode is enabled
                                     if (isAutoMode && isWatching && watcherStatus !== 'processing') {
+                                        // 5-SECOND COOLDOWN DEBOUNCE
+                                        if (Date.now() - lastCaptureTime.current < 5000) {
+                                            console.log('[ScreenWatcherPanel] Auto mode skipped: recovering from previous capture cooldown (5s)');
+                                            return;
+                                        }
+                                        lastCaptureTime.current = Date.now();
+
                                         console.log('Scene changed detected by SmartCameraView (Auto Mode)');
                                         const result = await cameraRef.current?.captureFrame();
                                         if (result) {
                                             triggerFlash();
                                             incrementCapture();
 
-                                            // Run on-device Gemini Nano text extraction
-                                            if (result.base64) {
+                                            // FIRE AND FORGET ASYNC: Do not block the camera thread
+                                            const processAutoCaptureAsync = async () => {
                                                 try {
-                                                    const nanoDesc = await ImageDiffEngine.describeFrame(result.base64);
-                                                    setLocalAIResponse(nanoDesc);
-                                                } catch (e) {
-                                                    console.warn("[ScreenWatcherPanel] Auto mode Nano Extraction Failed:", e);
-                                                }
-                                            }
+                                                    const { status } = await MediaLibrary.requestPermissionsAsync();
+                                                    if (status === 'granted') {
+                                                        // Save to the user's native phone gallery
+                                                        await MediaLibrary.createAssetAsync(result.uri);
+                                                        console.log('[ScreenWatcherPanel] Auto mode captured frame saved to gallery async');
+                                                    }
 
-                                            if (isRemoteLLMEnabled) {
-                                                const attachment = {
-                                                    id: uuidv4(),
-                                                    name: `auto_capture.jpg`,
-                                                    mediaType: 'image/jpeg',
-                                                    uri: result.uri,
-                                                    base64: result.base64,
-                                                };
-                                                const prompt = useAppStore.getState().customPrompt;
-                                                sendPrompt(`[Auto Scene Change Capture] ${prompt}`, [attachment]);
-                                            }
+                                                    if (isRemoteLLMEnabled) {
+                                                        const attachment = {
+                                                            id: uuidv4(),
+                                                            name: `auto_capture.jpg`,
+                                                            mediaType: 'image/jpeg',
+                                                            uri: result.uri,
+                                                            base64: result.base64,
+                                                        };
+                                                        const prompt = useAppStore.getState().customPrompt;
+                                                        sendPrompt(`[Auto Scene Change Capture] ${prompt}`, [attachment]);
+                                                    }
+                                                } catch (e) {
+                                                    console.error("[ScreenWatcherPanel] Auto mode async process failed", e);
+                                                }
+                                            };
+
+                                            // Execute without awaiting
+                                            processAutoCaptureAsync();
                                         }
                                     }
                                 }}
@@ -288,27 +311,34 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                             triggerFlash();
                                             incrementCapture();
 
-                                            // Run on-device Gemini Nano text extraction
-                                            if (result.base64) {
+                                            // FIRE AND FORGET ASYNC: Do not block the camera thread
+                                            const processManualCaptureAsync = async () => {
                                                 try {
-                                                    const nanoDesc = await ImageDiffEngine.describeFrame(result.base64);
-                                                    setLocalAIResponse(nanoDesc);
-                                                } catch (e) {
-                                                    console.warn("[ScreenWatcherPanel] Nano Extraction Failed:", e);
-                                                }
-                                            }
+                                                    const { status } = await MediaLibrary.requestPermissionsAsync();
+                                                    if (status === 'granted') {
+                                                        // Save to the user's native phone gallery
+                                                        await MediaLibrary.createAssetAsync(result.uri);
+                                                        console.log('[ScreenWatcherPanel] Manual mode captured frame saved to gallery async');
+                                                    }
 
-                                            if (isRemoteLLMEnabled) {
-                                                const attachment = {
-                                                    id: uuidv4(),
-                                                    name: `manual_capture.jpg`,
-                                                    mediaType: 'image/jpeg',
-                                                    uri: result.uri,
-                                                    base64: result.base64,
-                                                };
-                                                const prompt = useAppStore.getState().customPrompt;
-                                                sendPrompt(`[Manual Bluetooth Capture] ${prompt}`, [attachment]);
-                                            }
+                                                    if (isRemoteLLMEnabled) {
+                                                        const attachment = {
+                                                            id: uuidv4(),
+                                                            name: `manual_capture.jpg`,
+                                                            mediaType: 'image/jpeg',
+                                                            uri: result.uri,
+                                                            base64: result.base64,
+                                                        };
+                                                        const prompt = useAppStore.getState().customPrompt;
+                                                        sendPrompt(`[Manual Bluetooth Capture] ${prompt}`, [attachment]);
+                                                    }
+                                                } catch (e) {
+                                                    console.error("[ScreenWatcherPanel] Manual mode async process failed", e);
+                                                }
+                                            };
+
+                                            // Execute without awaiting
+                                            processManualCaptureAsync();
                                         }
                                     }
                                 }}
@@ -344,28 +374,7 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                         )}
                     </XStack>
 
-                    {/* On-Device Gemini Nano Reaction */}
-                    {localAIResponse && captureCount > 0 && (
-                        <YStack
-                            marginHorizontal={Spacing.lg}
-                            marginBottom={Spacing.md}
-                            padding={Spacing.md}
-                            borderRadius={12}
-                            backgroundColor={dark ? '#1F2937' : '#EFF6FF'}
-                            elevation={1}
-                            shadowColor="#000"
-                            shadowOffset={{ width: 0, height: 1 }}
-                            shadowOpacity={0.05}
-                            shadowRadius={2}
-                            borderWidth={1}
-                            borderColor={dark ? '#374151' : '#BFDBFE'}
-                        >
-                            <Text fontSize={FontSize.caption} fontWeight="600" color="#3B82F6" marginBottom={Spacing.xs}>
-                                🧠 On-Device AI (Gemini Nano)
-                            </Text>
-                            <MarkdownContent content={localAIResponse} colors={colors} />
-                        </YStack>
-                    )}
+
 
                     {/* Latest Cloud LLM Response Overlay */}
                     {isRemoteLLMEnabled && latestAssistantMessage && captureCount > 0 && (
@@ -390,49 +399,26 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                         </YStack>
                     )}
 
-                    {/* Zoom Slider */}
-                    <YStack paddingHorizontal={Spacing.xl} gap={Spacing.xs}>
+                    {/* Hardware Optical Zoom */}
+                    <YStack paddingHorizontal={Spacing.xl} gap={Spacing.md}>
                         <XStack justifyContent="space-between" alignItems="center">
                             <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.textSecondary}>
-                                🔍 Zoom
+                                🔍 Hardware Optical Zoom
                             </Text>
-                            <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
-                                {Math.round(zoomLevel * 100)}%
+                            <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
+                                {zoomLevel.toFixed(1)}x
                             </Text>
                         </XStack>
-                        <XStack gap={Spacing.sm} alignItems="center">
-                            <Text fontSize={FontSize.caption} color={colors.textTertiary}>0%</Text>
-                            <YStack flex={1} height={40} justifyContent="center">
-                                <TouchableOpacity
-                                    activeOpacity={1}
-                                    style={styles.sliderTrack}
-                                    onPress={() => { }}
-                                >
-                                    <YStack
-                                        height={6}
-                                        borderRadius={3}
-                                        backgroundColor={dark ? '#333' : '#E5E7EB'}
-                                        overflow="hidden"
-                                    >
-                                        <YStack
-                                            height={6}
-                                            width={`${zoomLevel * 100}%`}
-                                            backgroundColor={colors.primary}
-                                            borderRadius={3}
-                                        />
-                                    </YStack>
-                                </TouchableOpacity>
-                            </YStack>
-                            <Text fontSize={FontSize.caption} color={colors.textTertiary}>100%</Text>
-                        </XStack>
-                        {/* Zoom buttons */}
+
+                        {/* Optical Lens buttons */}
                         <XStack justifyContent="center" gap={Spacing.md}>
-                            {[0, 0.15, 0.3, 0.5, 0.7, 1.0].map((z) => (
+                            {[0.6, 1.0, 3.0, 5.0, 10.0].map((z) => (
                                 <TouchableOpacity
                                     key={z}
                                     style={[
                                         styles.zoomBtn,
                                         {
+                                            flex: 1,
                                             backgroundColor:
                                                 Math.abs(zoomLevel - z) < 0.01
                                                     ? colors.primary
@@ -450,7 +436,7 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                             Math.abs(zoomLevel - z) < 0.01 ? '#FFF' : colors.text
                                         }
                                     >
-                                        {z === 0 ? '1×' : `${(1 + z * 9).toFixed(1)}×`}
+                                        {z === 0.6 ? '.6x' : `${z}x`}
                                     </Text>
                                 </TouchableOpacity>
                             ))}

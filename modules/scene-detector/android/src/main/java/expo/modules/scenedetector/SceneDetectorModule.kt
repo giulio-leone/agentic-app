@@ -16,8 +16,13 @@ class SceneDetectorModule : Module() {
     Name("SceneDetector")
 
     OnCreate {
-      FrameProcessorPluginRegistry.addFrameProcessorPlugin("detectSceneChange") { proxy, options ->
-        SceneDetectorPlugin(proxy, options)
+      try {
+        FrameProcessorPluginRegistry.addFrameProcessorPlugin("detectSceneChange") { proxy, options ->
+          SceneDetectorPlugin(proxy, options)
+        }
+      } catch (e: AssertionError) {
+        // Ignore the assertion error thrown by VisionCamera when hot reloading (registering the same plugin twice)
+        android.util.Log.w("SceneDetector", "Plugin detectSceneChange already registered, ignoring.")
       }
     }
 

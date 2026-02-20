@@ -2,7 +2,7 @@
  * ImageDiffEngine — Gemini Nano on-device Image Description for change detection.
  *
  * Flow:
- * 1. describeFrame() — sends image to Gemini Nano, gets text description
+ * 1. extractTextFromFrame() — sends image to ML Kit Text Recognition, gets raw text
  * 2. descriptionsAreDifferent() — simple string comparison of descriptions
  *
  * Uses ML Kit GenAI Image Description API (supported on S25 Ultra).
@@ -27,24 +27,25 @@ export async function ensureModel(): Promise<void> {
     _initialized = true;
 }
 
-let _isDescribing = false;
+let _isExtracting = false;
 
 /**
- * Describe a screen capture using Gemini Nano.
- * Returns a text description of what's on screen.
+ * Extract raw text from a screen capture using ML Kit.
+ * Returns a text string containing all recognized text on screen.
  */
-export async function describeFrame(base64: string): Promise<string> {
+export async function extractTextFromFrame(base64: string): Promise<string> {
     if (!_initialized) throw new Error('Call ensureModel() first');
-    if (_isDescribing) throw new Error('ImageDiffEngine is currently busy describing another frame');
+    if (_isExtracting) throw new Error('ImageDiffEngine is currently busy extracting text from another frame');
 
-    _isDescribing = true;
+    _isExtracting = true;
     try {
         const t0 = Date.now();
-        const desc = await GeminiNano.describeImage(base64);
-        console.log(`[ImageDiff] describe=${Date.now() - t0}ms: "${desc.substring(0, 80)}..."`);
-        return desc;
+        // The GeminiNano native module is now mapped to ML Kit Text Recognition
+        const extractedText = await GeminiNano.describeImage(base64);
+        console.log(`[ImageDiff] extract=${Date.now() - t0}ms: "${extractedText.substring(0, 80)}..."`);
+        return extractedText;
     } finally {
-        _isDescribing = false;
+        _isExtracting = false;
     }
 }
 
@@ -73,8 +74,9 @@ export function descriptionsAreDifferent(descA: string, descB: string): boolean 
     const union = new Set([...wordsA, ...wordsB]).size;
     const jaccard = union > 0 ? intersection / union : 0;
 
-    // If less than 50% word overlap → content changed
-    const changed = jaccard < 0.5;
+    // If less than 75% word overlap → content changed physically
+    // This makes it more sensitive to small lines of code / code scrolling
+    const changed = jaccard < 0.75;
     console.log(
         `[ImageDiff] jaccard=${(jaccard * 100).toFixed(1)}% ` +
         `(${intersection}/${union} words) → ${changed ? 'DIFFERENT' : 'SAME'}`
@@ -84,6 +86,6 @@ export function descriptionsAreDifferent(descA: string, descB: string): boolean 
 
 export const ImageDiffEngine = {
     ensureModel,
-    describeFrame,
+    extractTextFromFrame,
     descriptionsAreDifferent,
 };

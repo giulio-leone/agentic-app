@@ -20,7 +20,7 @@ export interface SmartCameraViewHandle {
 }
 
 interface SmartCameraViewProps {
-    zoom: number; // 0-1 mapped to device min/max
+    zoom: number; // Optical multiplier (e.g. 0.6, 1, 3, 5) relative to neutral zoom
     size?: { width: number; height: number };
     showFlash?: boolean;
     onSceneChanged?: () => void;
@@ -37,9 +37,10 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
 
         const [isReady, setIsReady] = useState(false);
 
-        // Map abstract zoom (0-1) to actual device zoom range (device.minZoom..device.maxZoom)
+        // Optical Zoom Mapping: Multiply the input optical factor (0.6x, 1x, 3x, 5x) by the camera's neutral zoom
+        // This leverages OIS and switches physical lenses on multi-lens phones like the S25 Ultra
         const deviceZoom = device
-            ? device.minZoom + zoom * (device.maxZoom - device.minZoom)
+            ? Math.max(device.minZoom, Math.min(device.maxZoom, device.neutralZoom * zoom))
             : 0;
 
         const captureFrame = useCallback(async (): Promise<CaptureResult | null> => {
@@ -105,9 +106,9 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
             const diff = detectSceneChange(frame);
 
             // Motion threshold: when the average diff exceeds this, we consider the camera to be moving
-            const MOTION_THRESHOLD = 3.5;
+            const MOTION_THRESHOLD = 2.0;
             // Stable threshold: when the average diff stays below this for a certain period, we consider it stable
-            const STABLE_THRESHOLD = 2.0;
+            const STABLE_THRESHOLD = 1.2;
 
             let motionDetected = false;
             let triggerFired = false;
@@ -121,13 +122,23 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
                 }
             }
 
-            // If we were previously moving, and now we are stable...
-            if (isStabilizing.value && diff < STABLE_THRESHOLD) {
-                // Must be considered stable for at least 600ms before triggering to ensure focus is acquired
-                if (Date.now() - lastMotionTime.value > 600) {
-                    isStabilizing.value = false;
-                    triggerFired = true;
-                    onSceneChangedJS();
+            // Always check for stability if we aren't moving right now
+            if (diff < STABLE_THRESHOLD) {
+                // If we were previously moving
+                if (isStabilizing.value) {
+                    // Must be considered stable for at least 200ms before triggering to ensure focus is acquired
+                    if (Date.now() - lastMotionTime.value > 200) {
+                        isStabilizing.value = false;
+                        triggerFired = true;
+                        onSceneChangedJS();
+                    }
+                } else {
+                    // Safety catch: if we somehow missed the initial motion spike but the camera has been stable for a long time (e.g., 2.5 seconds) since last capture activity
+                    if (Date.now() - lastMotionTime.value > 2500) {
+                        lastMotionTime.value = Date.now(); // reset timer
+                        triggerFired = true;
+                        onSceneChangedJS();
+                    }
                 }
             }
 

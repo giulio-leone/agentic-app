@@ -6,47 +6,21 @@ import android.util.Base64
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.Promise
-import com.google.mlkit.genai.imagedescription.ImageDescription
-import com.google.mlkit.genai.imagedescription.ImageDescriber
-import com.google.mlkit.genai.imagedescription.ImageDescriberOptions
-import com.google.mlkit.genai.imagedescription.ImageDescriptionRequest
-import com.google.mlkit.genai.common.DownloadCallback
-import com.google.mlkit.genai.common.GenAiException
-import java.util.concurrent.Executors
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
 class GeminiNanoModule : Module() {
-    private var imageDescriber: ImageDescriber? = null
-    private val executor = Executors.newSingleThreadExecutor()
+    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     override fun definition() = ModuleDefinition {
         Name("GeminiNano")
 
+        // ML Kit Text Recognition doesn't require downloading a model separately like Gemini Nano does,
+        // it is bundled or downloaded seamlessly via Google Play Services. So we just resolve true.
         AsyncFunction("initialize") { promise: Promise ->
             try {
-                val context = appContext.reactContext
-                    ?: throw Exception("No context available")
-                val options = ImageDescriberOptions.builder(context).build()
-                val describer = ImageDescription.getClient(options)
-
-                // Check feature status (non-blocking via addListener)
-                val statusFuture = describer.checkFeatureStatus()
-                statusFuture.addListener({
-                    try {
-                        val status = statusFuture.get()
-                        android.util.Log.d("GeminiNano", "Feature status: $status")
-
-                        // FeatureStatus: 0=UNAVAILABLE, 1=DOWNLOADABLE, 2=DOWNLOADING, 3=AVAILABLE
-                        when (status) {
-                            3 -> prepareEngine(describer, promise)
-                            2 -> promise.reject("DOWNLOADING", "Model is currently downloading in the background.", null)
-                            1 -> downloadAndPrepare(describer, promise)
-                            0 -> promise.reject("UNAVAILABLE", "Image Description not available on this device", null)
-                            else -> promise.reject("STATUS_ERROR", "Unknown status: $status", null)
-                        }
-                    } catch (e: Exception) {
-                        promise.reject("STATUS_ERROR", "Status check failed: ${e.message}", e)
-                    }
-                }, executor)
+                promise.resolve(true)
             } catch (e: Exception) {
                 promise.reject("INIT_ERROR", "Initialization failed: ${e.message}", e)
             }
@@ -54,93 +28,29 @@ class GeminiNanoModule : Module() {
 
         AsyncFunction("describeImage") { base64: String, promise: Promise ->
             try {
-                val describer = imageDescriber
-                    ?: throw Exception("Model not initialized. Call initialize() first.")
-
                 val bitmap = base64ToBitmap(base64)
-                val request = ImageDescriptionRequest.builder(bitmap).build()
+                val image = InputImage.fromBitmap(bitmap, 0)
 
-                val future = describer.runInference(request)
-                future.addListener({
-                    try {
-                        val result = future.get()
-                        val description = result.description
-                        bitmap.recycle()
-                        promise.resolve(description)
-                    } catch (e: Exception) {
-                        bitmap.recycle()
-                        promise.reject("DESCRIBE_ERROR", "Description failed: ${e.message}", e)
+                recognizer.process(image)
+                    .addOnSuccessListener { visionText ->
+                        bitmap.recycle() // free up memory
+                        // We return the raw text blocks extracted by ML Kit
+                        promise.resolve(visionText.text)
                     }
-                }, executor)
+                    .addOnFailureListener { e ->
+                        bitmap.recycle()
+                        promise.reject("DESCRIBE_ERROR", "Text recognition failed: ${e.message}", e)
+                    }
             } catch (e: Exception) {
                 promise.reject("DESCRIBE_ERROR", "Description failed: ${e.message}", e)
             }
         }
 
+        // Feature is always available if the Play Services dependency works.
+        // Returning 3 (AVAILABLE) to match the previous Gemini Nano JS logic.
         AsyncFunction("checkStatus") { promise: Promise ->
-            try {
-                val context = appContext.reactContext
-                    ?: throw Exception("No context available")
-                val options = ImageDescriberOptions.builder(context).build()
-                val describer = ImageDescription.getClient(options)
-
-                val future = describer.checkFeatureStatus()
-                future.addListener({
-                    try {
-                        val status = future.get()
-                        describer.close()
-                        promise.resolve(status)
-                    } catch (e: Exception) {
-                        describer.close()
-                        promise.resolve(-1)
-                    }
-                }, executor)
-            } catch (e: Exception) {
-                promise.resolve(-1)
-            }
+            promise.resolve(3)
         }
-    }
-
-    private fun prepareEngine(describer: ImageDescriber, promise: Promise) {
-        android.util.Log.d("GeminiNano", "Preparing inference engine...")
-        val future = describer.prepareInferenceEngine()
-        future.addListener({
-            try {
-                future.get() // Safe: future is already complete inside listener
-                android.util.Log.d("GeminiNano", "✅ Engine prepared successfully!")
-                imageDescriber = describer
-                promise.resolve(true)
-            } catch (e: Exception) {
-                android.util.Log.e("GeminiNano", "Engine preparation failed", e)
-                promise.reject("PREPARE_ERROR", "Prepare failed: ${e.message}", e)
-            }
-        }, executor)
-    }
-
-    private fun downloadAndPrepare(describer: ImageDescriber, promise: Promise) {
-        android.util.Log.d("GeminiNano", "Starting model download...")
-        val future = describer.downloadFeature(object : DownloadCallback {
-            override fun onDownloadStarted(bytesToDownload: Long) {
-                android.util.Log.d("GeminiNano", "Download started: ${bytesToDownload / 1_000_000} MB")
-            }
-            override fun onDownloadProgress(totalBytesDownloaded: Long) {
-                android.util.Log.d("GeminiNano", "Downloaded: ${totalBytesDownloaded / 1_000_000} MB")
-            }
-            override fun onDownloadCompleted() {
-                android.util.Log.d("GeminiNano", "Download completed!")
-            }
-            override fun onDownloadFailed(e: GenAiException) {
-                android.util.Log.e("GeminiNano", "Download failed", e)
-            }
-        })
-        future.addListener({
-            try {
-                future.get()
-                prepareEngine(describer, promise)
-            } catch (e: Exception) {
-                promise.reject("DOWNLOAD_ERROR", "Download failed: ${e.message}", e)
-            }
-        }, executor)
     }
 
     private fun base64ToBitmap(base64: String): Bitmap {
@@ -150,7 +60,44 @@ class GeminiNanoModule : Module() {
             base64
         }
         val bytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             ?: throw Exception("Failed to decode image from base64")
+
+        try {
+            val inputStream = java.io.ByteArrayInputStream(bytes)
+            val exif = android.media.ExifInterface(inputStream)
+            val orientation = exif.getAttributeInt(
+                android.media.ExifInterface.TAG_ORIENTATION,
+                android.media.ExifInterface.ORIENTATION_NORMAL
+            )
+
+            val matrix = android.graphics.Matrix()
+            when (orientation) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            }
+            
+            // Downscale to avoid slow ML Kit processing if image is too large (e.g. 12MP from Camera)
+            val maxDim = 1920
+            if (bitmap.width > maxDim || bitmap.height > maxDim) {
+                val scale = maxDim.toFloat() / Math.max(bitmap.width, bitmap.height)
+                matrix.postScale(scale, scale)
+            }
+
+            if (!matrix.isIdentity) {
+                val processedBitmap = Bitmap.createBitmap(
+                    bitmap, 0, 0,
+                    bitmap.width, bitmap.height,
+                    matrix, true
+                )
+                bitmap.recycle()
+                return processedBitmap
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("GeminiNano", "Failed to process image matrix: ${e.message}", e)
+        }
+
+        return bitmap
     }
 }
