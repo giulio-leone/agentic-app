@@ -203,11 +203,21 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
 
     sendPrompt: async (text, attachments) => {
       const state = get();
-      const server = state.servers.find(s => s.id === state.selectedServerId);
-      if (!server) return;
+      let server = state.servers.find(s => s.id === state.selectedServerId);
+
+      // Fallback: If no server is selected, pick the first AI Provider server
+      if (!server) {
+        server = state.servers.find(s => s.serverType === ServerType.AIProvider);
+        if (server) {
+          get().selectServer(server.id);
+        } else {
+          console.warn('[chatSlice] No AI server available to handle the prompt.');
+          return;
+        }
+      }
 
       // Auto-create session if none selected
-      let sessionId = state.selectedSessionId;
+      let sessionId = state.selectedSessionId ?? get().selectedSessionId;
       if (!sessionId) {
         await get().createSession();
         sessionId = get().selectedSessionId;
