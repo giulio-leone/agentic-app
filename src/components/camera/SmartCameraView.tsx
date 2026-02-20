@@ -1,13 +1,14 @@
 import React, { useRef, useImperativeHandle, forwardRef, useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View, Platform, Alert, Linking } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Camera, useCameraDevice, useCameraPermission, useFrameProcessor } from 'react-native-vision-camera';
 import { YStack, Text } from 'tamagui';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing } from '../../utils/theme';
 import { volumeListenerService } from '../../services/VolumeListenerService';
 import { runAsync } from 'react-native-vision-camera';
-import { Worklets } from 'react-native-worklets-core';
+import { Worklets, useSharedValue } from 'react-native-worklets-core';
+import { detectSceneChange } from './useSceneDetector';
 
 export interface CaptureResult {
     uri: string;
@@ -50,7 +51,8 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
                 });
 
                 // vision-camera v4 doesn't return base64 directly from takePhoto. 
-                // We use expo-file-system to read the saved file.
+                // We use expo-file-system/legacy as a safe fallback for base64 reading on local file URIs to avoid native crashes
+                // with Expo's experimental file system node abstractions.
                 const uri = 'file://' + photo.path;
                 const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 
@@ -78,26 +80,60 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
         }, [onShutterPressed]);
 
         // Auto-detection logic (Frame Processor)
-        // Note: Real scene change detection requires comparing image buffers. 
-        // For this demo, we can simulate or use simple heuristics if OpenCV is not installed.
-        // Doing full image diffing in JS is slow, so we just stub the worklet.
+        // This utilizes our custom native vision-camera-plugin (SceneDetector) 
+        // to perform real-time pixel diffing between consecutive frames directly in C++/Kotlin/Swift.
+        // It provides the average difference value to JS without the overhead of passing image buffers.
         const onSceneChangedJS = Worklets.createRunOnJS(() => {
             onSceneChanged?.();
+        });
+
+        const lastMotionTime = useSharedValue(0);
+        const isStabilizing = useSharedValue(false);
+
+        const logStateJS = Worklets.createRunOnJS((diff: number, motion: boolean, stabilizing: boolean, trigger: boolean) => {
+            if (trigger) {
+                console.log(`[SmartCameraView] TRIGGER EVENT! diff=${diff.toFixed(2)}`);
+            } else if (motion) {
+                console.log(`[SmartCameraView] MOTION DETECTED! diff=${diff.toFixed(2)}`);
+            }
         });
 
         const frameProcessor = useFrameProcessor((frame) => {
             'worklet';
             if (!enableAutoDetection) return;
 
-            // Pseudo-logic for scene detection:
-            // 1. Calculate average brightness/color or use a native plugin.
-            // 2. Diff with previous frame.
-            // 3. If difference > threshold, mark as moving.
-            // 4. If moving stops, trigger onSceneChangedJS().
+            const diff = detectSceneChange(frame);
 
-            // To do this for real, a VisionCamera Frame Processor Plugin (Native) is recommended.
-            // e.g. vision-camera-image-processing or similar.
-            // Because we don't have a C++ plugin installed, this is a placeholder.
+            // Motion threshold: when the average diff exceeds this, we consider the camera to be moving
+            const MOTION_THRESHOLD = 3.5;
+            // Stable threshold: when the average diff stays below this for a certain period, we consider it stable
+            const STABLE_THRESHOLD = 2.0;
+
+            let motionDetected = false;
+            let triggerFired = false;
+
+            // If significant difference is detected, we're moving. Start the stabilization timer.
+            if (diff > MOTION_THRESHOLD) {
+                lastMotionTime.value = Date.now();
+                if (!isStabilizing.value) {
+                    isStabilizing.value = true;
+                    motionDetected = true;
+                }
+            }
+
+            // If we were previously moving, and now we are stable...
+            if (isStabilizing.value && diff < STABLE_THRESHOLD) {
+                // Must be considered stable for at least 600ms before triggering to ensure focus is acquired
+                if (Date.now() - lastMotionTime.value > 600) {
+                    isStabilizing.value = false;
+                    triggerFired = true;
+                    onSceneChangedJS();
+                }
+            }
+
+            if (motionDetected || triggerFired) {
+                logStateJS(diff, motionDetected, isStabilizing.value, triggerFired);
+            }
         }, [enableAutoDetection]);
 
         if (!hasPermission) {

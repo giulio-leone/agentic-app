@@ -35,9 +35,10 @@ class GeminiNanoModule : Module() {
                         val status = statusFuture.get()
                         android.util.Log.d("GeminiNano", "Feature status: $status")
 
-                        // FeatureStatus: 0=UNAVAILABLE, 1=DOWNLOADABLE, 2=AVAILABLE
+                        // FeatureStatus: 0=UNAVAILABLE, 1=DOWNLOADABLE, 2=DOWNLOADING, 3=AVAILABLE
                         when (status) {
-                            2 -> prepareEngine(describer, promise)
+                            3 -> prepareEngine(describer, promise)
+                            2 -> promise.reject("DOWNLOADING", "Model is currently downloading in the background.", null)
                             1 -> downloadAndPrepare(describer, promise)
                             0 -> promise.reject("UNAVAILABLE", "Image Description not available on this device", null)
                             else -> promise.reject("STATUS_ERROR", "Unknown status: $status", null)

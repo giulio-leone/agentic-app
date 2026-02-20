@@ -22,7 +22,7 @@ import Animated, {
     Easing,
 } from 'react-native-reanimated';
 import { v4 as uuidv4 } from 'uuid';
-import { Paths, File as ExpoFile, Directory as ExpoDirectory } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SmartCameraView, type SmartCameraViewHandle } from './camera/SmartCameraView';
 import { ScreenWatcherService, type WatcherStatus } from '../services/ScreenWatcherService';
 import { useAppStore } from '../stores/appStore';
@@ -120,11 +120,15 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                     incrementCapture();
 
                     // Save to temp dir to avoid flooding AsyncStorage
-                    const dir = new ExpoDirectory(Paths.cache, 'screen_watcher');
-                    if (!dir.exists) dir.create();
-                    const file = new ExpoFile(dir, `capture_${captureNumber}.jpg`);
-                    file.write(base64, { encoding: 'base64' });
-                    const filePath = file.uri;
+                    const dirUri = FileSystem.cacheDirectory + 'screen_watcher/';
+                    const dirInfo = await FileSystem.getInfoAsync(dirUri);
+                    if (!dirInfo.exists) {
+                        await FileSystem.makeDirectoryAsync(dirUri, { intermediates: true });
+                    }
+                    const filePath = dirUri + `capture_${captureNumber}.jpg`;
+                    await FileSystem.writeAsStringAsync(filePath, base64, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
 
                     // Build attachment — URI points to temp file, base64 kept only for AI
                     const attachment: Attachment = {

@@ -1,16 +1,16 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml:2:13-83
-INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml:2:13-83
+ADDED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml:2:13-83
+INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml:2:13-83
 	package
-		INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml
+		INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml
 	xmlns:android
-		ADDED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml:2:23-81
+		ADDED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml:2:23-81
 uses-sdk
-INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml reason: use-sdk injection requested
-INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml
-INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml
+INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml reason: use-sdk injection requested
+INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml
+INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml
 	android:targetSdkVersion
-		INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml
+		INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml
 	android:minSdkVersion
-		INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1170649008264976577.xml
+		INJECTED from /Users/giulioleone/Sviluppo/companion/AgmenteRN/modules/gemini-nano/android/build/intermediates/tmp/ProcessLibraryManifest/debug/tempAndroidManifest1181737944250352048.xml
