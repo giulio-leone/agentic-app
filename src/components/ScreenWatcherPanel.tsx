@@ -24,6 +24,7 @@ import Animated, {
 import { v4 as uuidv4 } from 'uuid';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SmartCameraView, type SmartCameraViewHandle } from './camera/SmartCameraView';
+import { MarkdownContent } from './chat/MarkdownContent';
 import { ScreenWatcherService, type WatcherStatus } from '../services/ScreenWatcherService';
 import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
@@ -67,7 +68,14 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
         setWatcherProcessing,
         sendPrompt,
         isStreaming,
+        chatMessages,
     } = useAppStore();
+
+    // Find the latest assistant message
+    const latestAssistantMessage = React.useMemo(() => {
+        const reversed = [...chatMessages].reverse();
+        return reversed.find((m) => m.role === 'assistant');
+    }, [chatMessages]);
 
     // Pulsing animation for status dot
     const pulse = useSharedValue(1);
@@ -295,6 +303,29 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                             </Text>
                         )}
                     </XStack>
+
+                    {/* Latest LLM Response Overlay */}
+                    {latestAssistantMessage && captureCount > 0 && (
+                        <YStack
+                            marginHorizontal={Spacing.lg}
+                            marginBottom={Spacing.md}
+                            padding={Spacing.md}
+                            borderRadius={12}
+                            backgroundColor={dark ? '#1A1A1A' : '#FFFFFF'}
+                            elevation={2}
+                            shadowColor="#000"
+                            shadowOffset={{ width: 0, height: 2 }}
+                            shadowOpacity={0.1}
+                            shadowRadius={4}
+                            borderWidth={1}
+                            borderColor={dark ? '#333' : '#E5E7EB'}
+                        >
+                            <Text fontSize={FontSize.caption} fontWeight="600" color={colors.primary} marginBottom={Spacing.xs}>
+                                ✨ AI Response
+                            </Text>
+                            <MarkdownContent content={latestAssistantMessage.content} colors={colors} />
+                        </YStack>
+                    )}
 
                     {/* Zoom Slider */}
                     <YStack paddingHorizontal={Spacing.xl} gap={Spacing.xs}>
