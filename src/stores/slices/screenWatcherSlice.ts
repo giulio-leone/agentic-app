@@ -14,6 +14,8 @@ export interface ScreenWatcherState {
     isAutoMode: boolean;
     zoomLevel: number;        // 0.0–1.0
     customPrompt: string;
+    isRemoteLLMEnabled: boolean;
+    localAIResponse: string | null;
     isWatcherProcessing: boolean;
     screenWatcherVisible: boolean;
 }
@@ -25,6 +27,8 @@ export interface ScreenWatcherActions {
     setAutoMode: (v: boolean) => void;
     setZoomLevel: (z: number) => void;
     setCustomPrompt: (p: string) => void;
+    setRemoteLLMEnabled: (v: boolean) => void;
+    setLocalAIResponse: (text: string | null) => void;
     setWatcherProcessing: (on: boolean) => void;
     setScreenWatcherVisible: (v: boolean) => void;
 }
@@ -45,6 +49,8 @@ export const createScreenWatcherSlice: StateCreator<
     isAutoMode: false,
     zoomLevel: 0.0,
     customPrompt: 'Analizza la domanda o il contenuto mostrato sullo schermo e fornisci una risposta dettagliata.',
+    isRemoteLLMEnabled: false,
+    localAIResponse: null,
     isWatcherProcessing: false,
     screenWatcherVisible: false,
 
@@ -59,6 +65,8 @@ export const createScreenWatcherSlice: StateCreator<
     setAutoMode: (v) => set({ isAutoMode: v }),
     setZoomLevel: (z) => set({ zoomLevel: Math.max(0, Math.min(1, z)) }),
     setCustomPrompt: (p) => set({ customPrompt: p }),
+    setRemoteLLMEnabled: (v) => set({ isRemoteLLMEnabled: v }),
+    setLocalAIResponse: (text) => set({ localAIResponse: text }),
     setWatcherProcessing: (on) => set({ isWatcherProcessing: on }),
     setScreenWatcherVisible: (v) => set({ screenWatcherVisible: v }),
 });

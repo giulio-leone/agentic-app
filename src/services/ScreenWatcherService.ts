@@ -63,8 +63,9 @@ export class ScreenWatcherService {
         }
 
         this._setStatus('watching');
-        this._pollTimer = setInterval(() => this._tick(), POLL_INTERVAL_MS);
-        console.log(`[SW] Started — Gemini Nano Image Description detection`);
+        // Disable the legacy polling loop since we use Native Pixel Diffing
+        // this._pollTimer = setInterval(() => this._tick(), POLL_INTERVAL_MS);
+        console.log(`[SW] Started — Native Pixel Diffing detection initialized`);
     }
 
     stop(): void {

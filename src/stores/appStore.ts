@@ -61,6 +61,8 @@ export interface AppState {
   isAutoMode: boolean;
   zoomLevel: number;
   customPrompt: string;
+  isRemoteLLMEnabled: boolean;
+  localAIResponse: string | null;
   isWatcherProcessing: boolean;
   screenWatcherVisible: boolean;
 }
@@ -116,6 +118,8 @@ export interface AppActions {
   setAutoMode: (v: boolean) => void;
   setZoomLevel: (z: number) => void;
   setCustomPrompt: (p: string) => void;
+  setRemoteLLMEnabled: (v: boolean) => void;
+  setLocalAIResponse: (text: string | null) => void;
   setWatcherProcessing: (on: boolean) => void;
   setScreenWatcherVisible: (v: boolean) => void;
 

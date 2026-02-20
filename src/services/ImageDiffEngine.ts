@@ -27,17 +27,25 @@ export async function ensureModel(): Promise<void> {
     _initialized = true;
 }
 
+let _isDescribing = false;
+
 /**
  * Describe a screen capture using Gemini Nano.
  * Returns a text description of what's on screen.
  */
 export async function describeFrame(base64: string): Promise<string> {
     if (!_initialized) throw new Error('Call ensureModel() first');
+    if (_isDescribing) throw new Error('ImageDiffEngine is currently busy describing another frame');
 
-    const t0 = Date.now();
-    const desc = await GeminiNano.describeImage(base64);
-    console.log(`[ImageDiff] describe=${Date.now() - t0}ms: "${desc.substring(0, 80)}..."`);
-    return desc;
+    _isDescribing = true;
+    try {
+        const t0 = Date.now();
+        const desc = await GeminiNano.describeImage(base64);
+        console.log(`[ImageDiff] describe=${Date.now() - t0}ms: "${desc.substring(0, 80)}..."`);
+        return desc;
+    } finally {
+        _isDescribing = false;
+    }
 }
 
 /**
