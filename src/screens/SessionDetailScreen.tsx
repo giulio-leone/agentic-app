@@ -10,17 +10,22 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Animated,
+  TextInput,
+  StyleSheet,
 } from 'react-native';
-import { YStack, Text } from 'tamagui';
+import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { useAppStore } from '../stores/appStore';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
 import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
-import { ChatMessage, ACPConnectionState, Attachment, ServerType } from '../acp/models/types';
+import { MessageActionMenu } from '../components/chat/MessageActionMenu';
+import { CanvasPanel } from '../components/canvas/CanvasPanel';
+import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
-import { FontSize, Spacing } from '../utils/theme';
+import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 
@@ -50,6 +55,9 @@ export function SessionDetailScreen() {
     sendPrompt,
     cancelPrompt,
     setPromptText,
+    editMessage,
+    deleteMessage,
+    regenerateMessage,
   } = useAppStore();
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -133,16 +141,132 @@ export function SessionDetailScreen() {
     sendPrompt(text, attachments);
   }, [promptText, sendPrompt]);
 
-  // Render message — pass only handleSpeak callback; ChatBubble reads speaking state itself
+  // ── Message CRUD state ──
+  const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+
+  // ── Canvas state ──
+  const [canvasArtifact, setCanvasArtifact] = useState<Artifact | null>(null);
+
+  const handleOpenArtifact = useCallback((artifact: Artifact) => {
+    setCanvasArtifact(artifact);
+  }, []);
+
+  const handleLongPress = useCallback((message: ChatMessage) => {
+    if (isStreaming) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setActionMenuMessage(message);
+  }, [isStreaming]);
+
+  const handleCopy = useCallback(() => {
+    if (actionMenuMessage) {
+      Clipboard.setStringAsync(actionMenuMessage.content);
+    }
+  }, [actionMenuMessage]);
+
+  const handleDelete = useCallback(() => {
+    if (actionMenuMessage) {
+      deleteMessage(actionMenuMessage.id);
+    }
+  }, [actionMenuMessage, deleteMessage]);
+
+  const handleRegenerate = useCallback(() => {
+    if (actionMenuMessage) {
+      regenerateMessage(actionMenuMessage.id);
+    }
+  }, [actionMenuMessage, regenerateMessage]);
+
+  const handleEditStart = useCallback(() => {
+    if (actionMenuMessage) {
+      setEditingMessageId(actionMenuMessage.id);
+      setEditText(actionMenuMessage.content);
+    }
+  }, [actionMenuMessage]);
+
+  const handleEditSubmit = useCallback(() => {
+    if (editingMessageId && editText.trim()) {
+      editMessage(editingMessageId, editText.trim());
+    }
+    setEditingMessageId(null);
+    setEditText('');
+  }, [editingMessageId, editText, editMessage]);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingMessageId(null);
+    setEditText('');
+  }, []);
+
+  // Render message — pass handleSpeak and handleLongPress callbacks
   const renderMessage = useCallback(
-    ({ item }: { item: ChatMessage }) => (
-      <ChatBubble
-        message={item}
-        onSpeak={(text) => handleSpeak(text, item.id)}
-        isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
-      />
-    ),
-    [handleSpeak],
+    ({ item }: { item: ChatMessage }) => {
+      // Inline edit mode for user or assistant messages
+      if (editingMessageId === item.id) {
+        const isUserEdit = item.role === 'user';
+        return (
+          <YStack
+            paddingHorizontal={Spacing.lg}
+            paddingVertical={Spacing.md}
+            backgroundColor={isUserEdit ? colors.userBubble : colors.surface}
+          >
+            <XStack maxWidth={768} alignSelf="center" width="100%" gap={Spacing.sm}>
+              <YStack flex={1} paddingLeft={isUserEdit ? 40 : 0}>
+                <TextInput
+                  style={[
+                    inlineEditStyles.input,
+                    {
+                      color: colors.text,
+                      borderColor: colors.primary,
+                      backgroundColor: colors.inputBackground,
+                      minHeight: isUserEdit ? 40 : 100,
+                    },
+                  ]}
+                  value={editText}
+                  onChangeText={setEditText}
+                  multiline
+                  autoFocus
+                  returnKeyType="done"
+                  blurOnSubmit
+                  onSubmitEditing={handleEditSubmit}
+                />
+                <XStack gap={Spacing.sm} marginTop={Spacing.sm} justifyContent="flex-end">
+                  <Text
+                    fontSize={FontSize.footnote}
+                    color={colors.textTertiary}
+                    onPress={handleEditCancel}
+                    paddingHorizontal={Spacing.sm}
+                    paddingVertical={Spacing.xs}
+                  >
+                    Cancel
+                  </Text>
+                  <Text
+                    fontSize={FontSize.footnote}
+                    fontWeight="600"
+                    color={colors.primary}
+                    onPress={handleEditSubmit}
+                    paddingHorizontal={Spacing.sm}
+                    paddingVertical={Spacing.xs}
+                  >
+                    {isUserEdit ? 'Send' : 'Save'}
+                  </Text>
+                </XStack>
+              </YStack>
+            </XStack>
+          </YStack>
+        );
+      }
+
+      return (
+        <ChatBubble
+          message={item}
+          onSpeak={(text) => handleSpeak(text, item.id)}
+          isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
+          onLongPress={handleLongPress}
+          onOpenArtifact={handleOpenArtifact}
+        />
+      );
+    },
+    [handleSpeak, handleLongPress, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact],
   );
 
   // Pulsing animation for empty state — properly managed with start/stop
@@ -255,6 +379,36 @@ export function SessionDetailScreen() {
         isListening={isListening}
         onToggleVoice={voiceAvailable ? toggleVoice : undefined}
       />
+
+      <MessageActionMenu
+        visible={!!actionMenuMessage}
+        message={actionMenuMessage}
+        onClose={() => setActionMenuMessage(null)}
+        onEdit={handleEditStart}
+        onCopy={handleCopy}
+        onDelete={handleDelete}
+        onRegenerate={handleRegenerate}
+      />
+
+      <CanvasPanel
+        visible={!!canvasArtifact}
+        artifact={canvasArtifact}
+        onClose={() => setCanvasArtifact(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
+
+const inlineEditStyles = StyleSheet.create({
+  input: {
+    fontSize: FontSize.body,
+    lineHeight: 24,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    minHeight: 44,
+    maxHeight: 160,
+    textAlignVertical: 'top',
+  },
+});

@@ -1,18 +1,23 @@
 import { StateCreator } from 'zustand';
 import type { AppState, AppActions } from '../appStore';
 
-export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs'>
-  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs'>;
+export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled'>
+  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode'>;
 
 export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], SettingsSlice> = (set, get) => ({
   // State
   devModeEnabled: false,
   developerLogs: [],
+  agentModeEnabled: false,
 
   // Actions
 
   toggleDevMode: () => {
     set(s => ({ devModeEnabled: !s.devModeEnabled }));
+  },
+
+  toggleAgentMode: () => {
+    set(s => ({ agentModeEnabled: !s.agentModeEnabled }));
   },
 
   appendLog: (log) => {

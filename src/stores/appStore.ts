@@ -19,6 +19,8 @@ import { createSessionSlice } from './slices/sessionSlice';
 import { createChatSlice } from './slices/chatSlice';
 import { createMCPSlice } from './slices/mcpSlice';
 import { createSettingsSlice } from './slices/settingsSlice';
+import { createScreenWatcherSlice } from './slices/screenWatcherSlice';
+import type { WatcherStatus } from '../services/ScreenWatcherService';
 
 // ─── Store State ───
 
@@ -49,6 +51,18 @@ export interface AppState {
   // Settings
   devModeEnabled: boolean;
   developerLogs: string[];
+  agentModeEnabled: boolean;
+
+  // Screen Watcher
+  isWatching: boolean;
+  watcherStatus: WatcherStatus;
+  captureCount: number;
+  lastCaptureUri: string | null;
+  isAutoMode: boolean;
+  zoomLevel: number;
+  customPrompt: string;
+  isWatcherProcessing: boolean;
+  screenWatcherVisible: boolean;
 }
 
 // ─── Store Actions ───
@@ -77,6 +91,9 @@ export interface AppActions {
   sendPrompt: (text: string, attachments?: import('../acp/models/types').Attachment[]) => Promise<void>;
   cancelPrompt: () => Promise<void>;
   setPromptText: (text: string) => void;
+  editMessage: (id: string, newContent: string) => Promise<void>;
+  deleteMessage: (id: string) => void;
+  regenerateMessage: (id: string) => Promise<void>;
 
   // MCP Servers
   loadMCPServers: () => Promise<void>;
@@ -88,8 +105,19 @@ export interface AppActions {
 
   // Settings
   toggleDevMode: () => void;
+  toggleAgentMode: () => void;
   appendLog: (log: string) => void;
   clearLogs: () => void;
+
+  // Screen Watcher
+  setWatching: (on: boolean) => void;
+  setWatcherStatus: (status: WatcherStatus) => void;
+  incrementCapture: (uri?: string) => void;
+  setAutoMode: (v: boolean) => void;
+  setZoomLevel: (z: number) => void;
+  setCustomPrompt: (p: string) => void;
+  setWatcherProcessing: (on: boolean) => void;
+  setScreenWatcherVisible: (v: boolean) => void;
 
   // Internal
   _getService: () => ACPService | null;
@@ -103,4 +131,5 @@ export const useAppStore = create<AppState & AppActions>((...a) => ({
   ...createChatSlice(...a),
   ...createMCPSlice(...a),
   ...createSettingsSlice(...a),
+  ...createScreenWatcherSlice(...a),
 }));

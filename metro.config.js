@@ -9,6 +9,9 @@ const config = getDefaultConfig(__dirname, {
 // Ensure mjs is resolved
 config.resolver.sourceExts.push('mjs');
 
+// Allow bundling .tflite model files as assets
+config.resolver.assetExts.push('tflite');
+
 // Prioritize react-native condition exports (e.g. onecrawl native entry)
 config.resolver.unstable_conditionNames = [
   'react-native',
@@ -28,6 +31,7 @@ const NODE_SHIMS = {
   'http': nodePath.resolve(__dirname, 'shims/http.js'),
   'https': nodePath.resolve(__dirname, 'shims/https.js'),
   'http2': nodePath.resolve(__dirname, 'shims/http2.js'),
+  'punycode': require.resolve('punycode/'),
 };
 
 const originalResolveRequest = config.resolver.resolveRequest;

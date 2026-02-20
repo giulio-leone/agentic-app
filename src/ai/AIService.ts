@@ -225,6 +225,7 @@ export function streamChat(
   onToolCall?: (toolName: string, args: string) => void,
   onToolResult?: (toolName: string, result: string) => void,
   onAgentEvent?: (event: AgentEvent) => void,
+  forceAgentMode?: boolean,
 ): AbortController {
   const controller = new AbortController();
 
@@ -241,7 +242,7 @@ export function streamChat(
       const hasTools = Object.keys(externalTools).length > 0;
 
       // Build system prompt
-      const systemPrompt = buildSystemPrompt(config, externalTools);
+      const systemPrompt = buildSystemPrompt(config, externalTools, forceAgentMode);
 
       // Create DeepAgent with all capabilities
       const builder = DeepAgent.create({
@@ -334,6 +335,7 @@ export function streamChat(
 function buildSystemPrompt(
   config: AIProviderConfig,
   tools: Record<string, unknown>,
+  forceAgentMode?: boolean,
 ): string {
   const toolNames = Object.keys(tools);
   const hasSearchTools = 'web_search' in tools;
@@ -380,6 +382,36 @@ function buildSystemPrompt(
   } else {
     // Custom prompt: prepend date/time
     systemPrompt = `Current date and time: ${dateStr}, ${timeStr} (${timezone}).\n\n${systemPrompt}`;
+  }
+
+  // Force agent mode: prepend mandatory planning instructions
+  if (forceAgentMode) {
+    systemPrompt += `\n\n## 🤖 AGENTIC MODE (ACTIVE)
+You MUST follow this structured approach for EVERY response:
+
+### Output Format
+1. **📋 Plan** — Start EVERY response with a visible plan section:
+   \`\`\`
+   ## 📋 Plan
+   - [ ] Step 1: description
+   - [ ] Step 2: description
+   ...
+   \`\`\`
+2. **⚡ Execution** — For each step, show your work under a header:
+   \`\`\`
+   ### Step 1: description
+   [your work here]
+   ✅ Done
+   \`\`\`
+3. **📊 Summary** — End with a summary of what was accomplished and updated checklist with [x] for completed items.
+
+### Rules
+- ALWAYS show the plan as a markdown checklist (- [ ] / - [x]) so the user can see progress.
+- For multi-step tasks, update the checklist as you complete each step.
+- Use sub-headings (###) for each step.
+- If using tools, explain what you're doing before and after each tool call.
+- NEVER skip the plan. Even for simple questions, show at least: Plan → Execute → Summary.
+- Think step-by-step and show your reasoning.`;
   }
 
   return systemPrompt;

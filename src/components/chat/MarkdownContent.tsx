@@ -21,9 +21,10 @@ interface Props {
   content: string;
   colors: ThemeColors;
   artifacts?: Artifact[];
+  onOpenArtifact?: (artifact: Artifact) => void;
 }
 
-export const MarkdownContent = React.memo(function MarkdownContent({ content, colors, artifacts }: Props) {
+export const MarkdownContent = React.memo(function MarkdownContent({ content, colors, artifacts, onOpenArtifact }: Props) {
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]) as any;
 
   // Extract image URLs from markdown ![alt](url) patterns
@@ -52,7 +53,7 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
     return (
       <>
         <Markdown style={mdStyles} rules={codeBlockRules}>{content}</Markdown>
-        {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} />}
+        {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} onOpenArtifact={onOpenArtifact} />}
       </>
     );
   }
@@ -68,7 +69,7 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
         }
         return null;
       })}
-      {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} />}
+      {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} onOpenArtifact={onOpenArtifact} />}
     </>
   );
 });

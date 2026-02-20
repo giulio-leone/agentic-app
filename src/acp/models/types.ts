@@ -96,7 +96,7 @@ export interface Artifact {
 
 export type MessageSegment =
   | { type: 'text'; content: string }
-  | { type: 'toolCall'; toolName: string; input: string; result?: string; isComplete: boolean }
+  | { type: 'toolCall'; toolName: string; input: string; result?: string; isComplete: boolean; callCount?: number; completedCount?: number }
   | { type: 'thought'; content: string }
   | { type: 'image'; url: string; alt?: string }
   | { type: 'artifact'; artifactId: string }

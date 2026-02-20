@@ -1,5 +1,5 @@
 /**
- * ArtifactDisplay — Collapsible artifact cards.
+ * ArtifactDisplay — Collapsible artifact cards with "Open" action.
  */
 
 import React, { useState } from 'react';
@@ -22,9 +22,11 @@ const ARTIFACT_ICONS: Record<ArtifactType, string> = {
 export const ArtifactCard = React.memo(function ArtifactCard({
   artifact,
   colors,
+  onOpen,
 }: {
   artifact: Artifact;
   colors: ThemeColors;
+  onOpen?: (artifact: Artifact) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -42,6 +44,20 @@ export const ArtifactCard = React.memo(function ArtifactCard({
             <Text fontSize={FontSize.caption} textTransform="uppercase" letterSpacing={0.5} marginTop={2} color={colors.textTertiary}>{artifact.language}</Text>
           )}
         </YStack>
+        {onOpen && (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onOpen(artifact);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ paddingHorizontal: 6, paddingVertical: 2 }}
+          >
+            <Text fontSize={FontSize.caption} color={colors.primary} fontWeight="600">
+              Open ↗
+            </Text>
+          </TouchableOpacity>
+        )}
         <Text fontSize={14} fontWeight="600" paddingLeft={4} color={colors.textTertiary}>
           {expanded ? '▾' : '▸'}
         </Text>
@@ -57,11 +73,19 @@ export const ArtifactCard = React.memo(function ArtifactCard({
   );
 });
 
-export function ArtifactList({ artifacts, colors }: { artifacts: Artifact[]; colors: ThemeColors }) {
+export function ArtifactList({
+  artifacts,
+  colors,
+  onOpenArtifact,
+}: {
+  artifacts: Artifact[];
+  colors: ThemeColors;
+  onOpenArtifact?: (artifact: Artifact) => void;
+}) {
   return (
     <YStack gap={8} marginTop={8}>
       {artifacts.map(art => (
-        <ArtifactCard key={art.id} artifact={art} colors={colors} />
+        <ArtifactCard key={art.id} artifact={art} colors={colors} onOpen={onOpenArtifact} />
       ))}
     </YStack>
   );

@@ -40,6 +40,12 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   loadServers: async () => {
     const servers = await SessionStorage.fetchServers();
     set({ servers });
+
+    // Auto-select the first server if none is selected
+    const state = get();
+    if (!state.selectedServerId && servers.length > 0) {
+      get().selectServer(servers[0]!.id);
+    }
   },
 
   addServer: async (serverData) => {
@@ -83,7 +89,16 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
   selectServer: (id) => {
     const state = get();
-    if (state.selectedServerId === id) return;
+    const server = id ? state.servers.find(s => s.id === id) : undefined;
+
+    // If same server is already selected, just ensure it's connected
+    if (state.selectedServerId === id) {
+      if (server?.serverType === ServerType.AIProvider && !state.isInitialized) {
+        get().connect();
+      }
+      return;
+    }
+
     _service?.disconnect();
     setService(null);
     _aiAbortController?.abort();
@@ -102,7 +117,6 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       isStreaming: false,
     });
     if (id) {
-      const server = state.servers.find(s => s.id === id);
       if (server?.serverType === ServerType.AIProvider) {
         get().connect();
       }

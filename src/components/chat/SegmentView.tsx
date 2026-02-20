@@ -31,7 +31,10 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
         <Markdown style={mdStyles as any} rules={codeBlockRules}>{segment.content}</Markdown>
       );
 
-    case 'toolCall':
+    case 'toolCall': {
+      const total = segment.callCount ?? 1;
+      const completed = segment.completedCount ?? (segment.isComplete ? total : 0);
+      const showCount = total > 1;
       return (
         <TouchableOpacity
           style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, marginVertical: 4, borderColor: colors.separator }}
@@ -43,9 +46,18 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
               {segment.isComplete ? '🔧' : '⏳'}
             </Text>
             <YStack flex={1}>
-              <Text fontWeight="600" fontSize={FontSize.footnote} fontFamily="monospace" color={colors.textSecondary}>{segment.toolName}</Text>
+              <XStack alignItems="center" gap={6}>
+                <Text fontWeight="600" fontSize={FontSize.footnote} fontFamily="monospace" color={colors.textSecondary}>{segment.toolName}</Text>
+                {showCount && (
+                  <Text fontSize={11} fontWeight="600" paddingHorizontal={6} paddingVertical={1} borderRadius={8} backgroundColor={colors.separator} color={colors.textSecondary}>
+                    ×{total}
+                  </Text>
+                )}
+              </XStack>
               <Text fontSize={11} color={colors.textTertiary}>
-                {segment.isComplete ? 'Completed' : 'Running…'}
+                {segment.isComplete
+                  ? (showCount ? `${completed}/${total} completed` : 'Completed')
+                  : (showCount ? `${completed}/${total} completed` : 'Running…')}
               </Text>
             </YStack>
             {!segment.isComplete && <ActivityIndicator size="small" color={colors.primary} />}
@@ -56,13 +68,13 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
           </XStack>
           {expanded && (
             <YStack marginTop={8} gap={4}>
-              <Text fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} color={colors.textTertiary}>Input:</Text>
+              <Text fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} color={colors.textTertiary}>Latest Input:</Text>
               <Text fontFamily="monospace" fontSize={FontSize.caption} padding={Spacing.sm} borderRadius={4} maxHeight={200} overflow="hidden" color={colors.codeText} backgroundColor={colors.codeBackground} selectable>
                 {segment.input}
               </Text>
               {segment.result && (
                 <>
-                  <Text fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} color={colors.textTertiary}>Result:</Text>
+                  <Text fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} color={colors.textTertiary}>Latest Result:</Text>
                   <Text fontFamily="monospace" fontSize={FontSize.caption} padding={Spacing.sm} borderRadius={4} maxHeight={200} overflow="hidden" color={colors.codeText} backgroundColor={colors.codeBackground} selectable>
                     {segment.result.substring(0, 1000)}
                     {segment.result.length > 1000 ? '…' : ''}
@@ -73,6 +85,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
           )}
         </TouchableOpacity>
       );
+    }
 
     case 'thought':
       return (

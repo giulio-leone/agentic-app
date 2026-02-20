@@ -10,6 +10,7 @@ import {
   Animated,
   Image,
   Dimensions,
+  Pressable,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChatMessage, Attachment } from '../acp/models/types';
@@ -25,6 +26,8 @@ interface Props {
   message: ChatMessage;
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
+  onLongPress?: (message: ChatMessage) => void;
+  onOpenArtifact?: (artifact: import('../acp/models/types').Artifact) => void;
 }
 
 const containerStyle = {
@@ -36,7 +39,7 @@ const systemContainerStyle = {
   paddingVertical: Spacing.xs,
 } as const;
 
-export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking }: Props) {
+export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact }: Props) {
   const { ds, colors } = useDesignSystem();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -57,6 +60,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
   }, []);
 
   return (
+    <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={400}>
     <Animated.View
       style={[
         containerStyle,
@@ -100,7 +104,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                 <SegmentView key={i} segment={seg} colors={colors} isUser={isUser} mdStyles={mdStyles} />
               ))}
               {message.content ? (
-                <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} />
+                <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
               ) : null}
             </>
           ) : isUser ? (
@@ -112,7 +116,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
               {message.content}
             </Text>
           ) : (
-            <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} />
+            <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
           )}
 
           {/* Streaming indicator */}
@@ -141,6 +145,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         </YStack>
       </XStack>
     </Animated.View>
+    </Pressable>
   );
 });
 

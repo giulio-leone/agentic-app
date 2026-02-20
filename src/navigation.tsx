@@ -19,6 +19,7 @@ import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
 import { useAppStore } from './stores/appStore';
 import { ConnectionBadge } from './components/ConnectionBadge';
+import { ScreenWatcherPanel } from './components/ScreenWatcherPanel';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -63,61 +64,85 @@ function GlassHeader({ children, tint }: { children: React.ReactNode; tint: 'lig
 function DrawerNavigator() {
   const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
-  const { createSession, isInitialized } = useAppStore();
+  const { createSession, isInitialized, agentModeEnabled, toggleAgentMode } = useAppStore();
+  const { screenWatcherVisible, setScreenWatcherVisible, isWatching } = useAppStore();
 
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => <DrawerContent {...props} />}
-      screenOptions={{
-        drawerType: width >= 768 ? 'permanent' : 'slide',
-        drawerStyle: {
-          width: Math.min(300, width * 0.78),
-          backgroundColor: colors.sidebarBackground,
-        },
-        overlayColor: 'rgba(0,0,0,0.5)',
-        headerStyle: { backgroundColor: dark ? 'rgba(33,33,33,0.85)' : 'rgba(255,255,255,0.85)' },
-        headerTintColor: colors.text,
-        headerShadowVisible: false,
-        headerTitleStyle: { fontWeight: '500', fontSize: FontSize.subheadline },
-        sceneStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Drawer.Screen
-        name="Chat"
-        component={SessionDetailScreen}
-        options={({ navigation }) => ({
-          headerTitle: () => <HeaderTitle />,
-          headerTransparent: Platform.OS === 'ios',
-          headerBackground: Platform.OS === 'ios'
-            ? () => (
+    <>
+      <Drawer.Navigator
+        drawerContent={(props) => <DrawerContent {...props} />}
+        screenOptions={{
+          drawerType: width >= 768 ? 'permanent' : 'slide',
+          drawerStyle: {
+            width: Math.min(300, width * 0.78),
+            backgroundColor: colors.sidebarBackground,
+          },
+          overlayColor: 'rgba(0,0,0,0.5)',
+          headerStyle: { backgroundColor: dark ? 'rgba(33,33,33,0.85)' : 'rgba(255,255,255,0.85)' },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '500', fontSize: FontSize.subheadline },
+          sceneStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Drawer.Screen
+          name="Chat"
+          component={SessionDetailScreen}
+          options={({ navigation }) => ({
+            headerTitle: () => <HeaderTitle />,
+            headerTransparent: Platform.OS === 'ios',
+            headerBackground: Platform.OS === 'ios'
+              ? () => (
                 <BlurView
                   intensity={80}
                   tint={dark ? 'dark' : 'light'}
                   style={StyleSheet.absoluteFill}
                 />
               )
-            : undefined,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-              style={{ paddingHorizontal: Spacing.md }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text fontSize={20} color="$color">☰</Text>
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => { if (isInitialized) createSession(); }}
-              style={{ paddingHorizontal: Spacing.md }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text fontSize={20} color="$color" opacity={isInitialized ? 1 : 0.3}>✎</Text>
-            </TouchableOpacity>
-          ),
-        })}
-      />
-    </Drawer.Navigator>
+              : undefined,
+            headerLeft: () => (
+              <TouchableOpacity
+                onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+                style={{ paddingHorizontal: Spacing.md }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text fontSize={20} color="$color">☰</Text>
+              </TouchableOpacity>
+            ),
+            headerRight: () => (
+              <XStack alignItems="center" gap={Spacing.xs}>
+                <TouchableOpacity
+                  onPress={() => setScreenWatcherVisible(true)}
+                  style={{ paddingHorizontal: Spacing.xs }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text fontSize={18} color={isWatching ? '#EF4444' : '$color'} opacity={isWatching ? 1 : 0.5}>
+                    👁
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={toggleAgentMode}
+                  style={{ paddingHorizontal: Spacing.xs }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text fontSize={18} color={agentModeEnabled ? colors.primary : '$color'} opacity={agentModeEnabled ? 1 : 0.5}>
+                    🤖
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { if (isInitialized) createSession(); }}
+                  style={{ paddingHorizontal: Spacing.md }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text fontSize={20} color="$color" opacity={isInitialized ? 1 : 0.3}>✎</Text>
+                </TouchableOpacity>
+              </XStack>
+            ),
+          })}
+        />
+      </Drawer.Navigator>
+      <ScreenWatcherPanel />
+    </>
   );
 }
 

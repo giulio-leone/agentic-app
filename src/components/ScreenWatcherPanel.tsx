@@ -1,0 +1,471 @@
+/**
+ * ScreenWatcherPanel — Full-screen modal UI for the screen-watcher feature.
+ * Shows camera preview (with zoom), controls (start/stop), status indicator,
+ * zoom slider, and wires everything to ScreenWatcherService + Zustand store.
+ */
+
+import React, { useRef, useCallback, useEffect, useState } from 'react';
+import {
+    Modal,
+    StyleSheet,
+    TouchableOpacity,
+    Platform,
+    TextInput,
+    useWindowDimensions,
+} from 'react-native';
+import { YStack, XStack, Text, ScrollView } from 'tamagui';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withTiming,
+    Easing,
+} from 'react-native-reanimated';
+import { v4 as uuidv4 } from 'uuid';
+import { Paths, File as ExpoFile, Directory as ExpoDirectory } from 'expo-file-system';
+import { SmartCameraView, type SmartCameraViewHandle } from './camera/SmartCameraView';
+import { ScreenWatcherService, type WatcherStatus } from '../services/ScreenWatcherService';
+import { useAppStore } from '../stores/appStore';
+import { useDesignSystem } from '../utils/designSystem';
+import { FontSize, Spacing, Radius } from '../utils/theme';
+import type { Attachment } from '../acp/models/types';
+
+// Single service instance
+const service = new ScreenWatcherService();
+
+const STATUS_LABELS: Record<WatcherStatus, { icon: string; label: string; color: string }> = {
+    idle: { icon: '⏸', label: 'Ready', color: '#6B7280' },
+    loading_model: { icon: '🧠', label: 'Loading AI...', color: '#8B5CF6' },
+    watching: { icon: '👁', label: 'Watching...', color: '#10A37F' },
+    change_detected: { icon: '⚡', label: 'Change detected!', color: '#F59E0B' },
+    stabilizing: { icon: '📸', label: 'Capturing...', color: '#3B82F6' },
+    processing: { icon: '🧠', label: 'Processing...', color: '#8B5CF6' },
+};
+
+export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
+    const { colors, dark } = useDesignSystem();
+    const { width, height } = useWindowDimensions();
+    const cameraRef = useRef<SmartCameraViewHandle>(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const [flashVisible, setFlashVisible] = useState(false);
+
+    const {
+        screenWatcherVisible,
+        setScreenWatcherVisible,
+        isWatching,
+        setWatching,
+        watcherStatus,
+        setWatcherStatus,
+        captureCount,
+        incrementCapture,
+        isAutoMode,
+        setAutoMode,
+        zoomLevel,
+        setZoomLevel,
+        customPrompt,
+        setCustomPrompt,
+        setWatcherProcessing,
+        sendPrompt,
+        isStreaming,
+    } = useAppStore();
+
+    // Pulsing animation for status dot
+    const pulse = useSharedValue(1);
+    useEffect(() => {
+        if (isWatching) {
+            pulse.value = withRepeat(
+                withTiming(1.4, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+                -1,
+                true,
+            );
+        } else {
+            pulse.value = 1;
+        }
+    }, [isWatching, pulse]);
+
+    const pulseStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pulse.value }],
+    }));
+
+    // Flash effect on capture
+    const triggerFlash = useCallback(() => {
+        setFlashVisible(true);
+        setTimeout(() => setFlashVisible(false), 150);
+    }, []);
+
+    // When LLM finishes streaming, tell the service to resume polling
+    const prevStreaming = useRef(isStreaming);
+    useEffect(() => {
+        if (prevStreaming.current && !isStreaming && watcherStatus === 'processing') {
+            service.processingComplete();
+        }
+        prevStreaming.current = isStreaming;
+    }, [isStreaming, watcherStatus]);
+
+    // Start/Stop handler
+    const handleToggle = useCallback(async () => {
+        if (isWatching) {
+            service.stop();
+            setWatching(false);
+            setWatcherStatus('idle');
+        } else {
+            setWatching(true);
+            await service.start({
+                captureFrame: async () => {
+                    const result = await cameraRef.current?.captureFrame();
+                    return result ?? null;
+                },
+                onScreenChanged: async (base64, captureNumber) => {
+                    triggerFlash();
+                    incrementCapture();
+
+                    // Save to temp dir to avoid flooding AsyncStorage
+                    const dir = new ExpoDirectory(Paths.cache, 'screen_watcher');
+                    if (!dir.exists) dir.create();
+                    const file = new ExpoFile(dir, `capture_${captureNumber}.jpg`);
+                    file.write(base64, { encoding: 'base64' });
+                    const filePath = file.uri;
+
+                    // Build attachment — URI points to temp file, base64 kept only for AI
+                    const attachment: Attachment = {
+                        id: uuidv4(),
+                        name: `screen_capture_${captureNumber}.jpg`,
+                        mediaType: 'image/jpeg',
+                        uri: filePath,
+                        base64,
+                    };
+
+                    const prompt = useAppStore.getState().customPrompt;
+                    sendPrompt(
+                        `[Screen Capture #${captureNumber}] ${prompt}`,
+                        [attachment],
+                    );
+                },
+                onStatusChange: (status) => {
+                    setWatcherStatus(status);
+                    if (status === 'processing') {
+                        setWatcherProcessing(true);
+                    } else if (status === 'watching') {
+                        setWatcherProcessing(false);
+                    }
+                },
+            });
+        }
+    }, [isWatching, setWatching, setWatcherStatus, incrementCapture, sendPrompt, setWatcherProcessing, triggerFlash]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (service.status !== 'idle') {
+                service.stop();
+            }
+        };
+    }, []);
+
+    const handleClose = useCallback(() => {
+        if (isWatching) {
+            service.stop();
+            setWatching(false);
+            setWatcherStatus('idle');
+        }
+        setScreenWatcherVisible(false);
+    }, [isWatching, setWatching, setWatcherStatus, setScreenWatcherVisible]);
+
+    const statusInfo = STATUS_LABELS[watcherStatus];
+    const cameraH = Math.round(height * 0.45);
+    const cameraW = Math.round(width - 32);
+
+    return (
+        <Modal
+            visible={screenWatcherVisible}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            statusBarTranslucent
+            onRequestClose={handleClose}
+        >
+            <YStack flex={1} backgroundColor={dark ? '#0F0F0F' : '#F5F5F5'}>
+                {/* Header */}
+                <XStack
+                    paddingHorizontal={Spacing.lg}
+                    paddingTop={Platform.OS === 'ios' ? 56 : Spacing.lg}
+                    paddingBottom={Spacing.md}
+                    alignItems="center"
+                    justifyContent="space-between"
+                    backgroundColor={dark ? '#1A1A1A' : '#FFFFFF'}
+                >
+                    <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text fontSize={FontSize.body} color={colors.primary} fontWeight="600">
+                            ✕ Close
+                        </Text>
+                    </TouchableOpacity>
+                    <Text fontSize={FontSize.headline} fontWeight="700" color={colors.text}>
+                        Screen Watcher
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => setShowSettings(!showSettings)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <Text fontSize={20}>⚙️</Text>
+                    </TouchableOpacity>
+                </XStack>
+
+                <ScrollView flex={1} contentContainerStyle={{ paddingBottom: 40 }}>
+                    {/* Camera Preview */}
+                    <YStack paddingHorizontal={Spacing.lg} paddingTop={Spacing.md}>
+                        <YStack borderRadius={20} overflow="hidden" elevation={8}>
+                            <SmartCameraView
+                                ref={cameraRef}
+                                zoom={zoomLevel}
+                                size={{ width: cameraW, height: cameraH }}
+                                showFlash={flashVisible}
+                                enableAutoDetection={isWatching}
+                                onSceneChanged={async () => {
+                                    // Only auto-capture if auto mode is enabled
+                                    if (isAutoMode && isWatching && watcherStatus !== 'processing') {
+                                        console.log('Scene changed detected by SmartCameraView (Auto Mode)');
+                                        const result = await cameraRef.current?.captureFrame();
+                                        if (result) {
+                                            triggerFlash();
+                                            incrementCapture();
+                                            const attachment = {
+                                                id: uuidv4(),
+                                                name: `auto_capture.jpg`,
+                                                mediaType: 'image/jpeg',
+                                                uri: result.uri,
+                                                base64: result.base64,
+                                            };
+                                            const prompt = useAppStore.getState().customPrompt;
+                                            sendPrompt(`[Auto Scene Change Capture] ${prompt}`, [attachment]);
+                                        }
+                                    }
+                                }}
+                                onShutterPressed={async () => {
+                                    if (isWatching && watcherStatus !== 'processing') {
+                                        console.log('Bluetooth remote shutter pressed');
+                                        // We can perform an instant capture and send to LLM
+                                        const result = await cameraRef.current?.captureFrame();
+                                        if (result) {
+                                            // Trigger flash & send
+                                            triggerFlash();
+                                            incrementCapture();
+                                            const attachment = {
+                                                id: uuidv4(),
+                                                name: `manual_capture.jpg`,
+                                                mediaType: 'image/jpeg',
+                                                uri: result.uri,
+                                                base64: result.base64,
+                                            };
+                                            const prompt = useAppStore.getState().customPrompt;
+                                            sendPrompt(`[Manual Bluetooth Capture] ${prompt}`, [attachment]);
+                                        }
+                                    }
+                                }}
+                            />
+                        </YStack>
+                    </YStack>
+
+                    {/* Status Badge */}
+                    <XStack
+                        justifyContent="center"
+                        alignItems="center"
+                        gap={Spacing.sm}
+                        paddingVertical={Spacing.md}
+                    >
+                        <Animated.View
+                            style={[
+                                pulseStyle,
+                                {
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: 6,
+                                    backgroundColor: statusInfo.color,
+                                },
+                            ]}
+                        />
+                        <Text fontSize={FontSize.body} fontWeight="600" color={statusInfo.color}>
+                            {statusInfo.icon} {statusInfo.label}
+                        </Text>
+                        {captureCount > 0 && (
+                            <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
+                                ({captureCount} captures)
+                            </Text>
+                        )}
+                    </XStack>
+
+                    {/* Zoom Slider */}
+                    <YStack paddingHorizontal={Spacing.xl} gap={Spacing.xs}>
+                        <XStack justifyContent="space-between" alignItems="center">
+                            <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.textSecondary}>
+                                🔍 Zoom
+                            </Text>
+                            <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
+                                {Math.round(zoomLevel * 100)}%
+                            </Text>
+                        </XStack>
+                        <XStack gap={Spacing.sm} alignItems="center">
+                            <Text fontSize={FontSize.caption} color={colors.textTertiary}>0%</Text>
+                            <YStack flex={1} height={40} justifyContent="center">
+                                <TouchableOpacity
+                                    activeOpacity={1}
+                                    style={styles.sliderTrack}
+                                    onPress={() => { }}
+                                >
+                                    <YStack
+                                        height={6}
+                                        borderRadius={3}
+                                        backgroundColor={dark ? '#333' : '#E5E7EB'}
+                                        overflow="hidden"
+                                    >
+                                        <YStack
+                                            height={6}
+                                            width={`${zoomLevel * 100}%`}
+                                            backgroundColor={colors.primary}
+                                            borderRadius={3}
+                                        />
+                                    </YStack>
+                                </TouchableOpacity>
+                            </YStack>
+                            <Text fontSize={FontSize.caption} color={colors.textTertiary}>100%</Text>
+                        </XStack>
+                        {/* Zoom buttons */}
+                        <XStack justifyContent="center" gap={Spacing.md}>
+                            {[0, 0.15, 0.3, 0.5, 0.7, 1.0].map((z) => (
+                                <TouchableOpacity
+                                    key={z}
+                                    style={[
+                                        styles.zoomBtn,
+                                        {
+                                            backgroundColor:
+                                                Math.abs(zoomLevel - z) < 0.01
+                                                    ? colors.primary
+                                                    : dark
+                                                        ? '#2F2F2F'
+                                                        : '#E5E7EB',
+                                        },
+                                    ]}
+                                    onPress={() => setZoomLevel(z)}
+                                >
+                                    <Text
+                                        fontSize={FontSize.caption}
+                                        fontWeight="600"
+                                        color={
+                                            Math.abs(zoomLevel - z) < 0.01 ? '#FFF' : colors.text
+                                        }
+                                    >
+                                        {z === 0 ? '1×' : `${(1 + z * 9).toFixed(1)}×`}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </XStack>
+                    </YStack>
+
+                    {/* Start / Stop Button */}
+                    <YStack paddingHorizontal={Spacing.xl} paddingTop={Spacing.lg}>
+                        <TouchableOpacity
+                            style={[
+                                styles.mainButton,
+                                {
+                                    backgroundColor: isWatching ? '#EF4444' : colors.primary,
+                                },
+                            ]}
+                            onPress={handleToggle}
+                            activeOpacity={0.8}
+                        >
+                            <Text fontSize={FontSize.title3} color="#FFFFFF" fontWeight="700">
+                                {isWatching ? '⏹ Stop Watching' : '▶ Start Watching'}
+                            </Text>
+                        </TouchableOpacity>
+                    </YStack>
+
+                    {/* Settings Panel (collapsible) */}
+                    {showSettings && (
+                        <YStack
+                            paddingHorizontal={Spacing.xl}
+                            paddingTop={Spacing.lg}
+                            gap={Spacing.md}
+                        >
+                            <XStack justifyContent="space-between" alignItems="center" paddingBottom={Spacing.sm}>
+                                <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>
+                                    Modalità Auto-Scatto
+                                </Text>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.autoSwitch,
+                                        { backgroundColor: isAutoMode ? colors.primary : dark ? '#2F2F2F' : '#E5E7EB' }
+                                    ]}
+                                    onPress={() => setAutoMode(!isAutoMode)}
+                                >
+                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={isAutoMode ? '#FFF' : colors.text}>
+                                        {isAutoMode ? 'ON' : 'OFF'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </XStack>
+
+                            <Text fontSize={FontSize.subheadline} fontWeight="600" color={colors.text}>
+                                Custom Prompt
+                            </Text>
+                            <TextInput
+                                style={[
+                                    styles.promptInput,
+                                    {
+                                        color: colors.text,
+                                        backgroundColor: dark ? '#2F2F2F' : '#FFFFFF',
+                                        borderColor: dark ? '#424242' : '#D9D9E3',
+                                    },
+                                ]}
+                                value={customPrompt}
+                                onChangeText={setCustomPrompt}
+                                multiline
+                                placeholder="Es: Analizza la domanda e rispondi..."
+                                placeholderTextColor={colors.textTertiary}
+                            />
+                            <Text fontSize={FontSize.caption} color={colors.textTertiary}>
+                                Questo prompt viene inviato con ogni screenshot catturato.
+                            </Text>
+                        </YStack>
+                    )}
+                </ScrollView>
+            </YStack>
+        </Modal>
+    );
+});
+
+const styles = StyleSheet.create({
+    sliderTrack: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    zoomBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        minWidth: 44,
+        alignItems: 'center',
+    },
+    mainButton: {
+        paddingVertical: 18,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+    },
+    autoSwitch: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+    },
+    promptInput: {
+        fontSize: 15,
+        lineHeight: 22,
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        minHeight: 80,
+        textAlignVertical: 'top',
+    },
+});

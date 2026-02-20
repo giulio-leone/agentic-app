@@ -14,202 +14,303 @@ import {
   _service, _aiAbortController,
   setAiAbortController,
 } from '../storePrivate';
+import type { AIProviderConfig } from '../../ai/types';
 
 export type ChatSlice = Pick<AppState, 'streamingMessageId' | 'stopReason' | 'isStreaming' | 'promptText'>
-  & Pick<AppActions, 'sendPrompt' | 'cancelPrompt' | 'setPromptText'>;
+  & Pick<AppActions, 'sendPrompt' | 'cancelPrompt' | 'setPromptText' | 'editMessage' | 'deleteMessage' | 'regenerateMessage'>;
 
-export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSlice> = (set, get) => ({
-  // State
-  streamingMessageId: null,
-  stopReason: null,
-  isStreaming: false,
-  promptText: '',
+export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSlice> = (set, get) => {
 
-  // Actions
-
-  sendPrompt: async (text, attachments) => {
-    const state = get();
-    const server = state.servers.find(s => s.id === state.selectedServerId);
-    if (!server) return;
-
-    // Auto-create session if none selected
-    let sessionId = state.selectedSessionId;
-    if (!sessionId) {
-      await get().createSession();
-      sessionId = get().selectedSessionId;
-      if (!sessionId) return;
-    }
-
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: uuidv4(),
-      role: 'user',
-      content: text,
-      ...(attachments && attachments.length > 0 ? { attachments } : {}),
-      timestamp: new Date().toISOString(),
-    };
-
+  // ── Shared AI streaming helper ──
+  function _streamAIResponse(config: AIProviderConfig, apiKey: string) {
+    const assistantId = uuidv4();
+    const forceAgentMode = get().agentModeEnabled;
     set(s => ({
-      chatMessages: [...s.chatMessages, userMessage],
-      promptText: '',
+      chatMessages: [...s.chatMessages, {
+        id: assistantId,
+        role: 'assistant' as const,
+        content: '',
+        isStreaming: true,
+        timestamp: new Date().toISOString(),
+      }],
+      streamingMessageId: assistantId,
       isStreaming: true,
-      stopReason: null,
     }));
 
-    // Persist user message & update session title
-    const allMessages = [...state.chatMessages, userMessage];
-    if (state.selectedServerId && sessionId) {
-      SessionStorage.saveMessages(allMessages, state.selectedServerId, sessionId);
-      if (state.chatMessages.length === 0) {
-        const title = text.substring(0, 50);
-        const session = state.sessions.find(s => s.id === sessionId);
-        if (session) {
-          SessionStorage.saveSession(
-            { ...session, title, updatedAt: new Date().toISOString() },
-            state.selectedServerId,
-          );
-          set(s => ({
-            sessions: s.sessions.map(sess =>
-              sess.id === sessionId ? { ...sess, title } : sess
-            ),
-          }));
-        }
-      }
-    }
+    const contextMessages = get().chatMessages.filter(m => m.id !== assistantId);
 
-    // ── AI Provider path ──
-    if (server.serverType === ServerType.AIProvider && server.aiProviderConfig) {
-      const config = server.aiProviderConfig;
-      try {
-        const apiKey = await getApiKey(`${server.id}_${config.providerType}`);
-        if (!apiKey) {
-          throw new Error('API key not found. Please configure your API key in server settings.');
-        }
-
-        const assistantId = uuidv4();
+    setAiAbortController(streamChat(
+      contextMessages,
+      config,
+      apiKey,
+      // onChunk
+      (chunk) => {
         set(s => ({
-          chatMessages: [...s.chatMessages, {
-            id: assistantId,
-            role: 'assistant' as const,
-            content: '',
-            isStreaming: true,
-            timestamp: new Date().toISOString(),
-          }],
-          streamingMessageId: assistantId,
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+            ...m, content: m.content + chunk,
+          })),
         }));
+      },
+      // onComplete
+      (stopReason) => {
+        setAiAbortController(null);
 
-        const contextMessages = get().chatMessages.filter(m => m.id !== assistantId);
+        const finalMessage = get().chatMessages.find(m => m.id === assistantId);
+        const artifacts = finalMessage ? detectArtifacts(finalMessage.content) : [];
 
-        setAiAbortController(streamChat(
-          contextMessages,
-          config,
-          apiKey,
-          // onChunk
-          (chunk) => {
-            set(s => ({
-              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-                ...m, content: m.content + chunk,
-              })),
-            }));
-          },
-          // onComplete
-          (stopReason) => {
-            setAiAbortController(null);
-
-            const finalMessage = get().chatMessages.find(m => m.id === assistantId);
-            const artifacts = finalMessage ? detectArtifacts(finalMessage.content) : [];
-
-            set(s => ({
-              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-                ...m, isStreaming: false, ...(artifacts.length > 0 ? { artifacts } : {}),
-              })),
-              isStreaming: false,
-              streamingMessageId: null,
-              stopReason,
-            }));
-            const finalState = get();
-            if (finalState.selectedServerId && finalState.selectedSessionId) {
-              SessionStorage.saveMessages(
-                finalState.chatMessages,
-                finalState.selectedServerId,
-                finalState.selectedSessionId,
-              );
+        set(s => ({
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+            ...m, isStreaming: false, ...(artifacts.length > 0 ? { artifacts } : {}),
+          })),
+          isStreaming: false,
+          streamingMessageId: null,
+          stopReason,
+        }));
+        const finalState = get();
+        if (finalState.selectedServerId && finalState.selectedSessionId) {
+          SessionStorage.saveMessages(
+            finalState.chatMessages,
+            finalState.selectedServerId,
+            finalState.selectedSessionId,
+          );
+        }
+      },
+      // onError
+      (error) => {
+        setAiAbortController(null);
+        const errorMessage: ChatMessage = {
+          id: uuidv4(),
+          role: 'system',
+          content: `⚠️ Error: ${error.message}`,
+          timestamp: new Date().toISOString(),
+        };
+        set(s => ({
+          chatMessages: [
+            ...s.chatMessages.filter(m => m.id !== assistantId),
+            errorMessage,
+          ],
+          isStreaming: false,
+          streamingMessageId: null,
+        }));
+      },
+      // onReasoning
+      (reasoningChunk) => {
+        set(s => ({
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+            ...m, reasoning: (m.reasoning ?? '') + reasoningChunk,
+          })),
+        }));
+      },
+      // onToolCall — group repeated calls with the same tool name
+      (toolName, args) => {
+        set(s => ({
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
+            const segs = m.segments ?? [];
+            // Find the last segment: if it's the same tool, increment counter
+            const lastSeg = segs[segs.length - 1];
+            if (lastSeg && lastSeg.type === 'toolCall' && lastSeg.toolName === toolName && !lastSeg.isComplete) {
+              const updated = [...segs];
+              updated[segs.length - 1] = {
+                ...lastSeg,
+                callCount: (lastSeg.callCount ?? 1) + 1,
+                input: args, // show latest args
+              };
+              return { ...m, segments: updated };
             }
-          },
-          // onError
-          (error) => {
-            setAiAbortController(null);
-            const errorMessage: ChatMessage = {
-              id: uuidv4(),
-              role: 'system',
-              content: `⚠️ Error: ${error.message}`,
-              timestamp: new Date().toISOString(),
-            };
-            set(s => ({
-              chatMessages: [
-                ...s.chatMessages.filter(m => m.id !== assistantId),
-                errorMessage,
-              ],
-              isStreaming: false,
-              streamingMessageId: null,
-            }));
-          },
-          // onReasoning
-          (reasoningChunk) => {
-            set(s => ({
-              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-                ...m, reasoning: (m.reasoning ?? '') + reasoningChunk,
-              })),
-            }));
-          },
-          // onToolCall
-          (toolName, args) => {
+            // New tool or different tool — create new segment
             const segment: import('../../acp/models/types').MessageSegment = {
               type: 'toolCall',
               toolName,
               input: args,
               isComplete: false,
+              callCount: 1,
+              completedCount: 0,
             };
+            return { ...m, segments: [...segs, segment] };
+          }),
+        }));
+      },
+      // onToolResult — increment completed count on grouped segment
+      (toolName, result) => {
+        set(s => ({
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
+            let matched = false;
+            const segments = (m.segments ?? []).map(seg => {
+              if (!matched && seg.type === 'toolCall' && seg.toolName === toolName && !seg.isComplete) {
+                matched = true;
+                const completed = (seg.completedCount ?? 0) + 1;
+                const total = seg.callCount ?? 1;
+                return {
+                  ...seg,
+                  result,
+                  completedCount: completed,
+                  isComplete: completed >= total,
+                };
+              }
+              return seg;
+            });
+            return { ...m, segments };
+          }),
+        }));
+      },
+      // onAgentEvent
+      (event) => {
+        const label = agentEventLabel(event.type, event.data);
+        if (!label) return;
+        const segment: import('../../acp/models/types').MessageSegment = {
+          type: 'agentEvent',
+          eventType: event.type,
+          label,
+          detail: typeof event.data === 'object' ? JSON.stringify(event.data) : undefined,
+        };
+        set(s => ({
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+            ...m, segments: [...(m.segments ?? []), segment],
+          })),
+        }));
+      },
+      forceAgentMode,
+    ));
+  }
+
+  // Helper to persist current messages
+  function _persistMessages() {
+    const s = get();
+    if (s.selectedServerId && s.selectedSessionId) {
+      SessionStorage.saveMessages(s.chatMessages, s.selectedServerId, s.selectedSessionId);
+    }
+  }
+
+  // Helper to resolve AI provider config + API key
+  async function _resolveAIProvider(): Promise<{ config: AIProviderConfig; apiKey: string } | null> {
+    const state = get();
+    const server = state.servers.find(s => s.id === state.selectedServerId);
+    if (!server || server.serverType !== ServerType.AIProvider || !server.aiProviderConfig) return null;
+    const config = server.aiProviderConfig;
+    const apiKey = await getApiKey(`${server.id}_${config.providerType}`);
+    if (!apiKey) return null;
+    return { config, apiKey };
+  }
+
+  return {
+    // State
+    streamingMessageId: null,
+    stopReason: null,
+    isStreaming: false,
+    promptText: '',
+
+    // Actions
+
+    sendPrompt: async (text, attachments) => {
+      const state = get();
+      const server = state.servers.find(s => s.id === state.selectedServerId);
+      if (!server) return;
+
+      // Auto-create session if none selected
+      let sessionId = state.selectedSessionId;
+      if (!sessionId) {
+        await get().createSession();
+        sessionId = get().selectedSessionId;
+        if (!sessionId) return;
+      }
+
+      // Add user message
+      const userMessage: ChatMessage = {
+        id: uuidv4(),
+        role: 'user',
+        content: text,
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
+        timestamp: new Date().toISOString(),
+      };
+
+      set(s => ({
+        chatMessages: [...s.chatMessages, userMessage],
+        promptText: '',
+        isStreaming: true,
+        stopReason: null,
+      }));
+
+      // Persist user message & update session title  
+      // Strip base64 from attachments to avoid overflowing AsyncStorage
+      const stripBase64 = (msgs: ChatMessage[]): ChatMessage[] =>
+        msgs.map(m => m.attachments
+          ? { ...m, attachments: m.attachments.map(a => ({ ...a, base64: undefined })) }
+          : m
+        );
+      const allMessages = [...state.chatMessages, userMessage];
+      if (state.selectedServerId && sessionId) {
+        SessionStorage.saveMessages(stripBase64(allMessages), state.selectedServerId, sessionId);
+        if (state.chatMessages.length === 0) {
+          const title = text.substring(0, 50);
+          const session = state.sessions.find(s => s.id === sessionId);
+          if (session) {
+            SessionStorage.saveSession(
+              { ...session, title, updatedAt: new Date().toISOString() },
+              state.selectedServerId,
+            );
             set(s => ({
-              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-                ...m, segments: [...(m.segments ?? []), segment],
-              })),
+              sessions: s.sessions.map(sess =>
+                sess.id === sessionId ? { ...sess, title } : sess
+              ),
             }));
-          },
-          // onToolResult
-          (toolName, result) => {
-            set(s => ({
-              chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
-                const segments = (m.segments ?? []).map(seg =>
-                  seg.type === 'toolCall' && seg.toolName === toolName && !seg.isComplete
-                    ? { ...seg, result, isComplete: true }
-                    : seg
-                );
-                return { ...m, segments };
-              }),
-            }));
-          },
-          // onAgentEvent
-          (event) => {
-            const label = agentEventLabel(event.type, event.data);
-            if (!label) return;
-            const segment: import('../../acp/models/types').MessageSegment = {
-              type: 'agentEvent',
-              eventType: event.type,
-              label,
-              detail: typeof event.data === 'object' ? JSON.stringify(event.data) : undefined,
-            };
-            set(s => ({
-              chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-                ...m, segments: [...(m.segments ?? []), segment],
-              })),
-            }));
-          },
-        ));
-        return;
+          }
+        }
+      }
+
+      // ── AI Provider path ──
+      if (server.serverType === ServerType.AIProvider && server.aiProviderConfig) {
+        const config = server.aiProviderConfig;
+        try {
+          const apiKey = await getApiKey(`${server.id}_${config.providerType}`);
+          if (!apiKey) {
+            throw new Error('API key not found. Please configure your API key in server settings.');
+          }
+          _streamAIResponse(config, apiKey);
+          return;
+        } catch (error) {
+          const errorMsg = (error as Error).message;
+          get().appendLog(`✗ AI prompt failed: ${errorMsg}`);
+          const errorMessage: ChatMessage = {
+            id: uuidv4(),
+            role: 'system',
+            content: `⚠️ Error: ${errorMsg}`,
+            timestamp: new Date().toISOString(),
+          };
+          set(s => ({
+            chatMessages: [...s.chatMessages, errorMessage],
+            isStreaming: false,
+          }));
+          return;
+        }
+      }
+
+      // ── ACP path ──
+      if (!_service) return;
+
+      try {
+        get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);
+        const response = await _service.sendPrompt({
+          sessionId: sessionId,
+          text,
+        });
+        const result = response.result as Record<string, JSONValue> | undefined;
+        const stopReason = result?.stopReason as string | undefined;
+        const currentState = get();
+        if (currentState.streamingMessageId) {
+          const idx = currentState.chatMessages.findIndex(m => m.id === currentState.streamingMessageId);
+          if (idx !== -1) {
+            const updatedMessages = [...currentState.chatMessages];
+            updatedMessages[idx] = { ...updatedMessages[idx], isStreaming: false };
+            set({ chatMessages: updatedMessages, isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? 'end_turn' });
+          } else {
+            set({ isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? 'end_turn' });
+          }
+        } else {
+          set({ isStreaming: false, stopReason: stopReason ?? 'end_turn' });
+        }
       } catch (error) {
         const errorMsg = (error as Error).message;
-        get().appendLog(`✗ AI prompt failed: ${errorMsg}`);
+        get().appendLog(`✗ Prompt failed: ${errorMsg}`);
         const errorMessage: ChatMessage = {
           id: uuidv4(),
           role: 'system',
@@ -220,74 +321,98 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           chatMessages: [...s.chatMessages, errorMessage],
           isStreaming: false,
         }));
+      }
+    },
+
+    cancelPrompt: async () => {
+      const state = get();
+
+      if (_aiAbortController) {
+        _aiAbortController.abort();
+        setAiAbortController(null);
+        set({ isStreaming: false });
         return;
       }
-    }
 
-    // ── ACP path ──
-    if (!_service) return;
-
-    try {
-      get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);
-      const response = await _service.sendPrompt({
-        sessionId: sessionId,
-        text,
-      });
-      const result = response.result as Record<string, JSONValue> | undefined;
-      const stopReason = result?.stopReason as string | undefined;
-      const currentState = get();
-      if (currentState.streamingMessageId) {
-        const idx = currentState.chatMessages.findIndex(m => m.id === currentState.streamingMessageId);
-        if (idx !== -1) {
-          const updatedMessages = [...currentState.chatMessages];
-          updatedMessages[idx] = { ...updatedMessages[idx], isStreaming: false };
-          set({ chatMessages: updatedMessages, isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? 'end_turn' });
-        } else {
-          set({ isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? 'end_turn' });
-        }
-      } else {
-        set({ isStreaming: false, stopReason: stopReason ?? 'end_turn' });
+      if (!_service || !state.selectedSessionId) return;
+      try {
+        await _service.cancelSession({ sessionId: state.selectedSessionId });
+        set({ isStreaming: false });
+        get().appendLog('→ session/cancel');
+      } catch {
+        // ignore
       }
-    } catch (error) {
-      const errorMsg = (error as Error).message;
-      get().appendLog(`✗ Prompt failed: ${errorMsg}`);
-      const errorMessage: ChatMessage = {
-        id: uuidv4(),
-        role: 'system',
-        content: `⚠️ Error: ${errorMsg}`,
-        timestamp: new Date().toISOString(),
-      };
+    },
+
+    setPromptText: (text) => {
+      set({ promptText: text });
+    },
+
+    editMessage: async (id, newContent) => {
+      const state = get();
+      const idx = state.chatMessages.findIndex(m => m.id === id);
+      if (idx === -1) return;
+
+      const message = state.chatMessages[idx];
+
+      if (message.role === 'user') {
+        // User edit: truncate messages after this one, update content, re-trigger AI
+        const editedMessage: ChatMessage = {
+          ...message,
+          content: newContent,
+          timestamp: new Date().toISOString(),
+        };
+        const truncated = [...state.chatMessages.slice(0, idx), editedMessage];
+        set({ chatMessages: truncated, isStreaming: false, streamingMessageId: null, stopReason: null });
+        _persistMessages();
+
+        const provider = await _resolveAIProvider();
+        if (provider) {
+          set({ isStreaming: true, stopReason: null });
+          _streamAIResponse(provider.config, provider.apiKey);
+        }
+      } else if (message.role === 'assistant') {
+        // Assistant edit: update content in-place, context is updated for future messages
+        const editedMessage: ChatMessage = {
+          ...message,
+          content: newContent,
+          timestamp: new Date().toISOString(),
+          segments: undefined, // clear tool call segments since content was manually edited
+        };
+        const updated = [...state.chatMessages];
+        updated[idx] = editedMessage;
+        set({ chatMessages: updated });
+        _persistMessages();
+      }
+    },
+
+    deleteMessage: (id) => {
       set(s => ({
-        chatMessages: [...s.chatMessages, errorMessage],
-        isStreaming: false,
+        chatMessages: s.chatMessages.filter(m => m.id !== id),
       }));
-    }
-  },
+      _persistMessages();
+    },
 
-  cancelPrompt: async () => {
-    const state = get();
+    regenerateMessage: async (id) => {
+      const state = get();
+      const idx = state.chatMessages.findIndex(m => m.id === id);
+      if (idx === -1 || state.chatMessages[idx].role !== 'assistant') return;
 
-    if (_aiAbortController) {
-      _aiAbortController.abort();
-      setAiAbortController(null);
-      set({ isStreaming: false });
-      return;
-    }
+      // Remove the assistant message (keep everything before it)
+      const truncated = state.chatMessages.slice(0, idx);
 
-    if (!_service || !state.selectedSessionId) return;
-    try {
-      await _service.cancelSession({ sessionId: state.selectedSessionId });
-      set({ isStreaming: false });
-      get().appendLog('→ session/cancel');
-    } catch {
-      // ignore
-    }
-  },
+      set({ chatMessages: truncated, isStreaming: false, streamingMessageId: null, stopReason: null });
+      _persistMessages();
 
-  setPromptText: (text) => {
-    set({ promptText: text });
-  },
-});
+      // Re-trigger AI response using the existing context
+      const provider = await _resolveAIProvider();
+      if (provider) {
+        set({ isStreaming: true, stopReason: null });
+        _streamAIResponse(provider.config, provider.apiKey);
+      }
+    },
+  };
+};
 
 // Maps agent event types to user-visible labels
 function agentEventLabel(type: string, data: unknown): string | null {
