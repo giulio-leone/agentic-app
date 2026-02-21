@@ -7,6 +7,7 @@ import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing } from '../../utils/theme';
 import { volumeListenerService } from '../../services/VolumeListenerService';
 import { runAsync } from 'react-native-vision-camera';
+import { useCameraFormat } from 'react-native-vision-camera';
 import { Worklets, useSharedValue } from 'react-native-worklets-core';
 import { detectSceneChange } from './useSceneDetector';
 
@@ -26,10 +27,12 @@ interface SmartCameraViewProps {
     onSceneChanged?: () => void;
     onShutterPressed?: () => void;
     enableAutoDetection?: boolean;
+    motionThreshold?: number;
+    stableThreshold?: number;
 }
 
 export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraViewProps>(
-    function SmartCameraView({ zoom, size, showFlash, onSceneChanged, onShutterPressed, enableAutoDetection }, ref) {
+    function SmartCameraView({ zoom, size, showFlash, onSceneChanged, onShutterPressed, enableAutoDetection, motionThreshold = 0.8, stableThreshold = 0.4 }, ref) {
         const cameraRef = useRef<Camera>(null);
         const { hasPermission, requestPermission } = useCameraPermission();
         const device = useCameraDevice('back');
@@ -43,12 +46,19 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
             ? Math.max(device.minZoom, Math.min(device.maxZoom, device.neutralZoom * zoom))
             : 0;
 
+        // Use useCameraFormat to enforce maximum resolution for text capture
+        const format = useCameraFormat(device, [
+            { photoResolution: 'max' },
+            { videoResolution: 'max' }
+        ]);
+
         const captureFrame = useCallback(async (): Promise<CaptureResult | null> => {
             if (!cameraRef.current) return null;
             try {
                 const photo = await cameraRef.current.takePhoto({
                     flash: showFlash ? 'on' : 'off',
                     enableShutterSound: false,
+                    enableAutoDistortionCorrection: true, // Critical for flat monitor text
                 });
 
                 // vision-camera v4 doesn't return base64 directly from takePhoto. 
@@ -105,10 +115,9 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
 
             const diff = detectSceneChange(frame);
 
-            // Motion threshold: when the average diff exceeds this, we consider the camera to be moving
-            const MOTION_THRESHOLD = 2.0;
-            // Stable threshold: when the average diff stays below this for a certain period, we consider it stable
-            const STABLE_THRESHOLD = 1.2;
+            // thresholds from props
+            const MOTION_THRESHOLD = motionThreshold;
+            const STABLE_THRESHOLD = stableThreshold;
 
             let motionDetected = false;
             let triggerFired = false;
@@ -145,7 +154,7 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
             if (motionDetected || triggerFired) {
                 logStateJS(diff, motionDetected, isStabilizing.value, triggerFired);
             }
-        }, [enableAutoDetection]);
+        }, [enableAutoDetection, motionThreshold, stableThreshold]);
 
         if (!hasPermission) {
             return (
@@ -180,6 +189,10 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
                     isActive={true}
                     photo={true}
                     zoom={deviceZoom}
+                    format={format}
+                    photoQualityBalance="quality"
+                    photoHdr={format?.supportsPhotoHdr}
+                    lowLightBoost={device?.supportsLowLightBoost}
                     frameProcessor={frameProcessor}
                     onInitialized={() => setIsReady(true)}
                 />

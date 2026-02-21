@@ -10,7 +10,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 class SceneDetectorPlugin(proxy: VisionCameraProxy, options: Map<String, Any>?) : FrameProcessorPlugin() {
-    private val lastGrid = DoubleArray(256) { 0.0 }
+    private val lastGrid = DoubleArray(1024) { 0.0 }
 
     override fun callback(frame: Frame, arguments: Map<String, Any>?): Any {
         val image: Image = frame.image
@@ -25,39 +25,39 @@ class SceneDetectorPlugin(proxy: VisionCameraProxy, options: Map<String, Any>?) 
         val rowStride = yPlane.rowStride
         val pixelStride = yPlane.pixelStride
 
-        val currentGrid = DoubleArray(256) { 0.0 }
-        val countGrid = DoubleArray(256) { 0.0 }
+        val currentGrid = DoubleArray(1024) { 0.0 }
+        val countGrid = DoubleArray(1024) { 0.0 }
         
-        val cellWidth = max(width / 16, 1)
-        val cellHeight = max(height / 16, 1)
+        val cellWidth = max(width / 32, 1)
+        val cellHeight = max(height / 32, 1)
 
         buffer.rewind()
         
-        // Sample every 8th pixel for speed
-        for (y in 0 until height step 8) {
-            val cellY = min(y / cellHeight, 15)
+        // Sample every 4th pixel for speed vs accuracy balance
+        for (y in 0 until height step 4) {
+            val cellY = min(y / cellHeight, 31)
             val rowOffset = y * rowStride
-            for (x in 0 until width step 8) {
-                val cellX = min(x / cellWidth, 15)
+            for (x in 0 until width step 4) {
+                val cellX = min(x / cellWidth, 31)
                 val pixelOffset = rowOffset + (x * pixelStride)
                 // Use bitwise AND to handle unsigned byte conversion properly
                 val pixel = buffer.get(pixelOffset).toInt() and 0xFF
                 
-                val index = cellY * 16 + cellX
+                val index = cellY * 32 + cellX
                 currentGrid[index] += pixel.toDouble()
                 countGrid[index] += 1.0
             }
         }
         
         var totalDiff = 0.0
-        for (i in 0 until 256) {
+        for (i in 0 until 1024) {
             val count = max(countGrid[i], 1.0)
             val normalized = currentGrid[i] / count
             totalDiff += abs(normalized - lastGrid[i])
             lastGrid[i] = normalized
         }
         
-        val averageDiff = totalDiff / 256.0
+        val averageDiff = totalDiff / 1024.0
         
         // Log the difference every once in a while to avoid flooding
         if (Math.random() < 0.1) {

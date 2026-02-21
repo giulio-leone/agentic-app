@@ -19,8 +19,13 @@ export {
   RollingSummarizer,
   createFilesystemTools,
   createPlanningTools,
-  createSubagentTools,
-} from '@onegenui/deep-agents';
+  createAsyncSubagentTools,
+  MajorityVoteConsensus,
+  LlmJudgeConsensus,
+  DebateConsensus,
+  AgentGraph,
+  AgentGraphBuilder,
+} from '@giulio-leone/gaussflow-agent';
 
 export type {
   DeepAgentConfig,
@@ -32,4 +37,6 @@ export type {
   TokenCounterPort,
   McpPort,
   Message as DeepAgentMessage,
-} from '@onegenui/deep-agents';
+  ConsensusPort,
+  GraphStreamEvent,
+} from '@giulio-leone/gaussflow-agent';

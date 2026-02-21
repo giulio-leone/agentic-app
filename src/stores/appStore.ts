@@ -52,6 +52,9 @@ export interface AppState {
   devModeEnabled: boolean;
   developerLogs: string[];
   agentModeEnabled: boolean;
+  consensusModeEnabled: boolean;
+  yoloModeEnabled: boolean;
+  autoStartVisionDetect: boolean;
 
   // Screen Watcher
   isWatching: boolean;
@@ -65,6 +68,8 @@ export interface AppState {
   localAIResponse: string | null;
   isWatcherProcessing: boolean;
   screenWatcherVisible: boolean;
+  motionThreshold: number;
+  stableThreshold: number;
 }
 
 // ─── Store Actions ───
@@ -108,6 +113,9 @@ export interface AppActions {
   // Settings
   toggleDevMode: () => void;
   toggleAgentMode: () => void;
+  toggleConsensusMode: () => void;
+  toggleYoloMode: () => void;
+  toggleAutoStartVisionDetect: () => void;
   appendLog: (log: string) => void;
   clearLogs: () => void;
 
@@ -122,6 +130,8 @@ export interface AppActions {
   setLocalAIResponse: (text: string | null) => void;
   setWatcherProcessing: (on: boolean) => void;
   setScreenWatcherVisible: (v: boolean) => void;
+  setMotionThreshold: (v: number) => void;
+  setStableThreshold: (v: number) => void;
 
   // Internal
   _getService: () => ACPService | null;

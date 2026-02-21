@@ -1,4 +1,5 @@
 import { StateCreator } from 'zustand';
+import { Alert } from 'react-native';
 import type { AppState, AppActions } from '../appStore';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -7,7 +8,7 @@ import {
 } from '../../acp/models/types';
 import { JSONValue } from '../../acp/models';
 import { SessionStorage } from '../../storage/SessionStorage';
-import { streamChat } from '../../ai/AIService';
+import { streamChat, streamConsensusChat } from '../../ai/AIService';
 import { getApiKey } from '../../storage/SecureStorage';
 import { updateMessageById, detectArtifacts } from '../helpers';
 import {
@@ -39,7 +40,10 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
 
     const contextMessages = get().chatMessages.filter(m => m.id !== assistantId);
 
-    setAiAbortController(streamChat(
+    const isConsensusMode = get().consensusModeEnabled;
+    const streamFunc = isConsensusMode ? streamConsensusChat : streamChat;
+
+    setAiAbortController(streamFunc(
       contextMessages,
       config,
       apiKey,
@@ -170,6 +174,20 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         }));
       },
       forceAgentMode,
+      (req) => new Promise((resolve) => {
+        if (get().yoloModeEnabled) {
+          return resolve(true);
+        }
+        Alert.alert(
+          'Tool Execution Approval',
+          `The agent wants to run '${req.toolName}'.\n\nArguments:\n${JSON.stringify(req.args, null, 2)}`,
+          [
+            { text: 'Deny', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Approve', style: 'default', onPress: () => resolve(true) }
+          ],
+          { cancelable: false }
+        );
+      })
     ));
   }
 

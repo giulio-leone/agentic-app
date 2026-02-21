@@ -31,6 +31,17 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: null });
   };
 
+  componentDidUpdate(_prevProps: Props, prevState: State) {
+    if (!prevState.hasError && this.state.hasError) {
+      // Auto-recover after a short delay to automatically restart the UI
+      setTimeout(() => {
+        if (this.state.hasError) {
+          this.handleReset();
+        }
+      }, 1500);
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;

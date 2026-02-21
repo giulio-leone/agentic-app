@@ -24,6 +24,8 @@ export function SettingsScreen() {
   const { colors } = useDesignSystem();
   const {
     devModeEnabled, toggleDevMode, developerLogs, clearLogs,
+    yoloModeEnabled, toggleYoloMode,
+    autoStartVisionDetect, toggleAutoStartVisionDetect,
     mcpServers, mcpStatuses,
     loadMCPServers, addMCPServer, removeMCPServer,
     connectMCPServer, disconnectMCPServer,
@@ -104,6 +106,44 @@ export function SettingsScreen() {
             trackColor={{ true: colors.primary, false: colors.systemGray4 }}
             thumbColor="#FFFFFF"
             accessibilityLabel="Developer mode"
+          />
+        </XStack>
+      </YStack>
+
+      {/* Auto-Start Vision Detect */}
+      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+        <XStack justifyContent="space-between" alignItems="center">
+          <YStack flex={1}>
+            <Text fontSize={16} fontWeight="500" color="$color">Auto-Start Vision</Text>
+            <Text fontSize={12} marginTop={2} paddingRight={16} color="$textTertiary">
+              Automatically launch Screen Watcher on app startup.
+            </Text>
+          </YStack>
+          <Switch
+            value={autoStartVisionDetect}
+            onValueChange={toggleAutoStartVisionDetect}
+            trackColor={{ true: colors.primary, false: colors.systemGray4 }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel="Auto-Start Vision Detect"
+          />
+        </XStack>
+      </YStack>
+
+      {/* YOLO Mode */}
+      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+        <XStack justifyContent="space-between" alignItems="center">
+          <YStack flex={1}>
+            <Text fontSize={16} fontWeight="500" color="$color">YOLO Mode</Text>
+            <Text fontSize={12} marginTop={2} paddingRight={16} color="$textTertiary">
+              Auto-approve all agent tool executions (no prompts).
+            </Text>
+          </YStack>
+          <Switch
+            value={yoloModeEnabled}
+            onValueChange={toggleYoloMode}
+            trackColor={{ true: colors.destructive || colors.primary, false: colors.systemGray4 }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel="YOLO Mode"
           />
         </XStack>
       </YStack>

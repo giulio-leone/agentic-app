@@ -16,6 +16,7 @@ import {
   TextInput,
   Animated,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { YStack, XStack, Text, Separator } from 'tamagui';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,6 +74,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   const handleServerPress = useCallback(
     (id: string) => {
       if (selectedServerId === id) return;
+      Haptics.selectionAsync();
       selectServer(id);
     },
     [selectedServerId, selectServer],
@@ -146,7 +148,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       return (
         <Swipeable
           renderRightActions={renderDeleteAction}
-          onSwipeableOpen={() => handleDeleteSession(item.id)}
+          onSwipeableOpen={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            handleDeleteSession(item.id);
+          }}
           overshootRight={false}
           friction={2}
         >

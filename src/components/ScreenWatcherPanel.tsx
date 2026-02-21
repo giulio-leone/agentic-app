@@ -13,7 +13,8 @@ import {
     TextInput,
     useWindowDimensions,
 } from 'react-native';
-import { YStack, XStack, Text, ScrollView } from 'tamagui';
+import * as Haptics from 'expo-haptics';
+import { YStack, XStack, Text, ScrollView, Slider } from 'tamagui';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -73,6 +74,11 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
         sendPrompt,
         isStreaming,
         chatMessages,
+        motionThreshold,
+        stableThreshold,
+        setMotionThreshold,
+        setStableThreshold,
+        autoStartVisionDetect,
     } = useAppStore();
 
     // Find the latest assistant message
@@ -113,6 +119,8 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
         }
         prevStreaming.current = isStreaming;
     }, [isStreaming, watcherStatus]);
+
+
 
     // Start/Stop handler
     const handleToggle = useCallback(async () => {
@@ -188,6 +196,21 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
         }
     }, [isWatching, setWatching, setWatcherStatus, incrementCapture, sendPrompt, setWatcherProcessing, triggerFlash]);
 
+    // Internal ref to prevent auto-starting multiple times
+    const hasAutoStarted = useRef(false);
+
+    // Auto-start logic on initial mount
+    useEffect(() => {
+        if (!hasAutoStarted.current && autoStartVisionDetect && !isWatching) {
+            hasAutoStarted.current = true;
+            // Delay slightly to allow the UI and Camera to mount properly
+            setTimeout(() => {
+                setScreenWatcherVisible(true);
+                handleToggle();
+            }, 500);
+        }
+    }, [autoStartVisionDetect, isWatching, setScreenWatcherVisible, handleToggle]);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -214,8 +237,7 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
         <Modal
             visible={screenWatcherVisible}
             animationType="slide"
-            presentationStyle="fullScreen"
-            statusBarTranslucent
+            presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
             onRequestClose={handleClose}
         >
             <YStack flex={1} backgroundColor={dark ? '#0F0F0F' : '#F5F5F5'}>
@@ -254,6 +276,8 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                 size={{ width: cameraW, height: cameraH }}
                                 showFlash={flashVisible}
                                 enableAutoDetection={isWatching}
+                                motionThreshold={motionThreshold}
+                                stableThreshold={stableThreshold}
                                 onSceneChanged={async () => {
                                     // Only auto-capture if auto mode is enabled
                                     if (isAutoMode && isWatching && watcherStatus !== 'processing') {
@@ -427,7 +451,10 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                                         : '#E5E7EB',
                                         },
                                     ]}
-                                    onPress={() => setZoomLevel(z)}
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        setZoomLevel(z);
+                                    }}
                                 >
                                     <Text
                                         fontSize={FontSize.caption}
@@ -477,7 +504,10 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                         styles.autoSwitch,
                                         { backgroundColor: isAutoMode ? colors.primary : dark ? '#2F2F2F' : '#E5E7EB' }
                                     ]}
-                                    onPress={() => setAutoMode(!isAutoMode)}
+                                    onPress={() => {
+                                        Haptics.selectionAsync();
+                                        setAutoMode(!isAutoMode);
+                                    }}
                                 >
                                     <Text fontSize={FontSize.footnote} fontWeight="600" color={isAutoMode ? '#FFF' : colors.text}>
                                         {isAutoMode ? 'ON' : 'OFF'}
@@ -494,13 +524,69 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                         styles.autoSwitch,
                                         { backgroundColor: isRemoteLLMEnabled ? colors.primary : dark ? '#2F2F2F' : '#E5E7EB' }
                                     ]}
-                                    onPress={() => setRemoteLLMEnabled(!isRemoteLLMEnabled)}
+                                    onPress={() => {
+                                        Haptics.selectionAsync();
+                                        setRemoteLLMEnabled(!isRemoteLLMEnabled);
+                                    }}
                                 >
                                     <Text fontSize={FontSize.footnote} fontWeight="600" color={isRemoteLLMEnabled ? '#FFF' : colors.text}>
                                         {isRemoteLLMEnabled ? 'ON' : 'OFF'}
                                     </Text>
                                 </TouchableOpacity>
                             </XStack>
+
+                            {/* Sensitivity Controls */}
+                            <YStack gap={Spacing.xs} paddingTop={Spacing.sm}>
+                                <XStack justifyContent="space-between" alignItems="center">
+                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.text}>
+                                        Soglia Movimento (Cattura testi)
+                                    </Text>
+                                    <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
+                                        {motionThreshold.toFixed(1)}
+                                    </Text>
+                                </XStack>
+                                <Slider
+                                    defaultValue={[motionThreshold]}
+                                    min={0.1}
+                                    max={3.0}
+                                    step={0.1}
+                                    onValueChange={(val) => setMotionThreshold(val[0])}
+                                >
+                                    <Slider.Track backgroundColor={dark ? '#333' : '#E5E7EB'}>
+                                        <Slider.TrackActive backgroundColor={colors.primary} />
+                                    </Slider.Track>
+                                    <Slider.Thumb index={0} circular size="$1" backgroundColor={colors.primary} elevation={2} />
+                                </Slider>
+                                <Text fontSize={11} color={colors.textTertiary}>
+                                    Più basso = fotocamera più reattiva ai tasti digitati.
+                                </Text>
+                            </YStack>
+
+                            <YStack gap={Spacing.xs} paddingBottom={Spacing.md}>
+                                <XStack justifyContent="space-between" alignItems="center">
+                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.text}>
+                                        Soglia Stabilità (Auto-focus)
+                                    </Text>
+                                    <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
+                                        {stableThreshold.toFixed(1)}
+                                    </Text>
+                                </XStack>
+                                <Slider
+                                    defaultValue={[stableThreshold]}
+                                    min={0.1}
+                                    max={1.5}
+                                    step={0.1}
+                                    onValueChange={(val) => setStableThreshold(val[0])}
+                                >
+                                    <Slider.Track backgroundColor={dark ? '#333' : '#E5E7EB'}>
+                                        <Slider.TrackActive backgroundColor={colors.primary} />
+                                    </Slider.Track>
+                                    <Slider.Thumb index={0} circular size="$1" backgroundColor={colors.primary} elevation={2} />
+                                </Slider>
+                                <Text fontSize={11} color={colors.textTertiary}>
+                                    Più basso = aspetta totale immobilità per evitare il micromosso.
+                                </Text>
+                            </YStack>
 
                             <Text fontSize={FontSize.subheadline} fontWeight="600" color={colors.text}>
                                 Custom Prompt

@@ -11,6 +11,8 @@ import {
   ApproximateTokenCounter,
   VirtualFilesystemRN,
   AsyncStorageMemoryAdapter,
+  AgentGraph,
+  LlmJudgeConsensus,
 } from '../deep-agents';
 import type { AgentEvent } from '../deep-agents';
 
@@ -226,6 +228,7 @@ export function streamChat(
   onToolResult?: (toolName: string, result: string) => void,
   onAgentEvent?: (event: AgentEvent) => void,
   forceAgentMode?: boolean,
+  onApprovalRequired?: (req: any) => Promise<boolean>,
 ): AbortController {
   const controller = new AbortController();
 
@@ -255,6 +258,15 @@ export function streamChat(
         .withTokenCounter(new ApproximateTokenCounter())
         .withPlanning()
         .withSubagents({ maxDepth: 2, timeoutMs: 120_000 });
+
+      if (onApprovalRequired) {
+        builder.withApproval({
+          defaultMode: 'approve-all',
+          // Always ask for potentially destructive or impactful actions
+          requireApproval: ['write_file', 'edit_file', 'delete_file', 'web_search', 'run_command'],
+          onApprovalRequired,
+        });
+      }
 
       // Add external tools (search + MCP)
       if (hasTools) {
@@ -324,6 +336,157 @@ export function streamChat(
       } else {
         onError(err instanceof Error ? err : new Error(msg));
       }
+    }
+  })();
+
+  return controller;
+}
+
+// ── consensus streaming chat ─────────────────────────────────────────────────
+
+/**
+ * Stream a chat completion using an AgentGraph that forks 3 parallel analysts
+ * and merges their outputs using LlmJudgeConsensus.
+ */
+export function streamConsensusChat(
+  messages: ChatMessage[],
+  config: AIProviderConfig,
+  apiKey: string,
+  onChunk: (text: string) => void,
+  onComplete: (stopReason: string) => void,
+  onError: (error: Error) => void,
+  onAgentEvent?: (event: AgentEvent) => void,
+): AbortController {
+  const controller = new AbortController();
+  const fs = new VirtualFilesystemRN();
+
+  (async () => {
+    try {
+      const model = await createModel(config, apiKey);
+      const coreMessages = toCoreMessages(messages);
+      const userPrompt = coreMessages
+        .filter(m => m.role === 'user')
+        .map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
+        .join('\n');
+
+      if (!userPrompt) {
+        throw new Error('No user prompt provided for Consensus Mode.');
+      }
+
+      // Base configuration for our analysts
+      const baseAgentConfig = {
+        model,
+        maxSteps: 5,
+      };
+
+      // Define 3 diverse analysts
+      const analystConfigs = [
+        {
+          ...baseAgentConfig,
+          instructions: 'You are an optimistic analyst. Focus on the positive aspects, potential opportunities, and creative solutions to the problem.',
+        },
+        {
+          ...baseAgentConfig,
+          instructions: 'You are a critical, pessimistic analyst. Focus on risks, edge cases, potential failures, and constraints.',
+        },
+        {
+          ...baseAgentConfig,
+          instructions: 'You are a pragmatic, logical analyst. Focus on the facts, straightforward implementations, and step-by-step reasoning.',
+        },
+      ];
+
+      // Build the Consensus Graph
+      const graph = AgentGraph.create()
+        .withFilesystem(fs)
+        .node('input', {
+          model,
+          instructions: 'Pass the prompt directly to the analysts.',
+        })
+        .fork('analysts', analystConfigs)
+        .consensus('analysts', new LlmJudgeConsensus({ model }))
+        .edge('input', 'analysts')
+        .node('final', {
+          model,
+          instructions: 'You are the final synthesizer. Based on the consensus result, provide a coherent, unified response to the user. Do not explicitly mention the internal debate, just give the best answer.',
+        })
+        .edge('analysts', 'final')
+        .build();
+
+      // Execute graph via generator
+      const stream = graph.stream(userPrompt);
+
+      for await (const event of stream) {
+        if (controller.signal.aborted) break;
+
+        switch (event.type) {
+          case 'node:start':
+            if (onAgentEvent) {
+              onAgentEvent({
+                type: 'subagent:spawn',
+                data: { nodeId: event.nodeId },
+                timestamp: Date.now(),
+                sessionId: 'graph', // Minimal polyfill for AgentEvent requirements
+              });
+            }
+            break;
+
+          case 'node:complete':
+            if (onAgentEvent) {
+              onAgentEvent({
+                type: 'subagent:complete',
+                data: { nodeId: event.nodeId },
+                timestamp: Date.now(),
+                sessionId: 'graph',
+              });
+            }
+            // If the final node completes, we also extract its output to the UI stream
+            if (event.nodeId === 'final' && event.result?.output) {
+              onChunk(event.result.output);
+            }
+            break;
+
+          case 'consensus:start':
+            if (onAgentEvent) {
+              onAgentEvent({
+                type: 'subagent:spawn',
+                data: { nodeId: `consensus-${event.forkId}` },
+                timestamp: Date.now(),
+                sessionId: 'graph',
+              });
+            }
+            break;
+
+          case 'consensus:result':
+            if (onAgentEvent) {
+              onAgentEvent({
+                type: 'subagent:complete',
+                data: { nodeId: `consensus-${event.forkId}` },
+                timestamp: Date.now(),
+                sessionId: 'graph',
+              });
+            }
+            break;
+
+          case 'graph:complete':
+            // Execution done
+            break;
+
+          case 'node:error':
+            throw new Error(`Graph error in node ${event.nodeId}: ${event.error}`);
+
+          case 'graph:error':
+            throw new Error(`Graph execution error: ${event.error}`);
+        }
+      }
+
+      onComplete('stop');
+    } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        onComplete('abort');
+        return;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      onError(err instanceof Error ? err : new Error(msg));
     }
   })();
 

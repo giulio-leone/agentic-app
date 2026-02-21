@@ -64,7 +64,7 @@ function GlassHeader({ children, tint }: { children: React.ReactNode; tint: 'lig
 function DrawerNavigator() {
   const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
-  const { createSession, isInitialized, agentModeEnabled, toggleAgentMode } = useAppStore();
+  const { createSession, isInitialized, agentModeEnabled, toggleAgentMode, consensusModeEnabled, toggleConsensusMode } = useAppStore();
   const { screenWatcherVisible, setScreenWatcherVisible, isWatching } = useAppStore();
 
   return (
@@ -130,6 +130,15 @@ function DrawerNavigator() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  onPress={toggleConsensusMode}
+                  style={{ paddingHorizontal: Spacing.xs }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text fontSize={18} color={consensusModeEnabled ? colors.primary : '$color'} opacity={consensusModeEnabled ? 1 : 0.5}>
+                    ⚖️
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => { if (isInitialized) createSession(); }}
                   style={{ paddingHorizontal: Spacing.md }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -175,7 +184,17 @@ function AppContent() {
             headerShown: true,
             title: 'Add Server',
             presentation: 'modal',
-            headerStyle: { backgroundColor: colors.surface },
+            headerTransparent: Platform.OS === 'ios',
+            headerBackground: Platform.OS === 'ios'
+              ? () => (
+                <BlurView
+                  intensity={80}
+                  tint={dark ? 'dark' : 'light'}
+                  style={StyleSheet.absoluteFill}
+                />
+              )
+              : undefined,
+            headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
             headerTintColor: colors.text,
             headerShadowVisible: false,
           }}
@@ -187,7 +206,17 @@ function AppContent() {
             headerShown: true,
             title: 'Settings',
             presentation: 'modal',
-            headerStyle: { backgroundColor: colors.surface },
+            headerTransparent: Platform.OS === 'ios',
+            headerBackground: Platform.OS === 'ios'
+              ? () => (
+                <BlurView
+                  intensity={80}
+                  tint={dark ? 'dark' : 'light'}
+                  style={StyleSheet.absoluteFill}
+                />
+              )
+              : undefined,
+            headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
             headerTintColor: colors.text,
             headerShadowVisible: false,
           }}

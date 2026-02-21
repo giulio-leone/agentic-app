@@ -4,7 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { MemoryPort, Todo, Checkpoint, Message } from '@onegenui/deep-agents';
+import type { MemoryPort, Todo, Checkpoint, Message } from '@giulio-leone/gaussflow-agent';
 
 const PREFIX = '@deep-agents:';
 

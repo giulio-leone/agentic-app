@@ -33,6 +33,8 @@ export const useMCPStatuses = () => useAppStore(s => s.mcpStatuses);
 
 export const useDevMode = () => useAppStore(s => s.devModeEnabled);
 export const useDeveloperLogs = () => useAppStore(s => s.developerLogs);
+export const useYoloMode = () => useAppStore(s => s.yoloModeEnabled);
+export const useAutoStartVisionDetect = () => useAppStore(s => s.autoStartVisionDetect);
 
 // ── Action selectors (stable references) ─────────────────────────────────────
 
@@ -69,6 +71,9 @@ export const useMCPActions = () => useAppStore(useShallow(s => ({
 
 export const useSettingsActions = () => useAppStore(useShallow(s => ({
   toggleDevMode: s.toggleDevMode,
+  toggleAgentMode: s.toggleAgentMode,
+  toggleYoloMode: s.toggleYoloMode,
+  toggleAutoStartVisionDetect: s.toggleAutoStartVisionDetect,
   appendLog: s.appendLog,
   clearLogs: s.clearLogs,
 })));

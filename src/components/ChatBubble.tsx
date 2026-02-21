@@ -11,6 +11,7 @@ import {
   Image,
   Dimensions,
   Pressable,
+  Platform,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChatMessage, Attachment } from '../acp/models/types';
@@ -32,11 +33,30 @@ interface Props {
 
 const containerStyle = {
   paddingHorizontal: Spacing.lg,
-  paddingVertical: Spacing.md,
+  paddingVertical: Spacing.sm,
+  flexDirection: 'row',
+  width: '100%',
+} as const;
+
+const bubbleStyle = {
+  paddingHorizontal: Spacing.md,
+  paddingVertical: Spacing.sm + 2,
+  borderRadius: Radius.xl,
+  maxWidth: '85%',
+  ...Platform.select({
+    ios: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    },
+    android: { elevation: 1 },
+  }),
 } as const;
 
 const systemContainerStyle = {
   paddingVertical: Spacing.xs,
+  alignSelf: 'center',
 } as const;
 
 export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact }: Props) {
@@ -61,90 +81,95 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
 
   return (
     <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={400}>
-    <Animated.View
-      style={[
-        containerStyle,
-        isUser ? ds.bgUserMessage : ds.bgAssistantMessage,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        },
-        isSystem && systemContainerStyle,
-      ]}
-    >
-      <XStack alignItems="flex-start" maxWidth={768} alignSelf="center" width="100%">
-        {/* Avatar */}
-        {!isUser && !isSystem && (
-          <YStack marginRight={Spacing.md} marginTop={2}>
-            <YStack style={ds.avatar}>
-              <Text style={ds.avatarIcon}>✦</Text>
+      <Animated.View
+        style={[
+          containerStyle,
+          {
+            justifyContent: isSystem ? 'center' : isUser ? 'flex-end' : 'flex-start',
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }
+        ]}
+      >
+        <XStack
+          style={[
+            bubbleStyle,
+            isUser ? ds.bgUserMessage : ds.bgAssistantMessage,
+            isSystem && { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
+          ]}
+        >
+          {/* Avatar */}
+          {!isUser && !isSystem && (
+            <YStack marginRight={Spacing.sm} marginTop={2}>
+              <YStack style={ds.avatar}>
+                <Text style={ds.avatarIcon}>✦</Text>
+              </YStack>
             </YStack>
+          )}
+
+          <YStack flex={1}>
+            {/* Attachments */}
+            {isUser && message.attachments && message.attachments.length > 0 && (
+              <AttachmentPreview attachments={message.attachments} colors={colors} />
+            )}
+
+            {/* Reasoning */}
+            {!isUser && !isSystem && message.reasoning && (
+              <ReasoningView
+                reasoning={message.reasoning}
+                colors={colors}
+                isStreaming={!!message.isStreaming && !message.content}
+              />
+            )}
+
+            {/* Segments (tool calls + text) */}
+            {message.segments && message.segments.length > 0 ? (
+              <>
+                {message.segments.map((seg, i) => (
+                  <SegmentView key={i} segment={seg} colors={colors} isUser={isUser} mdStyles={mdStyles} />
+                ))}
+                {message.content ? (
+                  <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
+                ) : null}
+              </>
+            ) : isUser ? (
+              <Text fontSize={FontSize.body} lineHeight={24} color={colors.userBubbleText} selectable>
+                {message.content}
+              </Text>
+            ) : isSystem ? (
+              <Text fontSize={FontSize.footnote} fontStyle="italic" textAlign="center" style={ds.textTertiary} selectable>
+                {message.content}
+              </Text>
+            ) : (
+              <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
+            )}
+
+            {/* Streaming indicator */}
+            {message.isStreaming && (
+              <ActivityIndicator
+                size="small"
+                color={colors.textTertiary}
+                style={{ marginTop: Spacing.xs, alignSelf: 'flex-start' }}
+              />
+            )}
+
+            {/* TTS action bar */}
+            {!isUser && !isSystem && !message.isStreaming && message.content && (
+              <XStack gap={Spacing.sm} marginTop={Spacing.xs}>
+                <TouchableOpacity
+                  style={{ padding: 4 }}
+                  onPress={() => onSpeak?.(message.content)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text fontSize={16} color={isSpeaking ? colors.primary : colors.textTertiary}>
+                    {isSpeaking ? '🔊' : '🔈'}
+                  </Text>
+                </TouchableOpacity>
+              </XStack>
+            )}
           </YStack>
-        )}
-
-        <YStack flex={1} {...(isUser && { paddingLeft: 40 })}>
-          {/* Attachments */}
-          {isUser && message.attachments && message.attachments.length > 0 && (
-            <AttachmentPreview attachments={message.attachments} colors={colors} />
-          )}
-
-          {/* Reasoning */}
-          {!isUser && !isSystem && message.reasoning && (
-            <ReasoningView
-              reasoning={message.reasoning}
-              colors={colors}
-              isStreaming={!!message.isStreaming && !message.content}
-            />
-          )}
-
-          {/* Segments (tool calls + text) */}
-          {message.segments && message.segments.length > 0 ? (
-            <>
-              {message.segments.map((seg, i) => (
-                <SegmentView key={i} segment={seg} colors={colors} isUser={isUser} mdStyles={mdStyles} />
-              ))}
-              {message.content ? (
-                <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
-              ) : null}
-            </>
-          ) : isUser ? (
-            <Text fontSize={FontSize.body} lineHeight={24} color={colors.userBubbleText} selectable>
-              {message.content}
-            </Text>
-          ) : isSystem ? (
-            <Text fontSize={FontSize.footnote} fontStyle="italic" textAlign="center" style={ds.textTertiary} selectable>
-              {message.content}
-            </Text>
-          ) : (
-            <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
-          )}
-
-          {/* Streaming indicator */}
-          {message.isStreaming && (
-            <ActivityIndicator
-              size="small"
-              color={colors.textTertiary}
-              style={{ marginTop: Spacing.xs, alignSelf: 'flex-start' }}
-            />
-          )}
-
-          {/* TTS action bar */}
-          {!isUser && !isSystem && !message.isStreaming && message.content && (
-            <XStack gap={Spacing.sm} marginTop={Spacing.xs}>
-              <TouchableOpacity
-                style={{ padding: 4 }}
-                onPress={() => onSpeak?.(message.content)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text fontSize={16} color={isSpeaking ? colors.primary : colors.textTertiary}>
-                  {isSpeaking ? '🔊' : '🔈'}
-                </Text>
-              </TouchableOpacity>
-            </XStack>
-          )}
-        </YStack>
-      </XStack>
-    </Animated.View>
+        </XStack>
+      </Animated.View>
     </Pressable>
   );
 });

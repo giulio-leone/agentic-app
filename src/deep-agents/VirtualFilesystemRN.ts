@@ -12,7 +12,7 @@ import type {
   ListOptions,
   SearchOptions,
   SearchResult,
-} from '@onegenui/deep-agents';
+} from '@giulio-leone/gaussflow-agent';
 
 interface StoredEntry {
   content: string;
