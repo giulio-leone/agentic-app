@@ -1,0 +1,34 @@
+Agentic è un potente assistente AI che si connette a più provider — OpenRouter, OpenAI, Anthropic e altri — tutto da un'unica interfaccia elegante.
+
+FUNZIONALITÀ PRINCIPALI:
+
+🤖 Supporto Multi-Provider
+Connettiti a OpenRouter, OpenAI, Anthropic, Google e qualsiasi API compatibile OpenAI. Cambia modello istantaneamente.
+
+💬 Streaming in Tempo Reale
+Guarda le risposte AI in streaming con performance native e fluide.
+
+👁️ Visione e Comprensione Schermo
+Condividi immagini e screenshot con modelli AI che supportano la visione.
+
+🎙️ Input Vocale
+Parla i tuoi prompt in modo naturale con il riconoscimento vocale integrato.
+
+🔊 Sintesi Vocale
+Ascolta le risposte AI lette ad alta voce.
+
+🧠 Intelligenza On-Device
+Esegui modelli AI leggeri direttamente sul tuo dispositivo per interazioni privacy-first.
+
+🔒 Sicuro per Design
+Chiavi API memorizzate in secure storage hardware. I tuoi dati restano sul tuo dispositivo.
+
+⚡ Leggero e Veloce
+Ottimizzato per dispositivi Android moderni con impatto minimo sulla batteria.
+
+🎨 Modalità Scura
+Tema dark elegante per un uso confortevole giorno e notte.
+
+Sviluppato con React Native ed Expo per un'esperienza veramente nativa.
+
+Agentic è open source e sviluppato da Gauss.
