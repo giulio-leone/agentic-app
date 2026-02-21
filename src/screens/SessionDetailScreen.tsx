@@ -197,7 +197,7 @@ export function SessionDetailScreen() {
     setEditText('');
   }, []);
 
-  // Render message — pass handleSpeak and handleLongPress callbacks
+  // Render message — pass stable handleSpeak and handleLongPress callbacks
   const renderMessage = useCallback(
     ({ item }: { item: ChatMessage }) => {
       // Inline edit mode for user or assistant messages
@@ -259,7 +259,7 @@ export function SessionDetailScreen() {
       return (
         <ChatBubble
           message={item}
-          onSpeak={(text) => handleSpeak(text, item.id)}
+          onSpeak={handleSpeak}
           isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
           onLongPress={handleLongPress}
           onOpenArtifact={handleOpenArtifact}
@@ -356,10 +356,10 @@ export function SessionDetailScreen() {
             {stopReason === 'end_turn'
               ? 'Response complete'
               : stopReason === 'max_tokens'
-              ? 'Reached token limit'
-              : stopReason === 'cancelled'
-              ? 'Cancelled'
-              : `Stopped: ${stopReason}`}
+                ? 'Reached token limit'
+                : stopReason === 'cancelled'
+                  ? 'Cancelled'
+                  : `Stopped: ${stopReason}`}
           </Text>
         </YStack>
       )}

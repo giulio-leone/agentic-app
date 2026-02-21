@@ -25,7 +25,7 @@ import { ImageModal } from './chat/ImageModal';
 
 interface Props {
   message: ChatMessage;
-  onSpeak?: (text: string) => void;
+  onSpeak?: (text: string, messageId: string) => void;
   isSpeaking?: boolean;
   onLongPress?: (message: ChatMessage) => void;
   onOpenArtifact?: (artifact: import('../acp/models/types').Artifact) => void;
@@ -158,7 +158,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
               <XStack gap={Spacing.sm} marginTop={Spacing.xs}>
                 <TouchableOpacity
                   style={{ padding: 4 }}
-                  onPress={() => onSpeak?.(message.content)}
+                  onPress={() => onSpeak?.(message.content, message.id)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Text fontSize={16} color={isSpeaking ? colors.primary : colors.textTertiary}>
@@ -171,6 +171,16 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         </XStack>
       </Animated.View>
     </Pressable>
+  );
+}, (prevProps, nextProps) => {
+  // Custom deep equality to prevent 60fps re-renders of the entire list during streaming
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.message.isStreaming === nextProps.message.isStreaming &&
+    prevProps.isSpeaking === nextProps.isSpeaking &&
+    prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
+    prevProps.message.segments?.length === nextProps.message.segments?.length
   );
 });
 

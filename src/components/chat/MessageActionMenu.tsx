@@ -55,7 +55,11 @@ export function MessageActionMenu({
         stiffness: 200,
       }).start();
     } else {
-      slideAnim.setValue(300);
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
     }
   }, [visible, slideAnim]);
 

@@ -159,6 +159,10 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                         base64,
                     };
 
+                    // Release the large string from the local scope variable right after we copy it into the attachment
+                    // This helps mitigate the V8 or Hermes out-of-memory crashes on repeated snaps
+                    base64 = '';
+
                     // FIRE AND FORGET ASYNC: Do not block the camera thread
                     const processCaptureAsync = async () => {
                         try {
@@ -305,13 +309,17 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                                     }
 
                                                     if (isRemoteLLMEnabled) {
-                                                        const attachment = {
+                                                        const attachment: Attachment = {
                                                             id: uuidv4(),
                                                             name: `auto_capture.jpg`,
                                                             mediaType: 'image/jpeg',
                                                             uri: result.uri,
                                                             base64: result.base64,
                                                         };
+
+                                                        // Explicitly remove base64 from the source dictionary so it can be GC'ed
+                                                        delete (result as any).base64;
+
                                                         const prompt = useAppStore.getState().customPrompt;
                                                         sendPrompt(`[Auto Scene Change Capture] ${prompt}`, [attachment]);
                                                     }
@@ -346,13 +354,17 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                                     }
 
                                                     if (isRemoteLLMEnabled) {
-                                                        const attachment = {
+                                                        const attachment: Attachment = {
                                                             id: uuidv4(),
                                                             name: `manual_capture.jpg`,
                                                             mediaType: 'image/jpeg',
                                                             uri: result.uri,
                                                             base64: result.base64,
                                                         };
+
+                                                        // Explicitly remove base64 from the source dictionary so it can be GC'ed
+                                                        delete (result as any).base64;
+
                                                         const prompt = useAppStore.getState().customPrompt;
                                                         sendPrompt(`[Manual Bluetooth Capture] ${prompt}`, [attachment]);
                                                     }
