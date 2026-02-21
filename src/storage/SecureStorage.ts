@@ -10,10 +10,6 @@
 
 const KEY_PREFIX = 'ai_provider_key_';
 
-const log = (...args: unknown[]) => {
-  if (__DEV__) console.log('[SecureStorage]', ...args);
-};
-
 function storageKey(id: string): string {
   return `${KEY_PREFIX}${id}`;
 }
@@ -36,17 +32,14 @@ export async function saveApiKey(id: string, key: string): Promise<boolean> {
     const store = await getSecureStore();
     if (store) {
       await store.setItemAsync(storageKey(id), key);
-      log('saveApiKey OK', id);
       return true;
     }
     // Web fallback — localStorage is *not* secure; acceptable for dev only.
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(storageKey(id), key);
-      log('saveApiKey OK (localStorage)', id);
       return true;
     }
-  } catch (error) {
-    log('saveApiKey FAILED', id, (error as Error).message);
+  } catch {
   }
   return false;
 }
@@ -56,14 +49,12 @@ export async function getApiKey(id: string): Promise<string | null> {
     const store = await getSecureStore();
     if (store) {
       const value = await store.getItemAsync(storageKey(id));
-      log('getApiKey', id, value ? 'found' : 'empty');
       return value;
     }
     if (typeof localStorage !== 'undefined') {
       return localStorage.getItem(storageKey(id));
     }
-  } catch (error) {
-    log('getApiKey FAILED', id, (error as Error).message);
+  } catch {
   }
   return null;
 }
@@ -78,8 +69,7 @@ export async function deleteApiKey(id: string): Promise<void> {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(storageKey(id));
     }
-  } catch (error) {
-    log('deleteApiKey FAILED', id, (error as Error).message);
+  } catch {
   }
 }
 

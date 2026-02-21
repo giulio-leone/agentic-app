@@ -17,10 +17,6 @@ import {
 } from '../storePrivate';
 import type { AIProviderConfig } from '../../ai/types';
 
-const devLog = (...args: unknown[]) => {
-  if (__DEV__) console.log('[chatSlice]', ...args);
-};
-
 export type ChatSlice = Pick<AppState, 'streamingMessageId' | 'stopReason' | 'isStreaming' | 'promptText'>
   & Pick<AppActions, 'sendPrompt' | 'cancelPrompt' | 'setPromptText' | 'editMessage' | 'deleteMessage' | 'regenerateMessage'>;
 
@@ -88,7 +84,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         if (finalContent.length === 0) {
           get().appendLog(`✗ AI stream ended with empty response (stop reason: ${normalizedStopReason})`);
         }
-        devLog('AI stream complete', {
           stopReason: normalizedStopReason,
           contentLength: finalContent.length,
           hasArtifacts: artifacts.length > 0,
@@ -106,7 +101,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       (error) => {
         setAiAbortController(null);
         get().appendLog(`✗ AI stream error: ${error.message}`);
-        devLog('AI stream error', error.message);
         const errorMessage: ChatMessage = {
           id: uuidv4(),
           role: 'system',
@@ -247,7 +241,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
     sendPrompt: async (text, attachments) => {
       const state = get();
       let server = state.servers.find(s => s.id === state.selectedServerId);
-      devLog('sendPrompt:start', { selectedServerId: state.selectedServerId, textLength: text.length });
 
       // Fallback: If no server is selected, pick the first AI Provider server
       if (!server) {
@@ -314,11 +307,9 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       // ── AI Provider path ──
       if (server.serverType === ServerType.AIProvider && server.aiProviderConfig) {
         const config = server.aiProviderConfig;
-        devLog('sendPrompt:path', { type: 'ai-provider', provider: config.providerType, model: config.modelId });
         try {
           const secureKey = await getApiKey(`${server.id}_${config.providerType}`);
           const apiKey = secureKey || config.apiKey || null;
-          devLog('resolveApiKey', {
             source: secureKey ? 'secureStore' : config.apiKey ? 'config' : 'none',
           });
           if (!apiKey) {
@@ -347,7 +338,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       if (!_service) return;
 
       try {
-        devLog('sendPrompt:path', { type: 'acp' });
         get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);
         const response = await _service.sendPrompt({
           sessionId: sessionId,
@@ -356,7 +346,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         const result = response.result as Record<string, JSONValue> | undefined;
         const stopReason = result?.stopReason as string | undefined;
         const currentState = get();
-        devLog('sendPrompt:acp-response', {
           stopReason: stopReason ?? null,
           streamingMessageId: currentState.streamingMessageId,
         });
@@ -382,7 +371,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       } catch (error) {
         const errorMsg = (error as Error).message;
         get().appendLog(`✗ Prompt failed: ${errorMsg}`);
-        devLog('sendPrompt:acp-error', errorMsg);
         const errorMessage: ChatMessage = {
           id: uuidv4(),
           role: 'system',
