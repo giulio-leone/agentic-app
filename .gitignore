@@ -72,3 +72,8 @@ agentic.apk
 # tmp
 tmp/
 temp/
+
+# Release keystore (NEVER commit)
+android/app/release.keystore
+# Gradle properties contain keystore passwords
+android/gradle.properties
