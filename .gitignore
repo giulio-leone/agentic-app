@@ -57,6 +57,7 @@ desktop.ini
 # generated native folders
 /ios/
 /android/
+modules/*/android/build/
 agentic.apk
 *.apk
 *.aab
