@@ -16,6 +16,7 @@ import {
   Text as RNText,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Sparkles, Volume1, Volume2 } from 'lucide-react-native';
 import { ChatMessage, Attachment } from '../acp/models/types';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
@@ -106,7 +107,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
           {!isUser && !isSystem && (
             <YStack marginRight={Spacing.sm} marginTop={2}>
               <YStack style={ds.avatar}>
-                <Text style={ds.avatarIcon}>✦</Text>
+                <Sparkles size={16} color={colors.contrastText} />
               </YStack>
             </YStack>
           )}
@@ -166,7 +167,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Text fontSize={16} color={isSpeaking ? colors.primary : colors.textTertiary}>
-                    {isSpeaking ? '🔊' : '🔈'}
+                    {isSpeaking ? <Volume2 size={16} color={colors.primary} /> : <Volume1 size={16} color={colors.textTertiary} />}
                   </Text>
                 </TouchableOpacity>
               </XStack>

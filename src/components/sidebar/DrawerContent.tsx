@@ -15,9 +15,11 @@ import {
   RefreshControl,
   TextInput,
   Animated,
+  View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { YStack, XStack, Text, Separator } from 'tamagui';
+import { Trash2, X, PenLine, Settings } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -135,7 +137,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           borderRadius={Radius.sm}
           marginBottom={1}
         >
-          <Animated.Text style={{ fontSize: 18, transform: [{ scale }] }}>🗑</Animated.Text>
+          <Animated.View style={{ transform: [{ scale }] }}>
+            <Trash2 size={18} color="#FFFFFF" />
+          </Animated.View>
         </XStack>
       );
     },
@@ -201,7 +205,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           activeOpacity={0.7}
           accessibilityLabel="Start new chat"
         >
-          <Text color={colors.sidebarText} fontSize={18} opacity={isInitialized ? 1 : 0.4}>✎</Text>
+          <PenLine size={18} color={colors.sidebarText} opacity={isInitialized ? 1 : 0.4} />
           <Text
             color={colors.sidebarText}
             fontSize={FontSize.subheadline}
@@ -237,7 +241,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             onPress={() => setSearchQuery('')}
             style={{ position: 'absolute', right: Spacing.md + 8, padding: 4 }}
           >
-            <Text color={colors.sidebarTextSecondary} fontSize={16}>✕</Text>
+            <X size={16} color={colors.sidebarTextSecondary} />
           </TouchableOpacity>
         )}
       </XStack>
@@ -441,7 +445,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           style={{ paddingVertical: Spacing.sm, paddingHorizontal: Spacing.sm }}
           onPress={() => rootNav.navigate('Settings')}
         >
-          <Text color={colors.sidebarText} fontSize={20}>⚙</Text>
+          <Settings size={20} color={colors.sidebarText} />
         </TouchableOpacity>
       </XStack>
     </YStack>

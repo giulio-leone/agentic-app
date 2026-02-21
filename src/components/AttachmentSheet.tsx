@@ -27,7 +27,7 @@ const SHEET_HEIGHT = 300;
 const HAIRLINE = StyleSheet.hairlineWidth;
 
 interface AttachmentOption {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   subtitle?: string;
   color?: string;
@@ -155,7 +155,7 @@ export const AttachmentSheet = React.memo(function AttachmentSheet({ visible, on
                   justifyContent="center" alignItems="center"
                   backgroundColor={option.color || colors.primary + '18'}
                 >
-                  <Text fontSize={24}>{option.icon}</Text>
+                  {option.icon}
                 </YStack>
                 <YStack flex={1} marginLeft={Spacing.md}>
                   <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>{option.label}</Text>

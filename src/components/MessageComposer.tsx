@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Plus, ArrowUp, Mic, Square, X, ImageIcon, Camera, FileText } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -105,21 +106,21 @@ export function MessageComposer({
 
   const attachmentOptions = useMemo(() => [
     {
-      icon: '🖼️',
+      icon: <ImageIcon size={24} color="#10A37F" />,
       label: 'Photo Library',
       subtitle: 'Choose from your gallery',
       color: '#10A37F22',
       onPress: handlePickImage,
     },
     {
-      icon: '📷',
+      icon: <Camera size={24} color="#3B82F6" />,
       label: 'Camera',
       subtitle: 'Take a photo',
       color: '#3B82F622',
       onPress: handlePickCamera,
     },
     {
-      icon: '📄',
+      icon: <FileText size={24} color="#F59E0B" />,
       label: 'Document',
       subtitle: 'PDF, DOCX, XLSX, CSV and more',
       color: '#F59E0B22',
@@ -178,7 +179,7 @@ export function MessageComposer({
                 onPress={() => removeAttachment(att.id)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text fontSize={10} fontWeight="bold" color={colors.background}>✕</Text>
+                <X size={10} color={colors.background} />
               </TouchableOpacity>
             </XStack>
           ))}
@@ -208,12 +209,7 @@ export function MessageComposer({
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
           accessibilityLabel="Add attachment"
         >
-          <Text
-            fontSize={24}
-            fontWeight="300"
-            marginTop={-2}
-            color={isDisabled ? colors.textTertiary : colors.textSecondary}
-          >+</Text>
+          <Plus size={20} color={isDisabled ? colors.textTertiary : colors.textSecondary} />
         </TouchableOpacity>
 
         <TextInput
@@ -265,7 +261,7 @@ export function MessageComposer({
             activeOpacity={0.7}
             accessibilityLabel="Send message"
           >
-            <Text fontSize={18} fontWeight="bold" marginTop={-1} color={colors.sendButtonIcon}>↑</Text>
+            <ArrowUp size={18} color={colors.sendButtonIcon} />
           </TouchableOpacity>
         ) : onToggleVoice ? (
           <TouchableOpacity
@@ -279,9 +275,7 @@ export function MessageComposer({
             activeOpacity={0.7}
             accessibilityLabel={isListening ? 'Stop recording' : 'Start voice input'}
           >
-            <Text fontSize={18} fontWeight="bold" marginTop={-1} color={isListening ? colors.contrastText : colors.textTertiary}>
-              {isListening ? '⏹' : '🎙'}
-            </Text>
+            {isListening ? <Square size={14} fill={colors.contrastText} color={colors.contrastText} /> : <Mic size={18} color={colors.textTertiary} />}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -295,7 +289,7 @@ export function MessageComposer({
             disabled
             activeOpacity={0.7}
           >
-            <Text fontSize={18} fontWeight="bold" marginTop={-1} color={colors.textTertiary}>↑</Text>
+            <ArrowUp size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
       </XStack>

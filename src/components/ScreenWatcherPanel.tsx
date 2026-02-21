@@ -31,18 +31,19 @@ import * as MediaLibrary from 'expo-media-library';
 import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
+import { Settings, X, Square, Play, Eye, Brain } from 'lucide-react-native';
 import type { Attachment } from '../acp/models/types';
 
 // Single service instance
 const service = new ScreenWatcherService();
 
-const STATUS_LABELS: Record<WatcherStatus, { icon: string; label: string; color: string }> = {
-    idle: { icon: '⏸', label: 'Ready', color: '#6B7280' },
-    loading_model: { icon: '🧠', label: 'Loading AI...', color: '#8B5CF6' },
-    watching: { icon: '👁', label: 'Watching...', color: '#10A37F' },
-    change_detected: { icon: '⚡', label: 'Change detected!', color: '#F59E0B' },
-    stabilizing: { icon: '📸', label: 'Capturing...', color: '#3B82F6' },
-    processing: { icon: '🧠', label: 'Processing...', color: '#8B5CF6' },
+const STATUS_LABELS: Record<WatcherStatus, { icon: React.ReactNode; label: string; color: string }> = {
+    idle: { icon: <Square size={12} color="#6B7280" />, label: 'Ready', color: '#6B7280' },
+    loading_model: { icon: <Brain size={12} color="#8B5CF6" />, label: 'Loading AI...', color: '#8B5CF6' },
+    watching: { icon: <Eye size={12} color="#10A37F" />, label: 'Watching...', color: '#10A37F' },
+    change_detected: { icon: null, label: 'Change detected!', color: '#F59E0B' },
+    stabilizing: { icon: null, label: 'Capturing...', color: '#3B82F6' },
+    processing: { icon: <Brain size={12} color="#8B5CF6" />, label: 'Processing...', color: '#8B5CF6' },
 };
 
 export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
@@ -255,9 +256,12 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                     backgroundColor={dark ? '#1A1A1A' : '#FFFFFF'}
                 >
                     <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Text fontSize={FontSize.body} color={colors.primary} fontWeight="600">
-                            ✕ Close
-                        </Text>
+                        <XStack alignItems="center" gap={4}>
+                            <X size={16} color={colors.primary} />
+                            <Text fontSize={FontSize.body} color={colors.primary} fontWeight="600">
+                                Close
+                            </Text>
+                        </XStack>
                     </TouchableOpacity>
                     <Text fontSize={FontSize.headline} fontWeight="700" color={colors.text}>
                         Screen Watcher
@@ -266,7 +270,7 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                         onPress={() => setShowSettings(!showSettings)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                        <Text fontSize={20}>⚙️</Text>
+                        <Settings size={20} color={colors.text} />
                     </TouchableOpacity>
                 </XStack>
 
@@ -400,8 +404,9 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                                 },
                             ]}
                         />
+                        {statusInfo.icon}
                         <Text fontSize={FontSize.body} fontWeight="600" color={statusInfo.color}>
-                            {statusInfo.icon} {statusInfo.label}
+                            {statusInfo.label}
                         </Text>
                         {captureCount > 0 && (
                             <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
@@ -494,9 +499,12 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                             onPress={handleToggle}
                             activeOpacity={0.8}
                         >
-                            <Text fontSize={FontSize.title3} color="#FFFFFF" fontWeight="700">
-                                {isWatching ? '⏹ Stop Watching' : '▶ Start Watching'}
-                            </Text>
+                            <XStack alignItems="center" justifyContent="center" gap={8}>
+                                {isWatching ? <Square size={18} fill="#FFFFFF" color="#FFFFFF" /> : <Play size={18} fill="#FFFFFF" color="#FFFFFF" />}
+                                <Text fontSize={FontSize.title3} color="#FFFFFF" fontWeight="700">
+                                    {isWatching ? 'Stop Watching' : 'Start Watching'}
+                                </Text>
+                            </XStack>
                         </TouchableOpacity>
                     </YStack>
 

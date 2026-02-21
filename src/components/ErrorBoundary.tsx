@@ -5,6 +5,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { TouchableOpacity, ScrollView } from 'react-native';
 import { YStack, Text } from 'tamagui';
+import { AlertTriangle } from 'lucide-react-native';
 
 interface Props {
   children: ReactNode;
@@ -48,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <YStack flex={1} justifyContent="center" alignItems="center" padding={32} backgroundColor="#212121">
-          <Text fontSize={48} marginBottom={16}>⚠️</Text>
+          <AlertTriangle size={48} color="#F59E0B" style={{ marginBottom: 16 }} />
           <Text fontSize={20} fontWeight="600" color="#ECECEC" marginBottom={8}>Something went wrong</Text>
           <Text fontSize={16} color="#8E8EA0" textAlign="center" marginBottom={24}>The app encountered an unexpected error.</Text>
           {this.state.error && (

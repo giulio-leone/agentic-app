@@ -5,6 +5,7 @@
 import React, { useEffect } from 'react';
 import { TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text } from 'tamagui';
+import { Eye, Bot, Scale, PenLine, Menu } from 'lucide-react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -106,7 +107,7 @@ function DrawerNavigator() {
                 style={{ paddingHorizontal: Spacing.md }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text fontSize={20} color="$color">☰</Text>
+                <Menu size={20} color={colors.text} />
               </TouchableOpacity>
             ),
             headerRight: () => (
@@ -116,34 +117,28 @@ function DrawerNavigator() {
                   style={{ paddingHorizontal: Spacing.xs }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text fontSize={18} color={isWatching ? '#EF4444' : '$color'} opacity={isWatching ? 1 : 0.5}>
-                    👁
-                  </Text>
+                  <Eye size={18} color={isWatching ? '#EF4444' : colors.text} opacity={isWatching ? 1 : 0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={toggleAgentMode}
                   style={{ paddingHorizontal: Spacing.xs }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text fontSize={18} color={agentModeEnabled ? colors.primary : '$color'} opacity={agentModeEnabled ? 1 : 0.5}>
-                    🤖
-                  </Text>
+                  <Bot size={18} color={agentModeEnabled ? colors.primary : colors.text} opacity={agentModeEnabled ? 1 : 0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={toggleConsensusMode}
                   style={{ paddingHorizontal: Spacing.xs }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text fontSize={18} color={consensusModeEnabled ? colors.primary : '$color'} opacity={consensusModeEnabled ? 1 : 0.5}>
-                    ⚖️
-                  </Text>
+                  <Scale size={18} color={consensusModeEnabled ? colors.primary : colors.text} opacity={consensusModeEnabled ? 1 : 0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { if (isInitialized) createSession(); }}
                   style={{ paddingHorizontal: Spacing.md }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text fontSize={20} color="$color" opacity={isInitialized ? 1 : 0.3}>✎</Text>
+                  <PenLine size={20} color={colors.text} opacity={isInitialized ? 1 : 0.3} />
                 </TouchableOpacity>
               </XStack>
             ),

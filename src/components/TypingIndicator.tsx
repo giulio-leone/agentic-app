@@ -5,6 +5,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 import { XStack, Text, YStack } from 'tamagui';
+import { Sparkles } from 'lucide-react-native';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { Spacing } from '../utils/theme';
 
@@ -37,7 +38,7 @@ export const TypingIndicator = React.memo(function TypingIndicator() {
     <YStack paddingHorizontal={Spacing.lg} paddingVertical={Spacing.md} style={ds.bgAssistantMessage}>
       <XStack alignItems="center" gap={Spacing.md}>
         <YStack style={ds.avatar}>
-          <Text style={ds.avatarIcon}>✦</Text>
+          <Sparkles size={16} color="#FFFFFF" />
         </YStack>
         <Animated.View style={[dotStyle, ds.bgSystemGray5, { opacity: pulse }]} />
       </XStack>

@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Brain } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 
@@ -26,7 +27,7 @@ export const ReasoningView = React.memo(function ReasoningView({ reasoning, colo
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={6}>
-        <Text fontSize={16} color={colors.primary}>🧠</Text>
+        <Brain size={16} color={colors.primary} />
         <Text fontSize={FontSize.footnote} fontWeight="500" flex={1} color={colors.textSecondary}>
           {isStreaming ? 'Thinking…' : `Thought for ${lines} lines`}
         </Text>

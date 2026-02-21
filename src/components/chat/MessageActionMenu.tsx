@@ -12,13 +12,14 @@ import {
   Pressable,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Pencil, Copy, RefreshCw, Trash2 } from 'lucide-react-native';
 import type { ChatMessage } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 
 export interface MessageAction {
   key: string;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   destructive?: boolean;
   onPress: () => void;
@@ -68,16 +69,16 @@ export function MessageActionMenu({
   const actions: MessageAction[] = [];
 
   if ((message.role === 'user' || message.role === 'assistant') && onEdit) {
-    actions.push({ key: 'edit', icon: '✏️', label: 'Edit', onPress: onEdit });
+    actions.push({ key: 'edit', icon: <Pencil size={20} color={colors.text} />, label: 'Edit', onPress: onEdit });
   }
   if (onCopy) {
-    actions.push({ key: 'copy', icon: '📋', label: 'Copy', onPress: onCopy });
+    actions.push({ key: 'copy', icon: <Copy size={20} color={colors.text} />, label: 'Copy', onPress: onCopy });
   }
   if (message.role === 'assistant' && onRegenerate) {
-    actions.push({ key: 'regenerate', icon: '🔄', label: 'Regenerate', onPress: onRegenerate });
+    actions.push({ key: 'regenerate', icon: <RefreshCw size={20} color={colors.text} />, label: 'Regenerate', onPress: onRegenerate });
   }
   if (onDelete) {
-    actions.push({ key: 'delete', icon: '🗑️', label: 'Delete', destructive: true, onPress: onDelete });
+    actions.push({ key: 'delete', icon: <Trash2 size={20} color={colors.destructive} />, label: 'Delete', destructive: true, onPress: onDelete });
   }
 
   return (
@@ -128,7 +129,7 @@ export function MessageActionMenu({
                   alignItems="center"
                   gap={Spacing.md}
                 >
-                  <Text fontSize={20}>{action.icon}</Text>
+                  {action.icon}
                   <Text
                     fontSize={FontSize.body}
                     color={action.destructive ? colors.destructive : colors.text}

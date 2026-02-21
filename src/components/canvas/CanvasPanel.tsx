@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Copy, X } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { Artifact } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
@@ -78,12 +79,12 @@ export function CanvasPanel({ visible, artifact, onClose }: Props) {
             </YStack>
             <XStack gap={Spacing.sm}>
               <TouchableOpacity onPress={handleCopy} style={styles.headerBtn}>
-                <Text fontSize={14} color={colors.primary}>
-                  {copied ? '✓ Copied' : '📋 Copy'}
-                </Text>
+                <XStack alignItems="center" gap={4}>
+                  {copied ? <Text fontSize={14} color={colors.primary}>✓ Copied</Text> : <><Copy size={14} color={colors.primary} /><Text fontSize={14} color={colors.primary}> Copy</Text></>}
+                </XStack>
               </TouchableOpacity>
               <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-                <Text fontSize={18} color={colors.textTertiary}>✕</Text>
+                <X size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             </XStack>
           </XStack>

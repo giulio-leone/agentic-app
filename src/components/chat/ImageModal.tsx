@@ -5,6 +5,7 @@
 import React from 'react';
 import { Modal, Pressable, Image, TouchableOpacity } from 'react-native';
 import { YStack, Text } from 'tamagui';
+import { X } from 'lucide-react-native';
 
 interface Props {
   visible: boolean;
@@ -22,7 +23,7 @@ export const ImageModal = React.memo(function ImageModal({ visible, uri, onClose
           style={{ position: 'absolute', top: 60, right: 20, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' }}
           onPress={onClose}
         >
-          <Text color="#fff" fontSize={20} fontWeight="600">✕</Text>
+          <X size={20} color="#fff" />
         </TouchableOpacity>
       </Pressable>
     </Modal>
