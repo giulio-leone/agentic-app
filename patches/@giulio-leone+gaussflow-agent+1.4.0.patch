@@ -1,5 +1,5 @@
 diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js
-index 4eaf7d6..de4fe06 100644
+index 4eaf7d6..a47b620 100644
 --- a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js
 +++ b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js
 @@ -1425,7 +1425,7 @@ import { tool as tool4 } from "ai";
@@ -11,11 +11,20 @@ index 4eaf7d6..de4fe06 100644
  var DEFAULT_MAX_TOKENS = 512;
  var DEFAULT_OVERLAP = 50;
  var DEFAULT_SEPARATORS = ["\n\n", "\n", ". ", " "];
+@@ -2941,7 +2941,7 @@ import { z as z6 } from "zod";
+ 
+ // src/adapters/mcp-server/default-mcp-server.adapter.ts
+ import { createServer } from "http";
+-import { randomUUID as randomUUID2 } from "crypto";
++const randomUUID2 = () => "uuid-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+ var DefaultMcpServerAdapter = class _DefaultMcpServerAdapter {
+   tools = [];
+   toolsByName = /* @__PURE__ */ new Map();
 diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js b/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
-index 24076cb..276fc7f 100644
+index c05ff7a..ec42273 100644
 --- a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
 +++ b/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
-@@ -619,7 +619,7 @@ var DefaultPluginRegistryAdapter = class {
+@@ -622,7 +622,7 @@ var DefaultPluginRegistryAdapter = class {
        case "builtin":
          return source.factory();
        case "module": {
@@ -24,7 +33,7 @@ index 24076cb..276fc7f 100644
          const exportName = source.exportName ?? "default";
          const exported = mod[exportName];
          if (!exported) {
-@@ -749,7 +749,7 @@ var PluginRegistryPlugin = class {
+@@ -752,7 +752,7 @@ var PluginRegistryPlugin = class {
              modulePath: z8.string(),
              exportName: z8.string().optional()
            }).parse(args);
@@ -33,7 +42,7 @@ index 24076cb..276fc7f 100644
            const expName = exportName ?? "default";
            const exported = mod[expName];
            if (!exported) {
-@@ -976,7 +976,7 @@ var AiSdkMcpAdapter = class {
+@@ -979,7 +979,7 @@ var AiSdkMcpAdapter = class {
  };
  async function loadCreateMCPClient() {
    try {
