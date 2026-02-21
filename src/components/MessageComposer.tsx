@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useDesignSystem } from '../utils/designSystem';
-import { FontSize, Spacing } from '../utils/theme';
+import { FontSize, Spacing, Radius } from '../utils/theme';
 import { Attachment } from '../acp/models/types';
 import { useFilePicker } from '../hooks/useFilePicker';
 import { AttachmentSheet } from './AttachmentSheet';
@@ -188,14 +188,16 @@ export function MessageComposer({
 
       <XStack
         alignItems="center"
-        borderRadius={24}
-        paddingLeft={Spacing.sm}
-        paddingRight={Spacing.xs + 2}
+        borderRadius={Radius.xl}
+        paddingHorizontal={Spacing.sm}
         paddingVertical={Platform.OS === 'ios' ? Spacing.sm + 2 : Spacing.sm}
         minHeight={48}
         borderWidth={1}
         backgroundColor={colors.inputBackground}
         borderColor={colors.inputBorder}
+        {...(Platform.OS === 'ios'
+          ? { shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.08, shadowRadius: 4 }
+          : { elevation: 4 })}
       >
         {/* Attach button */}
         <TouchableOpacity

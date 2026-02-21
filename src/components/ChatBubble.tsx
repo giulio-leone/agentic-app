@@ -44,7 +44,7 @@ const containerStyle = {
 const bubbleStyle = {
   flexDirection: 'row' as const,
   paddingHorizontal: Spacing.md,
-  paddingVertical: Spacing.sm + 2,
+  paddingVertical: Spacing.md,
   borderRadius: Radius.xl,
   maxWidth: '85%',
   ...Platform.select({
@@ -79,8 +79,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     if (animRan.current) return;
     animRan.current = true;
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.spring(fadeAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 12 }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
     ]).start();
   }, []);
 
@@ -105,7 +105,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         >
           {/* Avatar */}
           {!isUser && !isSystem && (
-            <YStack marginRight={Spacing.sm} marginTop={2}>
+            <YStack marginRight={Spacing.sm} marginTop={Spacing.xs}>
               <YStack style={ds.avatar}>
                 <Sparkles size={16} color={colors.contrastText} />
               </YStack>

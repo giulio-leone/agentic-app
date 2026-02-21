@@ -1,5 +1,5 @@
 /**
- * Typing indicator — ChatGPT style: pulsing dot with avatar.
+ * Typing indicator — ChatGPT style: 3 staggered pulsing dots with avatar.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -9,30 +9,35 @@ import { Sparkles } from 'lucide-react-native';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { Spacing } from '../utils/theme';
 
-const dotStyle = { width: 8, height: 8, borderRadius: 4 } as const;
+const dotStyle = { width: 6, height: 6, borderRadius: 3 } as const;
+const DOT_DELAYS = [0, 150, 300];
+
+function useStaggeredDot(delay: number) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 400, useNativeDriver: true }),
+        ]),
+      ).start();
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [anim, delay]);
+
+  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] });
+  return { opacity, transform: [{ scale }] };
+}
 
 export const TypingIndicator = React.memo(function TypingIndicator() {
   const { ds } = useDesignSystem();
-  const pulse = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.4,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [pulse]);
+  const dot0 = useStaggeredDot(DOT_DELAYS[0]);
+  const dot1 = useStaggeredDot(DOT_DELAYS[1]);
+  const dot2 = useStaggeredDot(DOT_DELAYS[2]);
+  const dots = [dot0, dot1, dot2];
 
   return (
     <YStack paddingHorizontal={Spacing.lg} paddingVertical={Spacing.md} style={ds.bgAssistantMessage}>
@@ -40,7 +45,12 @@ export const TypingIndicator = React.memo(function TypingIndicator() {
         <YStack style={ds.avatar}>
           <Sparkles size={16} color="#FFFFFF" />
         </YStack>
-        <Animated.View style={[dotStyle, ds.bgSystemGray5, { opacity: pulse }]} />
+        <XStack alignItems="center" gap={4}>
+          {dots.map((style, i) => (
+            <Animated.View key={i} style={[dotStyle, ds.bgSystemGray5, style]} />
+          ))}
+        </XStack>
+        <Text style={ds.textSecondary} fontSize={13}>is thinking...</Text>
       </XStack>
     </YStack>
   );

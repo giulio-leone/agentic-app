@@ -114,21 +114,21 @@ function DrawerNavigator() {
               <XStack alignItems="center" gap={Spacing.xs}>
                 <TouchableOpacity
                   onPress={() => setScreenWatcherVisible(true)}
-                  style={{ paddingHorizontal: Spacing.xs }}
+                  style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Eye size={18} color={isWatching ? '#EF4444' : colors.text} opacity={isWatching ? 1 : 0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={toggleAgentMode}
-                  style={{ paddingHorizontal: Spacing.xs }}
+                  style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Bot size={18} color={agentModeEnabled ? colors.primary : colors.text} opacity={agentModeEnabled ? 1 : 0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={toggleConsensusMode}
-                  style={{ paddingHorizontal: Spacing.xs }}
+                  style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Scale size={18} color={consensusModeEnabled ? colors.primary : colors.text} opacity={consensusModeEnabled ? 1 : 0.5} />

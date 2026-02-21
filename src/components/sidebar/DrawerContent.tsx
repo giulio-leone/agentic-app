@@ -161,6 +161,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         >
           <TouchableOpacity
             style={{
+              flexDirection: 'row',
+              alignItems: 'center',
               paddingHorizontal: Spacing.md,
               paddingVertical: Spacing.sm + 2,
               borderRadius: Radius.sm,
@@ -172,6 +174,17 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             accessibilityLabel={`Chat: ${item.title || 'New chat'}`}
             accessibilityHint="Swipe left to delete"
           >
+            {isActive && (
+              <View
+                style={{
+                  width: 3,
+                  alignSelf: 'stretch',
+                  backgroundColor: colors.primary,
+                  borderRadius: 1.5,
+                  marginRight: Spacing.sm,
+                }}
+              />
+            )}
             <Text
               color={colors.sidebarText}
               fontSize={FontSize.footnote}
@@ -224,7 +237,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             flex: 1,
             height: 36,
             backgroundColor: 'rgba(255,255,255,0.08)',
-            borderRadius: 10,
+            borderRadius: Radius.sm,
             paddingHorizontal: Spacing.sm + 2,
             fontSize: FontSize.footnote,
             color: colors.sidebarText,
