@@ -84,10 +84,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         if (finalContent.length === 0) {
           get().appendLog(`✗ AI stream ended with empty response (stop reason: ${normalizedStopReason})`);
         }
-          stopReason: normalizedStopReason,
-          contentLength: finalContent.length,
-          hasArtifacts: artifacts.length > 0,
-        });
         const finalState = get();
         if (finalState.selectedServerId && finalState.selectedSessionId) {
           SessionStorage.saveMessages(
@@ -310,8 +306,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         try {
           const secureKey = await getApiKey(`${server.id}_${config.providerType}`);
           const apiKey = secureKey || config.apiKey || null;
-            source: secureKey ? 'secureStore' : config.apiKey ? 'config' : 'none',
-          });
           if (!apiKey) {
             throw new Error('API key not found. Please configure your API key in server settings.');
           }
@@ -346,9 +340,6 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         const result = response.result as Record<string, JSONValue> | undefined;
         const stopReason = result?.stopReason as string | undefined;
         const currentState = get();
-          stopReason: stopReason ?? null,
-          streamingMessageId: currentState.streamingMessageId,
-        });
         if (currentState.streamingMessageId) {
           const idx = currentState.chatMessages.findIndex(m => m.id === currentState.streamingMessageId);
           if (idx !== -1) {

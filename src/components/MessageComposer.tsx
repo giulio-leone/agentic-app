@@ -186,7 +186,7 @@ export function MessageComposer({
       )}
 
       <XStack
-        alignItems="flex-end"
+        alignItems="center"
         borderRadius={24}
         paddingLeft={Spacing.sm}
         paddingRight={Spacing.xs + 2}
@@ -200,7 +200,7 @@ export function MessageComposer({
         <TouchableOpacity
           style={{
             width: 28, height: 28, borderRadius: 14,
-            justifyContent: 'center', alignItems: 'center', marginBottom: 2,
+            justifyContent: 'center', alignItems: 'center',
           }}
           onPress={handleAttach}
           disabled={isDisabled || isStreaming}
@@ -221,9 +221,10 @@ export function MessageComposer({
             flex: 1,
             fontSize: FontSize.body,
             maxHeight: 120,
-            paddingTop: Platform.OS === 'ios' ? 2 : Spacing.xs,
+            paddingTop: 0,
             paddingBottom: 0,
             lineHeight: 22,
+            textAlignVertical: 'center',
             marginLeft: Spacing.xs,
             color: colors.text,
           }}
