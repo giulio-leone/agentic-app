@@ -205,6 +205,8 @@ export function AddServerScreen() {
           temperature,
           reasoningEnabled: reasoningEnabled || undefined,
           reasoningEffort: reasoningEnabled ? reasoningEffort : undefined,
+          // Persist key in config as fallback when SecureStore is unavailable
+          apiKey: apiKey.trim() || editingAI?.apiKey || undefined,
         } as AIProviderConfig,
       };
 

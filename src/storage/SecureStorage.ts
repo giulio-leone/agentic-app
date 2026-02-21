@@ -1,64 +1,89 @@
 /**
  * Secure API key storage — wraps expo-secure-store with a fallback for web.
+ *
+ * Primary store: expo-secure-store (EncryptedSharedPreferences on Android).
+ * Fallback:      localStorage on web (dev only).
+ *
+ * All operations are wrapped in try/catch so a broken Keystore (common on
+ * emulators) never silently swallows errors.
  */
 
 const KEY_PREFIX = 'ai_provider_key_';
 
-function storageKey(providerType: string): string {
-  return `${KEY_PREFIX}${providerType}`;
+const log = (...args: unknown[]) => {
+  if (__DEV__) console.log('[SecureStorage]', ...args);
+};
+
+function storageKey(id: string): string {
+  return `${KEY_PREFIX}${id}`;
 }
 
 // Lazy-load expo-secure-store so the module doesn't crash on web.
+let _storeCache: typeof import('expo-secure-store') | null | undefined;
+
 async function getSecureStore(): Promise<typeof import('expo-secure-store') | null> {
+  if (_storeCache !== undefined) return _storeCache;
   try {
-    return await import('expo-secure-store');
+    _storeCache = await import('expo-secure-store');
   } catch {
-    return null;
+    _storeCache = null;
   }
+  return _storeCache;
 }
 
-export async function saveApiKey(
-  providerType: string,
-  key: string,
-): Promise<void> {
-  const store = await getSecureStore();
-  if (store) {
-    await store.setItemAsync(storageKey(providerType), key);
-  } else {
+export async function saveApiKey(id: string, key: string): Promise<boolean> {
+  try {
+    const store = await getSecureStore();
+    if (store) {
+      await store.setItemAsync(storageKey(id), key);
+      log('saveApiKey OK', id);
+      return true;
+    }
     // Web fallback — localStorage is *not* secure; acceptable for dev only.
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(storageKey(providerType), key);
+      localStorage.setItem(storageKey(id), key);
+      log('saveApiKey OK (localStorage)', id);
+      return true;
     }
+  } catch (error) {
+    log('saveApiKey FAILED', id, (error as Error).message);
   }
+  return false;
 }
 
-export async function getApiKey(
-  providerType: string,
-): Promise<string | null> {
-  const store = await getSecureStore();
-  if (store) {
-    return store.getItemAsync(storageKey(providerType));
-  }
-  if (typeof localStorage !== 'undefined') {
-    return localStorage.getItem(storageKey(providerType));
+export async function getApiKey(id: string): Promise<string | null> {
+  try {
+    const store = await getSecureStore();
+    if (store) {
+      const value = await store.getItemAsync(storageKey(id));
+      log('getApiKey', id, value ? 'found' : 'empty');
+      return value;
+    }
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem(storageKey(id));
+    }
+  } catch (error) {
+    log('getApiKey FAILED', id, (error as Error).message);
   }
   return null;
 }
 
-export async function deleteApiKey(
-  providerType: string,
-): Promise<void> {
-  const store = await getSecureStore();
-  if (store) {
-    await store.deleteItemAsync(storageKey(providerType));
-  } else if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem(storageKey(providerType));
+export async function deleteApiKey(id: string): Promise<void> {
+  try {
+    const store = await getSecureStore();
+    if (store) {
+      await store.deleteItemAsync(storageKey(id));
+      return;
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(storageKey(id));
+    }
+  } catch (error) {
+    log('deleteApiKey FAILED', id, (error as Error).message);
   }
 }
 
-export async function hasApiKey(
-  providerType: string,
-): Promise<boolean> {
-  const key = await getApiKey(providerType);
+export async function hasApiKey(id: string): Promise<boolean> {
+  const key = await getApiKey(id);
   return key !== null && key.length > 0;
 }

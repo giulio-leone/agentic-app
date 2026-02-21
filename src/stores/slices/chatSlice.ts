@@ -17,6 +17,10 @@ import {
 } from '../storePrivate';
 import type { AIProviderConfig } from '../../ai/types';
 
+const devLog = (...args: unknown[]) => {
+  if (__DEV__) console.log('[chatSlice]', ...args);
+};
+
 export type ChatSlice = Pick<AppState, 'streamingMessageId' | 'stopReason' | 'isStreaming' | 'promptText'>
   & Pick<AppActions, 'sendPrompt' | 'cancelPrompt' | 'setPromptText' | 'editMessage' | 'deleteMessage' | 'regenerateMessage'>;
 
@@ -61,15 +65,34 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
 
         const finalMessage = get().chatMessages.find(m => m.id === assistantId);
         const artifacts = finalMessage ? detectArtifacts(finalMessage.content) : [];
+        const normalizedStopReason =
+          typeof stopReason === 'string' && stopReason.trim().length > 0
+            ? stopReason
+            : 'unknown';
+        const finalContent = finalMessage?.content.trim() ?? '';
 
         set(s => ({
           chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-            ...m, isStreaming: false, ...(artifacts.length > 0 ? { artifacts } : {}),
+            ...m,
+            content:
+              finalContent.length === 0
+                ? `⚠️ Empty response from model (stop reason: ${normalizedStopReason}).`
+                : m.content,
+            isStreaming: false,
+            ...(artifacts.length > 0 ? { artifacts } : {}),
           })),
           isStreaming: false,
           streamingMessageId: null,
-          stopReason,
+          stopReason: normalizedStopReason,
         }));
+        if (finalContent.length === 0) {
+          get().appendLog(`✗ AI stream ended with empty response (stop reason: ${normalizedStopReason})`);
+        }
+        devLog('AI stream complete', {
+          stopReason: normalizedStopReason,
+          contentLength: finalContent.length,
+          hasArtifacts: artifacts.length > 0,
+        });
         const finalState = get();
         if (finalState.selectedServerId && finalState.selectedSessionId) {
           SessionStorage.saveMessages(
@@ -82,6 +105,8 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       // onError
       (error) => {
         setAiAbortController(null);
+        get().appendLog(`✗ AI stream error: ${error.message}`);
+        devLog('AI stream error', error.message);
         const errorMessage: ChatMessage = {
           id: uuidv4(),
           role: 'system',
@@ -222,6 +247,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
     sendPrompt: async (text, attachments) => {
       const state = get();
       let server = state.servers.find(s => s.id === state.selectedServerId);
+      devLog('sendPrompt:start', { selectedServerId: state.selectedServerId, textLength: text.length });
 
       // Fallback: If no server is selected, pick the first AI Provider server
       if (!server) {
@@ -288,8 +314,13 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       // ── AI Provider path ──
       if (server.serverType === ServerType.AIProvider && server.aiProviderConfig) {
         const config = server.aiProviderConfig;
+        devLog('sendPrompt:path', { type: 'ai-provider', provider: config.providerType, model: config.modelId });
         try {
-          const apiKey = await getApiKey(`${server.id}_${config.providerType}`);
+          const secureKey = await getApiKey(`${server.id}_${config.providerType}`);
+          const apiKey = secureKey || config.apiKey || null;
+          devLog('resolveApiKey', {
+            source: secureKey ? 'secureStore' : config.apiKey ? 'config' : 'none',
+          });
           if (!apiKey) {
             throw new Error('API key not found. Please configure your API key in server settings.');
           }
@@ -316,6 +347,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       if (!_service) return;
 
       try {
+        devLog('sendPrompt:path', { type: 'acp' });
         get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);
         const response = await _service.sendPrompt({
           sessionId: sessionId,
@@ -324,21 +356,33 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         const result = response.result as Record<string, JSONValue> | undefined;
         const stopReason = result?.stopReason as string | undefined;
         const currentState = get();
+        devLog('sendPrompt:acp-response', {
+          stopReason: stopReason ?? null,
+          streamingMessageId: currentState.streamingMessageId,
+        });
         if (currentState.streamingMessageId) {
           const idx = currentState.chatMessages.findIndex(m => m.id === currentState.streamingMessageId);
           if (idx !== -1) {
             const updatedMessages = [...currentState.chatMessages];
             updatedMessages[idx] = { ...updatedMessages[idx], isStreaming: false };
-            set({ chatMessages: updatedMessages, isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? 'end_turn' });
+            set({
+              chatMessages: updatedMessages,
+              isStreaming: false,
+              streamingMessageId: null,
+              stopReason: stopReason ?? null,
+            });
           } else {
-            set({ isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? 'end_turn' });
+            set({ isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? null });
           }
-        } else {
-          set({ isStreaming: false, stopReason: stopReason ?? 'end_turn' });
+        } else if (stopReason) {
+          // For ACP transports without immediate stream chunks, keep waiting when
+          // no explicit stop reason is returned by sendPrompt.
+          set({ isStreaming: false, stopReason });
         }
       } catch (error) {
         const errorMsg = (error as Error).message;
         get().appendLog(`✗ Prompt failed: ${errorMsg}`);
+        devLog('sendPrompt:acp-error', errorMsg);
         const errorMessage: ChatMessage = {
           id: uuidv4(),
           role: 'system',

@@ -1,0 +1,44 @@
+diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js
+index 4eaf7d6..de4fe06 100644
+--- a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js
++++ b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-QQBYHPWM.js
+@@ -1425,7 +1425,7 @@ import { tool as tool4 } from "ai";
+ import { z as z4 } from "zod";
+ 
+ // src/adapters/chunking/default-chunking.adapter.ts
+-import { randomUUID } from "crypto";
++const randomUUID = () => "uuid-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+ var DEFAULT_MAX_TOKENS = 512;
+ var DEFAULT_OVERLAP = 50;
+ var DEFAULT_SEPARATORS = ["\n\n", "\n", ". ", " "];
+diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js b/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
+index 24076cb..276fc7f 100644
+--- a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
++++ b/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
+@@ -619,7 +619,7 @@ var DefaultPluginRegistryAdapter = class {
+       case "builtin":
+         return source.factory();
+       case "module": {
+-        const mod = await import(source.modulePath);
++        throw new Error("Dynamic import is not supported in React Native.");
+         const exportName = source.exportName ?? "default";
+         const exported = mod[exportName];
+         if (!exported) {
+@@ -749,7 +749,7 @@ var PluginRegistryPlugin = class {
+             modulePath: z8.string(),
+             exportName: z8.string().optional()
+           }).parse(args);
+-          const mod = await import(modulePath);
++          throw new Error("Dynamic import is not supported in React Native.");
+           const expName = exportName ?? "default";
+           const exported = mod[expName];
+           if (!exported) {
+@@ -976,7 +976,7 @@ var AiSdkMcpAdapter = class {
+ };
+ async function loadCreateMCPClient() {
+   try {
+-    const mod = await import("@ai-sdk/mcp");
++    throw new Error("Dynamic import is not supported in React Native.");
+     if (!mod.createMCPClient) {
+       throw new Error("createMCPClient not found in @ai-sdk/mcp");
+     }

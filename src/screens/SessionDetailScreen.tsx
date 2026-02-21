@@ -346,14 +346,14 @@ export function SessionDetailScreen() {
         maxToRenderPerBatch={8}
         updateCellsBatchingPeriod={50}
         windowSize={11}
-        removeClippedSubviews={Platform.OS === 'android'}
+        removeClippedSubviews={false}
         initialNumToRender={10}
       />
 
       {stopReason && !isStreaming && (
         <YStack paddingVertical={Spacing.xs} paddingHorizontal={Spacing.md} alignItems="center">
           <Text fontSize={FontSize.caption} fontStyle="italic" color={colors.textTertiary}>
-            {stopReason === 'end_turn'
+            {stopReason === 'end_turn' || stopReason === 'stop'
               ? 'Response complete'
               : stopReason === 'max_tokens'
                 ? 'Reached token limit'

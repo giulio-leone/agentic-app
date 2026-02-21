@@ -12,6 +12,8 @@ import {
   Dimensions,
   Pressable,
   Platform,
+  View,
+  Text as RNText,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChatMessage, Attachment } from '../acp/models/types';
@@ -39,6 +41,7 @@ const containerStyle = {
 } as const;
 
 const bubbleStyle = {
+  flexDirection: 'row' as const,
   paddingHorizontal: Spacing.md,
   paddingVertical: Spacing.sm + 2,
   borderRadius: Radius.xl,
@@ -64,6 +67,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
+
 
   // Entrance animation (runs once)
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -91,7 +95,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
           }
         ]}
       >
-        <XStack
+        <View
           style={[
             bubbleStyle,
             isUser ? ds.bgUserMessage : ds.bgAssistantMessage,
@@ -107,7 +111,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             </YStack>
           )}
 
-          <YStack flex={1}>
+          <View style={{ flexShrink: 1 }}>
             {/* Attachments */}
             {isUser && message.attachments && message.attachments.length > 0 && (
               <AttachmentPreview attachments={message.attachments} colors={colors} />
@@ -133,13 +137,13 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                 ) : null}
               </>
             ) : isUser ? (
-              <Text fontSize={FontSize.body} lineHeight={24} color={colors.userBubbleText} selectable>
-                {message.content}
-              </Text>
+              <RNText style={{ fontSize: FontSize.body, lineHeight: 24, color: colors.userBubbleText }} selectable>
+                {message.content || ''}
+              </RNText>
             ) : isSystem ? (
-              <Text fontSize={FontSize.footnote} fontStyle="italic" textAlign="center" style={ds.textTertiary} selectable>
+              <RNText style={{ fontSize: FontSize.footnote, fontStyle: 'italic', textAlign: 'center', color: colors.textTertiary }} selectable>
                 {message.content}
-              </Text>
+              </RNText>
             ) : (
               <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
             )}
@@ -167,8 +171,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                 </TouchableOpacity>
               </XStack>
             )}
-          </YStack>
-        </XStack>
+          </View>
+        </View>
       </Animated.View>
     </Pressable>
   );
