@@ -33,6 +33,7 @@ const NODE_SHIMS = {
   'https': nodePath.resolve(__dirname, 'shims/https.js'),
   'http2': nodePath.resolve(__dirname, 'shims/http2.js'),
   'punycode': require.resolve('punycode/'),
+  'crypto': nodePath.resolve(__dirname, 'shims/crypto.js'),
 };
 
 const originalResolveRequest = config.resolver.resolveRequest;
