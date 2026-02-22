@@ -1,5 +1,6 @@
 /**
  * Session detail screen — ChatGPT-style chat view with centered empty state.
+ * Hooks extracted for scroll, search, composition, and message actions.
  */
 
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
@@ -7,9 +8,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Animated,
   TextInput,
   StyleSheet,
   RefreshControl,
@@ -18,9 +16,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { MessageSquare, Code, Lightbulb, Zap, PenLine } from 'lucide-react-native';
+import { PenLine } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import * as Clipboard from 'expo-clipboard';
 import { useAppStore } from '../stores/appStore';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
@@ -34,24 +31,17 @@ import { ServerChipSelector } from '../components/chat/ServerChipSelector';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { SlashCommandAutocomplete } from '../components/chat/SlashCommandAutocomplete';
-import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
+import { ChatEmptyState } from '../components/chat/ChatEmptyState';
+import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
-import { chatToMarkdown, chatToJSON, shareExport } from '../utils/chatExport';
-import { BUILT_IN_TEMPLATES, matchTemplates, type PromptTemplate } from '../utils/promptTemplates';
+import { useScrollToBottom, useChatSearch, useMessageActions, useComposition } from '../hooks/chat';
 
-// Stable key extractor avoids re-creating function per render
 const keyExtractor = (item: ChatMessage) => item.id;
-
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
 const messageListStyle = { paddingVertical: Spacing.sm } as const;
-
-const emptyIconBaseStyle = {
-  width: 48, height: 48, borderRadius: 24,
-  justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm,
-} as const;
 
 export function SessionDetailScreen() {
   const { colors } = useDesignSystem();
@@ -81,12 +71,74 @@ export function SessionDetailScreen() {
     loadBookmarks,
   } = useAppStore();
 
-  const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
 
-  // TTS — extract speaking state into ref to avoid re-rendering all messages
+  // ── Custom hooks ──
+  const {
+    flatListRef,
+    showFab,
+    unreadCount,
+    fabOpacity,
+    handleScroll,
+    scrollToBottom,
+    markNearBottom,
+  } = useScrollToBottom({ chatMessages, isStreaming });
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    currentMatchIdx,
+    searchMatches,
+    searchMatchSet,
+    handleSearchNext,
+    handleSearchPrev,
+    resetSearch,
+  } = useChatSearch({ chatMessages, flatListRef });
+
+  const {
+    actionMenuMessage,
+    editingMessageId,
+    editText,
+    setEditText,
+    canvasArtifact,
+    handleLongPress,
+    handleOpenArtifact,
+    handleCopy,
+    handleDelete,
+    handleRegenerate,
+    handleBookmark,
+    handleExportChat,
+    handleEditStart,
+    handleEditSubmit,
+    handleEditCancel,
+    closeActionMenu,
+    closeCanvas,
+  } = useMessageActions({
+    chatMessages,
+    isStreaming,
+    editMessage,
+    deleteMessage,
+    regenerateMessage,
+    toggleBookmark,
+  });
+
+  const {
+    quotedMessage,
+    templateSheetVisible,
+    slashMatches,
+    handleSelectTemplate,
+    handleSuggestion,
+    handleSwipeReply,
+    handleSend,
+    clearQuote,
+    openTemplates,
+    closeTemplates,
+    builtInTemplates,
+  } = useComposition({ promptText, setPromptText, sendPrompt, markNearBottom });
+
+  // ── TTS ──
   const { toggle: toggleSpeech, isSpeaking, stop: stopSpeech } = useSpeech();
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const speakingRef = useRef({ isSpeaking, speakingMessageId });
@@ -103,71 +155,16 @@ export function SessionDetailScreen() {
     }
   }, [toggleSpeech, stopSpeech]);
 
-  // STT
+  // ── STT ──
   const onTranscript = useCallback((text: string) => setPromptText(text), [setPromptText]);
   const { isListening, toggle: toggleVoice, isAvailable: voiceAvailable } = useVoiceInput({
     onTranscript,
     onFinalTranscript: onTranscript,
   });
 
-  // Load bookmarks on mount
+  // ── Load bookmarks + haptic on response complete ──
   useEffect(() => { loadBookmarks(); }, [loadBookmarks]);
 
-  // Smart auto-scroll: only scroll when user is near the bottom
-  const isNearBottom = useRef(true);
-  const prevMessageCount = useRef(chatMessages.length);
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // FAB state: visible when scrolled up, tracks unread messages
-  const [showFab, setShowFab] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const fabOpacity = useRef(new Animated.Value(0)).current;
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-      const nearBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
-      isNearBottom.current = nearBottom;
-      if (nearBottom) {
-        setShowFab(false);
-        setUnreadCount(0);
-        Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
-      } else if (!showFab && chatMessages.length > 0) {
-        setShowFab(true);
-        Animated.timing(fabOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      }
-    },
-    [showFab, chatMessages.length, fabOpacity],
-  );
-
-  useEffect(() => {
-    if (chatMessages.length > prevMessageCount.current) {
-      if (isNearBottom.current) {
-        scrollTimerRef.current = setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 80);
-      } else {
-        // User is scrolled up — track unread messages
-        setUnreadCount(c => c + (chatMessages.length - prevMessageCount.current));
-      }
-    }
-    prevMessageCount.current = chatMessages.length;
-    return () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); };
-  }, [chatMessages.length]);
-
-  // Scroll during streaming — use ref to avoid cleanup on every content change
-  const streamScrollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastContent = chatMessages[chatMessages.length - 1]?.content;
-  useEffect(() => {
-    if (isStreaming && isNearBottom.current) {
-      streamScrollRef.current = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 50);
-    }
-    return () => { if (streamScrollRef.current) clearTimeout(streamScrollRef.current); };
-  }, [lastContent, isStreaming]);
-
-  // Haptic on response complete
   const prevStreaming = useRef(isStreaming);
   useEffect(() => {
     if (prevStreaming.current && !isStreaming && chatMessages.length > 0) {
@@ -176,91 +173,7 @@ export function SessionDetailScreen() {
     prevStreaming.current = isStreaming;
   }, [isStreaming, chatMessages.length]);
 
-  // ── Quote / Reply state ──
-  const [quotedMessage, setQuotedMessage] = useState<ChatMessage | null>(null);
-
-  const handleSwipeReply = useCallback((message: ChatMessage) => {
-    setQuotedMessage(message);
-  }, []);
-
-  // ── Search state ──
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
-
-  const searchMatches = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return chatMessages
-      .map((m, i) => (m.content.toLowerCase().includes(q) ? i : -1))
-      .filter(i => i !== -1);
-  }, [chatMessages, searchQuery]);
-
-  const searchMatchSet = useMemo(() => new Set(searchMatches), [searchMatches]);
-
-  const handleSearchNext = useCallback(() => {
-    if (searchMatches.length === 0) return;
-    const next = (currentMatchIdx + 1) % searchMatches.length;
-    setCurrentMatchIdx(next);
-    flatListRef.current?.scrollToIndex({ index: searchMatches[next]!, animated: true, viewPosition: 0.5 });
-  }, [searchMatches, currentMatchIdx]);
-
-  const handleSearchPrev = useCallback(() => {
-    if (searchMatches.length === 0) return;
-    const prev = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
-    setCurrentMatchIdx(prev);
-    flatListRef.current?.scrollToIndex({ index: searchMatches[prev]!, animated: true, viewPosition: 0.5 });
-  }, [searchMatches, currentMatchIdx]);
-
-  // Reset match index when query changes
-  useEffect(() => {
-    setCurrentMatchIdx(0);
-    if (searchMatches.length > 0) {
-      flatListRef.current?.scrollToIndex({ index: searchMatches[0]!, animated: true, viewPosition: 0.5 });
-    }
-  }, [searchQuery]);
-
-  // Clamp match index when matches shrink (e.g. messages added/removed during search)
-  useEffect(() => {
-    if (searchMatches.length > 0 && currentMatchIdx >= searchMatches.length) {
-      setCurrentMatchIdx(searchMatches.length - 1);
-    }
-  }, [searchMatches.length, currentMatchIdx]);
-
-  // ── Template state ──
-  const [templateSheetVisible, setTemplateSheetVisible] = useState(false);
-
-  const slashMatches = useMemo(() =>
-    matchTemplates(promptText, BUILT_IN_TEMPLATES),
-    [promptText],
-  );
-
-  const handleSelectTemplate = useCallback((template: PromptTemplate) => {
-    setPromptText(template.prompt);
-    setTemplateSheetVisible(false);
-  }, [setPromptText]);
-
-  const handleSend = useCallback((attachments?: Attachment[]) => {
-    const text = promptText.trim();
-    if (!text && (!attachments || attachments.length === 0)) return;
-    isNearBottom.current = true;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Prepend quote context if replying to a message
-    const prefix = quotedMessage
-      ? `> ${quotedMessage.content.slice(0, 200).replace(/\n/g, '\n> ')}\n\n`
-      : '';
-    sendPrompt(prefix + text, attachments);
-    setQuotedMessage(null);
-  }, [promptText, sendPrompt, quotedMessage]);
-
-  const scrollToBottom = useCallback(() => {
-    flatListRef.current?.scrollToEnd({ animated: true });
-    isNearBottom.current = true;
-    setShowFab(false);
-    setUnreadCount(0);
-    Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
-  }, [fabOpacity]);
-
-  // ── Pull-to-refresh: reconnect ACP or reload messages ──
+  // ── Pull-to-refresh ──
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -276,97 +189,9 @@ export function SessionDetailScreen() {
     }
   }, [isAIProvider, connectionState, connect, loadSessionMessages, selectedSessionId]);
 
-  // ── Message CRUD state ──
-  const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-
-  // ── Canvas state ──
-  const [canvasArtifact, setCanvasArtifact] = useState<Artifact | null>(null);
-
-  const handleOpenArtifact = useCallback((artifact: Artifact) => {
-    setCanvasArtifact(artifact);
-  }, []);
-
-  const handleLongPress = useCallback((message: ChatMessage) => {
-    if (isStreaming) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setActionMenuMessage(message);
-  }, [isStreaming]);
-
-  const handleCopy = useCallback(() => {
-    if (actionMenuMessage) {
-      Clipboard.setStringAsync(actionMenuMessage.content);
-    }
-  }, [actionMenuMessage]);
-
-  const handleDelete = useCallback(() => {
-    if (actionMenuMessage) {
-      deleteMessage(actionMenuMessage.id);
-    }
-  }, [actionMenuMessage, deleteMessage]);
-
-  const handleRegenerate = useCallback(() => {
-    if (actionMenuMessage) {
-      regenerateMessage(actionMenuMessage.id);
-    }
-  }, [actionMenuMessage, regenerateMessage]);
-
-  const handleBookmark = useCallback(() => {
-    if (actionMenuMessage) {
-      toggleBookmark(actionMenuMessage.id);
-    }
-  }, [actionMenuMessage, toggleBookmark]);
-
-  const handleExportChat = useCallback(() => {
-    if (chatMessages.length === 0) return;
-    const title = `Chat ${new Date().toISOString().slice(0, 10)}`;
-    // Show format picker via Alert
-    import('react-native').then(({ Alert }) => {
-      Alert.alert('Export Format', 'Choose export format', [
-        {
-          text: 'Markdown',
-          onPress: () => {
-            const md = chatToMarkdown(chatMessages, title);
-            shareExport(md, `${title}.md`);
-          },
-        },
-        {
-          text: 'JSON',
-          onPress: () => {
-            const json = chatToJSON(chatMessages, title);
-            shareExport(json, `${title}.json`);
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    });
-  }, [chatMessages]);
-
-  const handleEditStart = useCallback(() => {
-    if (actionMenuMessage) {
-      setEditingMessageId(actionMenuMessage.id);
-      setEditText(actionMenuMessage.content);
-    }
-  }, [actionMenuMessage]);
-
-  const handleEditSubmit = useCallback(() => {
-    if (editingMessageId && editText.trim()) {
-      editMessage(editingMessageId, editText.trim());
-    }
-    setEditingMessageId(null);
-    setEditText('');
-  }, [editingMessageId, editText, editMessage]);
-
-  const handleEditCancel = useCallback(() => {
-    setEditingMessageId(null);
-    setEditText('');
-  }, []);
-
-  // Render message — pass stable handleSpeak and handleLongPress callbacks
+  // ── Render message ──
   const renderMessage = useCallback(
     ({ item, index }: { item: ChatMessage; index: number }) => {
-      // Inline edit mode for user or assistant messages
       if (editingMessageId === item.id) {
         const isUserEdit = item.role === 'user';
         return (
@@ -440,92 +265,12 @@ export function SessionDetailScreen() {
         </SwipeableMessage>
       );
     },
-    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds],
+    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds, setEditText],
   );
-
-  // Pulsing animation for empty state — properly managed with start/stop
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  useEffect(() => {
-    if (chatMessages.length === 0) {
-      const anim = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.15, duration: 1500, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
-        ]),
-      );
-      pulseRef.current = anim;
-      anim.start();
-    } else if (pulseRef.current) {
-      pulseRef.current.stop();
-      pulseAnim.setValue(1);
-      pulseRef.current = null;
-    }
-  }, [chatMessages.length, pulseAnim]);
-
-  // Memoize empty state inline styles
-  const emptyIconStyle = useMemo(
-    () => [emptyIconBaseStyle, { backgroundColor: colors.primary, transform: [{ scale: pulseAnim }] }],
-    [colors.primary, pulseAnim],
-  );
-
-  const SUGGESTION_CHIPS = useMemo(() => [
-    { icon: MessageSquare, text: 'Explain this code', prompt: 'Explain this code to me step by step' },
-    { icon: Code, text: 'Write a function', prompt: 'Write a function that ' },
-    { icon: Lightbulb, text: 'Help me brainstorm', prompt: 'Help me brainstorm ideas for ' },
-    { icon: Zap, text: 'Debug an error', prompt: 'I have this error: ' },
-  ], []);
-
-  const handleSuggestion = useCallback((prompt: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPromptText(prompt);
-  }, [setPromptText]);
 
   const renderEmpty = useCallback(
-    () => (
-      <YStack alignItems="center" gap={Spacing.md} paddingHorizontal={Spacing.xxl}>
-        <Animated.View style={emptyIconStyle}>
-          <Text fontSize={22} color={colors.contrastText}>✦</Text>
-        </Animated.View>
-        <Text fontSize={FontSize.title3} fontWeight="600" color={colors.text}>
-          {isConnected ? 'How can I help you today?' : 'Not connected'}
-        </Text>
-        <Text fontSize={FontSize.body} textAlign="center" lineHeight={22} color={colors.textTertiary}>
-          {isConnected
-            ? 'Type a message to start a conversation'
-            : 'Open the sidebar to connect to a server'}
-        </Text>
-        {isConnected && (
-          <YStack gap={Spacing.xs} marginTop={Spacing.md} width="100%" maxWidth={320}>
-            {SUGGESTION_CHIPS.map((chip) => (
-              <Pressable
-                key={chip.text}
-                onPress={() => handleSuggestion(chip.prompt)}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.7 : 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: Spacing.sm,
-                  paddingHorizontal: Spacing.md,
-                  paddingVertical: Spacing.sm,
-                  borderRadius: Radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.separator,
-                  backgroundColor: colors.cardBackground,
-                })}
-                accessibilityLabel={chip.text}
-                accessibilityRole="button"
-              >
-                <chip.icon size={16} color={colors.primary} />
-                <Text fontSize={FontSize.footnote} color={colors.text}>{chip.text}</Text>
-              </Pressable>
-            ))}
-          </YStack>
-        )}
-      </YStack>
-    ),
-    [isConnected, emptyIconStyle, colors, SUGGESTION_CHIPS, handleSuggestion],
+    () => <ChatEmptyState isConnected={isConnected} colors={colors} onSuggestion={handleSuggestion} />,
+    [isConnected, colors, handleSuggestion],
   );
 
   const showTyping = isStreaming && chatMessages.length > 0 &&
@@ -546,7 +291,7 @@ export function SessionDetailScreen() {
         visible={chatSearchVisible}
         query={searchQuery}
         onChangeQuery={setSearchQuery}
-        onClose={() => { toggleChatSearch(); setSearchQuery(''); }}
+        onClose={() => { toggleChatSearch(); resetSearch(); }}
         matchCount={searchMatches.length}
         currentMatch={currentMatchIdx}
         onPrev={handleSearchPrev}
@@ -610,12 +355,10 @@ export function SessionDetailScreen() {
         </YStack>
       )}
 
-      {/* Model picker for AI providers */}
       {isAIProvider && selectedServer && (
         <ModelPickerBar server={selectedServer} />
       )}
 
-      {/* Quote preview */}
       {quotedMessage && (
         <XStack
           paddingHorizontal={Spacing.lg}
@@ -635,13 +378,12 @@ export function SessionDetailScreen() {
               {quotedMessage.content.slice(0, 120)}
             </Text>
           </YStack>
-          <Pressable onPress={() => setQuotedMessage(null)} hitSlop={8}>
+          <Pressable onPress={clearQuote} hitSlop={8}>
             <Text fontSize={FontSize.body} color={colors.textTertiary}>✕</Text>
           </Pressable>
         </XStack>
       )}
 
-      {/* Server chip selector for multi-agent */}
       <ServerChipSelector
         servers={servers}
         selectedId={selectedServerId}
@@ -649,7 +391,6 @@ export function SessionDetailScreen() {
         colors={colors}
       />
 
-      {/* Slash command autocomplete */}
       <View style={{ position: 'relative' }}>
         <SlashCommandAutocomplete
           visible={promptText.startsWith('/')}
@@ -659,10 +400,9 @@ export function SessionDetailScreen() {
         />
       </View>
 
-      {/* Template icon + composer row */}
       <XStack alignItems="flex-end">
         <TouchableOpacity
-          onPress={() => setTemplateSheetVisible(true)}
+          onPress={openTemplates}
           style={{ paddingLeft: Spacing.md, paddingBottom: Spacing.lg }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="Open prompt templates"
@@ -687,7 +427,7 @@ export function SessionDetailScreen() {
       <MessageActionMenu
         visible={!!actionMenuMessage}
         message={actionMenuMessage}
-        onClose={() => setActionMenuMessage(null)}
+        onClose={closeActionMenu}
         onEdit={handleEditStart}
         onCopy={handleCopy}
         onDelete={handleDelete}
@@ -700,14 +440,14 @@ export function SessionDetailScreen() {
       <CanvasPanel
         visible={!!canvasArtifact}
         artifact={canvasArtifact}
-        onClose={() => setCanvasArtifact(null)}
+        onClose={closeCanvas}
       />
 
       <TemplatePickerSheet
         visible={templateSheetVisible}
-        templates={BUILT_IN_TEMPLATES}
+        templates={builtInTemplates}
         onSelect={handleSelectTemplate}
-        onClose={() => setTemplateSheetVisible(false)}
+        onClose={closeTemplates}
         colors={colors}
       />
     </KeyboardAvoidingView>

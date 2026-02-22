@@ -1,0 +1,95 @@
+/**
+ * Hook for smart auto-scroll, FAB visibility, and unread count tracking.
+ */
+
+import { useRef, useEffect, useCallback, useState } from 'react';
+import {
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Animated,
+} from 'react-native';
+import { ChatMessage } from '../../acp/models/types';
+
+interface UseScrollToBottomOptions {
+  chatMessages: ChatMessage[];
+  isStreaming: boolean;
+}
+
+export function useScrollToBottom({ chatMessages, isStreaming }: UseScrollToBottomOptions) {
+  const flatListRef = useRef<FlatList<ChatMessage>>(null);
+  const isNearBottom = useRef(true);
+  const prevMessageCount = useRef(chatMessages.length);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [showFab, setShowFab] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const fabOpacity = useRef(new Animated.Value(0)).current;
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+      const nearBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+      isNearBottom.current = nearBottom;
+      if (nearBottom) {
+        setShowFab(false);
+        setUnreadCount(0);
+        Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+      } else if (!showFab && chatMessages.length > 0) {
+        setShowFab(true);
+        Animated.timing(fabOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      }
+    },
+    [showFab, chatMessages.length, fabOpacity],
+  );
+
+  // Auto-scroll on new messages when near bottom
+  useEffect(() => {
+    if (chatMessages.length > prevMessageCount.current) {
+      if (isNearBottom.current) {
+        scrollTimerRef.current = setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 80);
+      } else {
+        setUnreadCount(c => c + (chatMessages.length - prevMessageCount.current));
+      }
+    }
+    prevMessageCount.current = chatMessages.length;
+    return () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); };
+  }, [chatMessages.length]);
+
+  // Scroll during streaming
+  const streamScrollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastContent = chatMessages[chatMessages.length - 1]?.content;
+  useEffect(() => {
+    if (isStreaming && isNearBottom.current) {
+      streamScrollRef.current = setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }, 50);
+    }
+    return () => { if (streamScrollRef.current) clearTimeout(streamScrollRef.current); };
+  }, [lastContent, isStreaming]);
+
+  const scrollToBottom = useCallback(() => {
+    flatListRef.current?.scrollToEnd({ animated: true });
+    isNearBottom.current = true;
+    setShowFab(false);
+    setUnreadCount(0);
+    Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+  }, [fabOpacity]);
+
+  /** Mark as near-bottom (e.g. before sending a message) */
+  const markNearBottom = useCallback(() => {
+    isNearBottom.current = true;
+  }, []);
+
+  return {
+    flatListRef,
+    showFab,
+    unreadCount,
+    fabOpacity,
+    handleScroll,
+    scrollToBottom,
+    markNearBottom,
+  };
+}
