@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import {
   TouchableOpacity,
-  ActivityIndicator,
+  Animated as RNAnimated,
   Image,
   Dimensions,
   Pressable,
@@ -163,13 +163,9 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
               <MarkdownContent content={message.content} colors={colors} artifacts={message.artifacts} onOpenArtifact={onOpenArtifact} />
             )}
 
-            {/* Streaming indicator */}
+            {/* Streaming cursor */}
             {message.isStreaming && (
-              <ActivityIndicator
-                size="small"
-                color={colors.textTertiary}
-                style={{ marginTop: Spacing.xs, alignSelf: 'flex-start' }}
-              />
+              <StreamingCursor color={colors.primary} />
             )}
 
             {/* TTS action bar */}
@@ -215,6 +211,36 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.bookmarked === nextProps.bookmarked &&
     prevProps.message.serverId === nextProps.message.serverId &&
     prevProps.message.serverName === nextProps.message.serverName
+  );
+});
+
+// ── Attachment preview ───────────────────────────────────────────────────────
+
+// ── Streaming cursor — blinking inline caret ─────────────────────────────────
+
+const StreamingCursor = React.memo(function StreamingCursor({ color }: { color: string }) {
+  const opacity = useRef(new RNAnimated.Value(1)).current;
+  useEffect(() => {
+    const blink = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+        RNAnimated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+    );
+    blink.start();
+    return () => blink.stop();
+  }, [opacity]);
+  return (
+    <RNAnimated.View
+      style={{
+        width: 2,
+        height: 18,
+        backgroundColor: color,
+        borderRadius: 1,
+        marginTop: Spacing.xs,
+        opacity,
+      }}
+    />
   );
 });
 
