@@ -36,6 +36,7 @@ import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { chatToMarkdown, chatToJSON, shareExport } from '../utils/chatExport';
 
 // Stable key extractor avoids re-creating function per render
 const keyExtractor = (item: ChatMessage) => item.id;
@@ -299,6 +300,31 @@ export function SessionDetailScreen() {
       toggleBookmark(actionMenuMessage.id);
     }
   }, [actionMenuMessage, toggleBookmark]);
+
+  const handleExportChat = useCallback(() => {
+    if (chatMessages.length === 0) return;
+    const title = `Chat ${new Date().toISOString().slice(0, 10)}`;
+    // Show format picker via Alert
+    import('react-native').then(({ Alert }) => {
+      Alert.alert('Export Format', 'Choose export format', [
+        {
+          text: 'Markdown',
+          onPress: () => {
+            const md = chatToMarkdown(chatMessages, title);
+            shareExport(md, `${title}.md`);
+          },
+        },
+        {
+          text: 'JSON',
+          onPress: () => {
+            const json = chatToJSON(chatMessages, title);
+            shareExport(json, `${title}.json`);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    });
+  }, [chatMessages]);
 
   const handleEditStart = useCallback(() => {
     if (actionMenuMessage) {
@@ -621,6 +647,7 @@ export function SessionDetailScreen() {
         onRegenerate={handleRegenerate}
         onBookmark={handleBookmark}
         isBookmarked={actionMenuMessage ? bookmarkedMessageIds.has(actionMenuMessage.id) : false}
+        onExport={handleExportChat}
       />
 
       <CanvasPanel

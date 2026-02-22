@@ -12,7 +12,7 @@ import {
   Pressable,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Pencil, Copy, RefreshCw, Trash2, Bookmark } from 'lucide-react-native';
+import { Pencil, Copy, RefreshCw, Trash2, Bookmark, Share2 } from 'lucide-react-native';
 import type { ChatMessage } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
@@ -35,6 +35,7 @@ interface Props {
   onRegenerate?: () => void;
   onBookmark?: () => void;
   isBookmarked?: boolean;
+  onExport?: () => void;
 }
 
 export function MessageActionMenu({
@@ -47,6 +48,7 @@ export function MessageActionMenu({
   onRegenerate,
   onBookmark,
   isBookmarked,
+  onExport,
 }: Props) {
   const { colors } = useDesignSystem();
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -91,6 +93,9 @@ export function MessageActionMenu({
   }
   if (onDelete) {
     actions.push({ key: 'delete', icon: <Trash2 size={20} color={colors.destructive} />, label: 'Delete', destructive: true, onPress: onDelete });
+  }
+  if (onExport) {
+    actions.push({ key: 'export', icon: <Share2 size={20} color={colors.text} />, label: 'Export Chat', onPress: onExport });
   }
 
   return (
