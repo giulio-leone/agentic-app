@@ -1,17 +1,13 @@
 /**
  * Sidebar — ChatGPT style: always dark, session list, subtle server integration.
- *
- * Uses Tamagui layout primitives (YStack, XStack, Text, Separator) but passes
- * sidebar-specific colors inline because the sidebar is always dark-themed and
- * does NOT use Tamagui theme tokens ($color, $background, etc.).
+ * Logic extracted to useDrawerState hook.
  */
 
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Alert,
   RefreshControl,
   TextInput,
   Animated,
@@ -22,105 +18,18 @@ import { YStack, XStack, Text, Separator } from 'tamagui';
 import { Trash2, X, PenLine, Settings, Check, Plus, Terminal, Github, Server } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
-import { useAppStore } from '../../stores/appStore';
 import { ConnectionBadge } from '../ConnectionBadge';
-import { ACPConnectionState, SessionSummary, ServerType } from '../../acp/models/types';
+import { SessionSummary, ServerType } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
-import { APP_DISPLAY_NAME } from '../../constants/app';
 import { getProviderInfo } from '../../ai/providers';
-import { MCPConnectionState } from '../../mcp/types';
-import { groupSessionsByDate } from '../../utils/sessionUtils';
+import { useDrawerState } from '../../hooks/useDrawerState';
 
 export function DrawerContent(props: DrawerContentComponentProps) {
   const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
-  const navigation = props.navigation;
-  const rootNav = useNavigation<any>();
-  const {
-    servers,
-    selectedServerId,
-    connectionState,
-    isInitialized,
-    agentInfo,
-    sessions,
-    selectedSessionId,
-    connectionError,
-    loadServers,
-    selectServer,
-    connect,
-    disconnect,
-    createSession,
-    selectSession,
-    deleteSession,
-    deleteServer,
-    loadSessions,
-    mcpStatuses,
-  } = useAppStore();
-
-  const selectedServer = servers.find(s => s.id === selectedServerId);
-  const isConnected = connectionState === ACPConnectionState.Connected;
-
-  // Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const filteredSessions = useMemo(() => {
-    if (!searchQuery.trim()) return sessions;
-    const q = searchQuery.toLowerCase();
-    return sessions.filter(s =>
-      (s.title || '').toLowerCase().includes(q) ||
-      s.id.toLowerCase().includes(q)
-    );
-  }, [sessions, searchQuery]);
-
-  const handleServerPress = useCallback(
-    (id: string) => {
-      if (selectedServerId === id) return;
-      Haptics.selectionAsync();
-      selectServer(id);
-    },
-    [selectedServerId, selectServer],
-  );
-
-  const handleConnect = useCallback(() => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      connect();
-    }
-  }, [isConnected, connect, disconnect]);
-
-  const handleNewSession = useCallback(() => {
-    createSession().then(() => {
-      navigation.closeDrawer();
-    });
-  }, [createSession, navigation]);
-
-  const handleSessionPress = useCallback(
-    (session: SessionSummary) => {
-      selectSession(session.id);
-      navigation.closeDrawer();
-    },
-    [selectSession, navigation],
-  );
-
-  const handleDeleteSession = useCallback(
-    (sessionId: string) => {
-      Alert.alert('Delete Session', 'Are you sure?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteSession(sessionId),
-        },
-      ]);
-    },
-    [deleteSession],
-  );
-
-  // Group sessions by date
-  const groupedSessions = groupSessionsByDate(filteredSessions);
+  const w = useDrawerState(props.navigation);
 
   const renderDeleteAction = useCallback(
     (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
@@ -149,13 +58,13 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
   const renderSessionItem = useCallback(
     ({ item }: { item: SessionSummary }) => {
-      const isActive = item.id === selectedSessionId;
+      const isActive = item.id === w.selectedSessionId;
       return (
         <Swipeable
           renderRightActions={renderDeleteAction}
           onSwipeableOpen={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            handleDeleteSession(item.id);
+            w.handleDeleteSession(item.id);
           }}
           overshootRight={false}
           friction={2}
@@ -170,7 +79,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               marginBottom: 1,
               ...(isActive && { backgroundColor: colors.sidebarActiveItem }),
             }}
-            onPress={() => handleSessionPress(item)}
+            onPress={() => w.handleSessionPress(item)}
             activeOpacity={0.6}
             accessibilityLabel={`Chat: ${item.title || 'New chat'}`}
             accessibilityHint="Swipe left to delete"
@@ -198,7 +107,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         </Swipeable>
       );
     },
-    [selectedSessionId, colors, handleSessionPress, handleDeleteSession, renderDeleteAction],
+    [w.selectedSessionId, colors, w.handleSessionPress, w.handleDeleteSession, renderDeleteAction],
   );
 
   return (
@@ -214,17 +123,17 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             borderRadius: Radius.sm,
             gap: Spacing.sm,
           }}
-          onPress={handleNewSession}
-          disabled={!isInitialized}
+          onPress={w.handleNewSession}
+          disabled={!w.isInitialized}
           activeOpacity={0.7}
           accessibilityLabel="Start new chat"
         >
-          <PenLine size={18} color={colors.sidebarText} opacity={isInitialized ? 1 : 0.4} />
+          <PenLine size={18} color={colors.sidebarText} opacity={w.isInitialized ? 1 : 0.4} />
           <Text
             color={colors.sidebarText}
             fontSize={FontSize.subheadline}
             fontWeight="500"
-            opacity={isInitialized ? 1 : 0.4}
+            opacity={w.isInitialized ? 1 : 0.4}
           >
             New chat
           </Text>
@@ -245,14 +154,14 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           }}
           placeholder="Search chats..."
           placeholderTextColor={colors.sidebarTextSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+          value={w.searchQuery}
+          onChangeText={w.setSearchQuery}
           autoCapitalize="none"
           autoCorrect={false}
         />
-        {searchQuery.length > 0 && (
+        {w.searchQuery.length > 0 && (
           <TouchableOpacity
-            onPress={() => setSearchQuery('')}
+            onPress={() => w.setSearchQuery('')}
             style={{ position: 'absolute', right: Spacing.lg + Spacing.xs, padding: 4 }}
           >
             <X size={16} color={colors.sidebarTextSecondary} />
@@ -262,7 +171,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
       {/* Server selector — compact */}
       <YStack paddingHorizontal={Spacing.md} gap={Spacing.xs}>
-        {servers.length === 0 ? (
+        {w.servers.length === 0 ? (
           <TouchableOpacity
             style={{
               borderWidth: 1,
@@ -272,7 +181,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               paddingVertical: Spacing.md,
               alignItems: 'center',
             }}
-            onPress={() => rootNav.navigate('QuickSetup')}
+            onPress={() => w.navigateToQuickSetup()}
           >
             <Text color={colors.sidebarTextSecondary} fontSize={FontSize.footnote}>
               + Quick Setup
@@ -280,8 +189,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           </TouchableOpacity>
         ) : (
           <>
-            {servers.map(server => {
-              const isSelected = server.id === selectedServerId;
+            {w.servers.map(server => {
+              const isSelected = server.id === w.selectedServerId;
               const isAIProvider = server.serverType === ServerType.AIProvider;
               let ProviderIcon: React.ComponentType<any> | null = null;
               if (isAIProvider && server.aiProviderConfig?.providerType) {
@@ -305,24 +214,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     borderRadius: Radius.sm,
                     ...(isSelected && { backgroundColor: colors.sidebarSelectedItem }),
                   }}
-                  onPress={() => handleServerPress(server.id)}
-                  onLongPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    Alert.alert(server.name || server.host, undefined, [
-                      { text: 'Edit', onPress: () => rootNav.navigate('QuickSetup', { editingServer: server }) },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: () => {
-                          Alert.alert('Delete Server', `Remove "${server.name || server.host}"?`, [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Delete', style: 'destructive', onPress: () => deleteServer(server.id) },
-                          ]);
-                        },
-                      },
-                      { text: 'Cancel', style: 'cancel' },
-                    ]);
-                  }}
+                  onPress={() => w.handleServerPress(server.id)}
+                  onLongPress={() => w.handleServerLongPress(server)}
                   activeOpacity={0.7}
                   accessibilityLabel={`Server: ${server.name || server.host}`}
                   accessibilityRole="button"
@@ -342,13 +235,13 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     {server.name || server.host}
                   </Text>
                   {isSelected && !isAIProvider && (
-                    <ConnectionBadge state={connectionState} isInitialized={isInitialized} />
+                    <ConnectionBadge state={w.connectionState} isInitialized={w.isInitialized} />
                   )}
                 </TouchableOpacity>
               );
             })}
 
-            {selectedServer && selectedServer.serverType !== ServerType.AIProvider && (
+            {w.selectedServer && w.selectedServer.serverType !== ServerType.AIProvider && (
               <XStack
                 alignItems="center"
                 gap={Spacing.sm}
@@ -360,16 +253,16 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     paddingHorizontal: Spacing.lg,
                     paddingVertical: 6,
                     borderRadius: Radius.md,
-                    backgroundColor: isConnected ? colors.destructive : colors.primary,
+                    backgroundColor: w.isConnected ? colors.destructive : colors.primary,
                   }}
-                  onPress={handleConnect}
+                  onPress={w.handleConnect}
                 >
                   <Text color={colors.contrastText} fontSize={FontSize.caption} fontWeight="600">
-                    {isConnected ? 'Disconnect' : 'Connect'}
+                    {w.isConnected ? 'Disconnect' : 'Connect'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => rootNav.navigate('QuickSetup')}
+                  onPress={() => w.navigateToQuickSetup()}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel="Add server"
                   accessibilityRole="button"
@@ -379,7 +272,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               </XStack>
             )}
 
-            {selectedServer && selectedServer.serverType === ServerType.AIProvider && (
+            {w.selectedServer && w.selectedServer.serverType === ServerType.AIProvider && (
               <XStack
                 alignItems="center"
                 gap={Spacing.sm}
@@ -393,7 +286,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   </Text>
                 </XStack>
                 <TouchableOpacity
-                  onPress={() => rootNav.navigate('QuickSetup')}
+                  onPress={() => w.navigateToQuickSetup()}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel="Add server"
                   accessibilityRole="button"
@@ -403,44 +296,39 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               </XStack>
             )}
 
-            {agentInfo && (
+            {w.agentInfo && (
               <Text
                 color={colors.sidebarTextSecondary}
                 fontSize={FontSize.caption}
                 paddingHorizontal={Spacing.md}
                 numberOfLines={1}
               >
-                {agentInfo.name}
+                {w.agentInfo.name}
               </Text>
             )}
 
             {/* MCP tools indicator */}
-            {(() => {
-              const connectedMCP = mcpStatuses.filter(s => s.state === MCPConnectionState.Connected);
-              const totalTools = connectedMCP.reduce((sum, s) => sum + s.toolCount, 0);
-              if (totalTools === 0) return null;
-              return (
-                <Text
-                  color={colors.primary}
-                  fontSize={FontSize.caption}
-                  paddingHorizontal={Spacing.md}
-                  marginTop={2}
-                >
-                  🔌 {totalTools} MCP tool{totalTools !== 1 ? 's' : ''} from {connectedMCP.length} server{connectedMCP.length !== 1 ? 's' : ''}
-                </Text>
-              );
-            })()}
+            {w.mcpSummary.totalTools > 0 && (
+              <Text
+                color={colors.primary}
+                fontSize={FontSize.caption}
+                paddingHorizontal={Spacing.md}
+                marginTop={2}
+              >
+                🔌 {w.mcpSummary.totalTools} MCP tool{w.mcpSummary.totalTools !== 1 ? 's' : ''} from {w.mcpSummary.serverCount} server{w.mcpSummary.serverCount !== 1 ? 's' : ''}
+              </Text>
+            )}
           </>
         )}
 
-        {connectionError && (
+        {w.connectionError && (
           <Text
             color={colors.destructive}
             fontSize={FontSize.caption}
             paddingHorizontal={Spacing.md}
             numberOfLines={2}
           >
-            {connectionError}
+            {w.connectionError}
           </Text>
         )}
       </YStack>
@@ -454,11 +342,11 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
       {/* Sessions list */}
       <FlatList
-        data={filteredSessions}
+        data={w.filteredSessions}
         keyExtractor={item => item.id}
         renderItem={renderSessionItem}
         contentContainerStyle={
-          filteredSessions.length === 0
+          w.filteredSessions.length === 0
             ? { flex: 1, justifyContent: 'center', alignItems: 'center' }
             : { paddingHorizontal: Spacing.md }
         }
@@ -469,11 +357,11 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             textAlign="center"
             paddingTop={Spacing.xxl}
           >
-            {isInitialized ? 'No chats yet' : 'Connect to start'}
+            {w.isInitialized ? 'No chats yet' : 'Connect to start'}
           </Text>
         }
         refreshControl={
-          <RefreshControl refreshing={false} onRefresh={loadSessions} tintColor={colors.sidebarText} />
+          <RefreshControl refreshing={false} onRefresh={w.loadSessions} tintColor={colors.sidebarText} />
         }
         showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
@@ -491,7 +379,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       >
         <TouchableOpacity
           style={{ paddingVertical: Spacing.sm, paddingHorizontal: Spacing.sm }}
-          onPress={() => rootNav.navigate('Settings')}
+          onPress={() => w.navigateToSettings()}
         >
           <Settings size={20} color={colors.sidebarText} />
         </TouchableOpacity>
