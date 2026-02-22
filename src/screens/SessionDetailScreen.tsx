@@ -32,6 +32,7 @@ import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { SlashCommandAutocomplete } from '../components/chat/SlashCommandAutocomplete';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
+import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
 import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
@@ -276,6 +277,14 @@ export function SessionDetailScreen() {
   const showTyping = isStreaming && chatMessages.length > 0 &&
     chatMessages[chatMessages.length - 1]?.role === 'user';
 
+  // Approximate token count from streaming message content (words ≈ tokens × 0.75)
+  const streamingTokenCount = useMemo(() => {
+    if (!isStreaming) return 0;
+    const last = chatMessages[chatMessages.length - 1];
+    if (!last?.isStreaming || !last.content) return 0;
+    return Math.ceil(last.content.split(/\s+/).length * 1.33);
+  }, [isStreaming, chatMessages]);
+
   const containerStyle = useMemo(
     () => ({ flex: 1, backgroundColor: colors.background } as const),
     [colors.background],
@@ -340,6 +349,8 @@ export function SessionDetailScreen() {
         colors={colors}
         opacity={fabOpacity}
       />
+
+      <StreamingStatusBar visible={isStreaming && !showTyping} tokenCount={streamingTokenCount} />
 
       {stopReason && !isStreaming && (
         <YStack paddingVertical={Spacing.xs} paddingHorizontal={Spacing.md} alignItems="center">
