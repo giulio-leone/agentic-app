@@ -10,17 +10,17 @@ import {
     StyleSheet,
     TouchableOpacity,
     Platform,
-    TextInput,
     useWindowDimensions,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { YStack, XStack, Text, ScrollView, Slider } from 'tamagui';
+import { YStack, XStack, Text, ScrollView } from 'tamagui';
 import Animated from 'react-native-reanimated';
 import { SmartCameraView } from './camera/SmartCameraView';
 import { MarkdownContent } from './chat/MarkdownContent';
+import { ZoomControls } from './screenwatcher/ZoomControls';
+import { WatcherSettings } from './screenwatcher/WatcherSettings';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing } from '../utils/theme';
-import { Settings, X, Square, Play, Eye, Brain, Search } from 'lucide-react-native';
+import { Settings, X, Square, Play, Eye, Brain } from 'lucide-react-native';
 import { useScreenWatcher } from '../hooks/useScreenWatcher';
 import type { WatcherStatus } from '../services/ScreenWatcherService';
 
@@ -151,54 +151,12 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                     )}
 
                     {/* Hardware Optical Zoom */}
-                    <YStack paddingHorizontal={Spacing.xl} gap={Spacing.md}>
-                        <XStack justifyContent="space-between" alignItems="center">
-                            <XStack alignItems="center" gap={4}>
-                                <Search size={13} color={colors.textSecondary} />
-                                <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.textSecondary}>
-                                    Hardware Optical Zoom
-                                </Text>
-                            </XStack>
-                            <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
-                                {w.zoomLevel.toFixed(1)}x
-                            </Text>
-                        </XStack>
-
-                        {/* Optical Lens buttons */}
-                        <XStack justifyContent="center" gap={Spacing.md}>
-                            {[0.6, 1.0, 3.0, 5.0, 10.0].map((z) => (
-                                <TouchableOpacity
-                                    key={z}
-                                    style={[
-                                        styles.zoomBtn,
-                                        {
-                                            flex: 1,
-                                            backgroundColor:
-                                                Math.abs(w.zoomLevel - z) < 0.01
-                                                    ? colors.primary
-                                                    : dark
-                                                        ? '#2F2F2F'
-                                                        : '#E5E7EB',
-                                        },
-                                    ]}
-                                    onPress={() => {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        w.setZoomLevel(z);
-                                    }}
-                                >
-                                    <Text
-                                        fontSize={FontSize.caption}
-                                        fontWeight="600"
-                                        color={
-                                            Math.abs(w.zoomLevel - z) < 0.01 ? '#FFF' : colors.text
-                                        }
-                                    >
-                                        {z === 0.6 ? '.6x' : `${z}x`}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </XStack>
-                    </YStack>
+                    <ZoomControls
+                        zoomLevel={w.zoomLevel}
+                        setZoomLevel={w.setZoomLevel}
+                        colors={colors}
+                        dark={dark}
+                    />
 
                     {/* Start / Stop Button */}
                     <YStack paddingHorizontal={Spacing.xl} paddingTop={Spacing.lg}>
@@ -223,126 +181,20 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
 
                     {/* Settings Panel (collapsible) */}
                     {w.showSettings && (
-                        <YStack
-                            paddingHorizontal={Spacing.xl}
-                            paddingTop={Spacing.lg}
-                            gap={Spacing.md}
-                        >
-                            <XStack justifyContent="space-between" alignItems="center" paddingBottom={Spacing.sm}>
-                                <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>
-                                    Modalità Auto-Scatto
-                                </Text>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.autoSwitch,
-                                        { backgroundColor: w.isAutoMode ? colors.primary : dark ? '#2F2F2F' : '#E5E7EB' }
-                                    ]}
-                                    onPress={() => {
-                                        Haptics.selectionAsync();
-                                        w.setAutoMode(!w.isAutoMode);
-                                    }}
-                                >
-                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={w.isAutoMode ? '#FFF' : colors.text}>
-                                        {w.isAutoMode ? 'ON' : 'OFF'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </XStack>
-
-                            <XStack justifyContent="space-between" alignItems="center" paddingBottom={Spacing.sm}>
-                                <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>
-                                    Abilita Chiamata Cloud (Remote LLM)
-                                </Text>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.autoSwitch,
-                                        { backgroundColor: w.isRemoteLLMEnabled ? colors.primary : dark ? '#2F2F2F' : '#E5E7EB' }
-                                    ]}
-                                    onPress={() => {
-                                        Haptics.selectionAsync();
-                                        w.setRemoteLLMEnabled(!w.isRemoteLLMEnabled);
-                                    }}
-                                >
-                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={w.isRemoteLLMEnabled ? '#FFF' : colors.text}>
-                                        {w.isRemoteLLMEnabled ? 'ON' : 'OFF'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </XStack>
-
-                            {/* Sensitivity Controls */}
-                            <YStack gap={Spacing.xs} paddingTop={Spacing.sm}>
-                                <XStack justifyContent="space-between" alignItems="center">
-                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.text}>
-                                        Soglia Movimento (Cattura testi)
-                                    </Text>
-                                    <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
-                                        {w.motionThreshold.toFixed(1)}
-                                    </Text>
-                                </XStack>
-                                <Slider
-                                    defaultValue={[w.motionThreshold]}
-                                    min={0.1}
-                                    max={3.0}
-                                    step={0.1}
-                                    onValueChange={(val) => w.setMotionThreshold(val[0])}
-                                >
-                                    <Slider.Track backgroundColor={dark ? '#333' : '#E5E7EB'}>
-                                        <Slider.TrackActive backgroundColor={colors.primary} />
-                                    </Slider.Track>
-                                    <Slider.Thumb index={0} circular size="$1" backgroundColor={colors.primary} elevation={2} />
-                                </Slider>
-                                <Text fontSize={11} color={colors.textTertiary}>
-                                    Più basso = fotocamera più reattiva ai tasti digitati.
-                                </Text>
-                            </YStack>
-
-                            <YStack gap={Spacing.xs} paddingBottom={Spacing.md}>
-                                <XStack justifyContent="space-between" alignItems="center">
-                                    <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.text}>
-                                        Soglia Stabilità (Auto-focus)
-                                    </Text>
-                                    <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
-                                        {w.stableThreshold.toFixed(1)}
-                                    </Text>
-                                </XStack>
-                                <Slider
-                                    defaultValue={[w.stableThreshold]}
-                                    min={0.1}
-                                    max={1.5}
-                                    step={0.1}
-                                    onValueChange={(val) => w.setStableThreshold(val[0])}
-                                >
-                                    <Slider.Track backgroundColor={dark ? '#333' : '#E5E7EB'}>
-                                        <Slider.TrackActive backgroundColor={colors.primary} />
-                                    </Slider.Track>
-                                    <Slider.Thumb index={0} circular size="$1" backgroundColor={colors.primary} elevation={2} />
-                                </Slider>
-                                <Text fontSize={11} color={colors.textTertiary}>
-                                    Più basso = aspetta totale immobilità per evitare il micromosso.
-                                </Text>
-                            </YStack>
-
-                            <Text fontSize={FontSize.subheadline} fontWeight="600" color={colors.text}>
-                                Custom Prompt
-                            </Text>
-                            <TextInput
-                                style={[
-                                    styles.promptInput,
-                                    {
-                                        color: colors.text,
-                                        backgroundColor: dark ? '#2F2F2F' : '#FFFFFF',
-                                        borderColor: dark ? '#424242' : '#D9D9E3',
-                                    },
-                                ]}
-                                value={w.customPrompt}
-                                onChangeText={w.setCustomPrompt}
-                                multiline
-                                placeholder="Es: Analizza la domanda e rispondi..."
-                                placeholderTextColor={colors.textTertiary}
-                            />
-                            <Text fontSize={FontSize.caption} color={colors.textTertiary}>
-                                Questo prompt viene inviato con ogni screenshot catturato.
-                            </Text>
-                        </YStack>
+                        <WatcherSettings
+                            isAutoMode={w.isAutoMode}
+                            setAutoMode={w.setAutoMode}
+                            isRemoteLLMEnabled={w.isRemoteLLMEnabled}
+                            setRemoteLLMEnabled={w.setRemoteLLMEnabled}
+                            motionThreshold={w.motionThreshold}
+                            setMotionThreshold={w.setMotionThreshold}
+                            stableThreshold={w.stableThreshold}
+                            setStableThreshold={w.setStableThreshold}
+                            customPrompt={w.customPrompt}
+                            setCustomPrompt={w.setCustomPrompt}
+                            colors={colors}
+                            dark={dark}
+                        />
                     )}
                 </ScrollView>
             </YStack>
@@ -351,17 +203,6 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
 });
 
 const styles = StyleSheet.create({
-    sliderTrack: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    zoomBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        minWidth: 44,
-        alignItems: 'center',
-    },
     mainButton: {
         paddingVertical: 18,
         borderRadius: 16,
@@ -372,20 +213,5 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
-    },
-    autoSwitch: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-    },
-    promptInput: {
-        fontSize: 15,
-        lineHeight: 22,
-        borderWidth: 1,
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        minHeight: 80,
-        textAlignVertical: 'top',
     },
 });
