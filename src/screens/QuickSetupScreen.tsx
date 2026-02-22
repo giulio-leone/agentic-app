@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -134,6 +134,12 @@ export function QuickSetupScreen() {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Advanced AI settings
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [temperature, setTemperature] = useState<number | undefined>(undefined);
+  const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // ACP state
   const [acpScheme, setAcpScheme] = useState<'ws' | 'wss'>('ws');
@@ -258,6 +264,9 @@ export function QuickSetupScreen() {
           modelId: selectedModelId,
           baseUrl: info.defaultBaseUrl || undefined,
           apiKey: apiKey.trim() || undefined,
+          systemPrompt: systemPrompt.trim() || undefined,
+          temperature,
+          reasoningEnabled: reasoningEnabled || undefined,
         },
       };
 
@@ -336,6 +345,8 @@ export function QuickSetupScreen() {
         supportedParameters: m.supportedParameters,
       } as FetchedModel));
   })();
+
+  const selectedModelInfo = displayModels.find(m => m.id === selectedModelId);
 
   // ── Render Steps ──
 
@@ -658,7 +669,7 @@ export function QuickSetupScreen() {
       <FlatList
         data={displayModels}
         keyExtractor={item => item.id}
-        style={{ maxHeight: 340 }}
+        style={{ maxHeight: 260 }}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const isSelected = item.id === selectedModelId;
@@ -693,6 +704,124 @@ export function QuickSetupScreen() {
         }}
         ItemSeparatorComponent={() => <View style={{ height: Spacing.xs }} />}
       />
+
+      {/* Advanced Settings (collapsible) */}
+      <TouchableOpacity
+        style={[styles.advancedToggle, { borderColor: colors.separator }]}
+        onPress={() => { Haptics.selectionAsync(); setShowAdvanced(!showAdvanced); }}
+        activeOpacity={0.7}
+      >
+        <XStack alignItems="center" gap={Spacing.xs} flex={1}>
+          <Sliders size={16} color={colors.textTertiary} />
+          <Text fontSize={FontSize.footnote} fontWeight="500" color={colors.textSecondary}>
+            Impostazioni avanzate
+          </Text>
+        </XStack>
+        {showAdvanced
+          ? <ChevronUp size={16} color={colors.textTertiary} />
+          : <ChevronDown size={16} color={colors.textTertiary} />
+        }
+      </TouchableOpacity>
+
+      {showAdvanced && (
+        <YStack gap={Spacing.md} paddingHorizontal={Spacing.xs}>
+          {/* System Prompt */}
+          <YStack gap={Spacing.xs}>
+            <XStack alignItems="center" gap={Spacing.xs}>
+              <MessageSquare size={14} color={colors.textTertiary} />
+              <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>System Prompt</Text>
+            </XStack>
+            <TextInput
+              style={[
+                styles.input,
+                styles.multilineInput,
+                { color: colors.text, backgroundColor: colors.cardBackground, borderColor: colors.separator },
+              ]}
+              placeholder="Sei un assistente utile..."
+              placeholderTextColor={colors.textTertiary}
+              value={systemPrompt}
+              onChangeText={setSystemPrompt}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </YStack>
+
+          {/* Temperature */}
+          <YStack gap={Spacing.xs}>
+            <XStack alignItems="center" gap={Spacing.xs}>
+              <Sliders size={14} color={colors.textTertiary} />
+              <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>
+                Temperature: {temperature !== undefined ? temperature.toFixed(1) : 'Default'}
+              </Text>
+            </XStack>
+            <XStack alignItems="center" gap={Spacing.sm}>
+              <Text fontSize={FontSize.caption} color={colors.textTertiary}>0</Text>
+              <View style={{ flex: 1 }}>
+                <XStack alignItems="center">
+                  {[0, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0].map(val => (
+                    <TouchableOpacity
+                      key={val}
+                      style={[
+                        styles.tempChip,
+                        {
+                          backgroundColor: temperature === val ? colors.primary : colors.cardBackground,
+                          borderColor: temperature === val ? colors.primary : colors.separator,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setTemperature(temperature === val ? undefined : val);
+                      }}
+                    >
+                      <Text
+                        fontSize={11}
+                        fontWeight="600"
+                        color={temperature === val ? colors.contrastText : colors.textTertiary}
+                      >
+                        {val}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </XStack>
+              </View>
+              <Text fontSize={FontSize.caption} color={colors.textTertiary}>2</Text>
+            </XStack>
+          </YStack>
+
+          {/* Reasoning (only if model supports it) */}
+          {selectedModelInfo?.supportsReasoning && (
+            <TouchableOpacity
+              style={[
+                styles.reasoningToggle,
+                {
+                  backgroundColor: reasoningEnabled ? colors.primaryMuted : colors.cardBackground,
+                  borderColor: reasoningEnabled ? colors.primary : colors.separator,
+                },
+              ]}
+              onPress={() => { Haptics.selectionAsync(); setReasoningEnabled(!reasoningEnabled); }}
+              activeOpacity={0.7}
+            >
+              <XStack alignItems="center" gap={Spacing.sm} flex={1}>
+                <Brain size={18} color={reasoningEnabled ? colors.primary : colors.textTertiary} />
+                <YStack>
+                  <Text fontSize={FontSize.body} fontWeight="500" color={colors.text}>Extended Thinking</Text>
+                  <Text fontSize={FontSize.caption} color={colors.textTertiary}>Ragionamento step-by-step</Text>
+                </YStack>
+              </XStack>
+              <View style={[
+                styles.toggleTrack,
+                { backgroundColor: reasoningEnabled ? colors.primary : colors.systemGray4 },
+              ]}>
+                <View style={[
+                  styles.toggleThumb,
+                  { transform: [{ translateX: reasoningEnabled ? 20 : 2 }] },
+                ]} />
+              </View>
+            </TouchableOpacity>
+          )}
+        </YStack>
+      )}
 
       {/* Save */}
       <TouchableOpacity
@@ -783,5 +912,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     borderRadius: Radius.md,
+  },
+  multilineInput: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+    fontFamily: undefined,
+  },
+  advancedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  tempChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: 1,
+  },
+  reasoningToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
   },
 });
