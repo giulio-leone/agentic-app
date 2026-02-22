@@ -7,7 +7,7 @@ import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { ChatMessage, Artifact } from '../../acp/models/types';
-import { chatToMarkdown, chatToJSON, shareExport } from '../../utils/chatExport';
+import { chatToMarkdown, chatToJSON, chatToHTML, chatToPDF, shareExport, shareFile } from '../../utils/chatExport';
 
 interface UseMessageActionsOptions {
   chatMessages: ChatMessage[];
@@ -69,6 +69,24 @@ export function useMessageActions({
     if (chatMessages.length === 0) return;
     const title = `Chat ${new Date().toISOString().slice(0, 10)}`;
     Alert.alert('Export Format', 'Choose export format', [
+      {
+        text: 'PDF',
+        onPress: async () => {
+          try {
+            const uri = await chatToPDF(chatMessages, title);
+            await shareFile(uri, 'application/pdf');
+          } catch (e) {
+            Alert.alert('Error', (e as Error).message);
+          }
+        },
+      },
+      {
+        text: 'HTML',
+        onPress: () => {
+          const html = chatToHTML(chatMessages, title);
+          shareExport(html, `${title}.html`);
+        },
+      },
       {
         text: 'Markdown',
         onPress: () => {
