@@ -7,7 +7,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "bridge": "npx tsx bridge/unified-bridge/src/index.ts",
+    "bridge:codex": "npx tsx bridge/unified-bridge/src/index.ts --codex",
+    "bridge:all": "npx tsx bridge/unified-bridge/src/index.ts --codex"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.46",
