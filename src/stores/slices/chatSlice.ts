@@ -313,7 +313,9 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       }
 
       // ── AI Provider path ──
-      if (server.serverType === ServerType.AIProvider && server.aiProviderConfig) {
+      const isAI = server.serverType === ServerType.AIProvider
+        || (!server.serverType && !server.host);
+      if (isAI && server.aiProviderConfig) {
         const config = server.aiProviderConfig;
         try {
           const secureKey = await getApiKey(`${server.id}_${config.providerType}`);
@@ -341,7 +343,16 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       }
 
       // ── ACP path ──
-      if (!_service) return;
+      if (!_service) {
+        const errMsg: ChatMessage = {
+          id: uuidv4(),
+          role: 'system',
+          content: '⚠️ Not connected to server. Please reconnect.',
+          timestamp: new Date().toISOString(),
+        };
+        set(s => ({ chatMessages: [...s.chatMessages, errMsg], isStreaming: false }));
+        return;
+      }
 
       try {
         get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);

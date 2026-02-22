@@ -22,6 +22,11 @@ import {
   _service, _aiAbortController,
   setService, setAiAbortController,
 } from '../storePrivate';
+import type { ACPServerConfiguration } from '../../acp/models/types';
+
+/** Detect AI provider servers, including legacy entries without serverType. */
+const isAIServer = (s?: ACPServerConfiguration) =>
+  s?.serverType === ServerType.AIProvider || (!s?.serverType && !s?.host);
 
 export type ServerSlice = Pick<AppState, 'servers' | 'selectedServerId' | 'connectionState' | 'isInitialized' | 'agentInfo' | 'connectionError'>
   & Pick<AppActions, 'loadServers' | 'addServer' | 'updateServer' | 'deleteServer' | 'selectServer' | 'connect' | 'disconnect' | 'initialize' | '_getService'>;
@@ -49,10 +54,12 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       SessionStorage.migrateAISessionsToShared(aiIds).catch(() => {});
     }
 
-    // Auto-select the first server if none is selected
+    // Restore active server from storage, or auto-select first
     const state = get();
     if (!state.selectedServerId && servers.length > 0) {
-      get().selectServer(servers[0]!.id);
+      const savedId = await SessionStorage.getActiveServerId();
+      const target = savedId && servers.find(s => s.id === savedId) ? savedId : servers[0]!.id;
+      get().selectServer(target);
     }
   },
 
@@ -104,14 +111,13 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
     // If same server is already selected, just ensure it's connected
     if (state.selectedServerId === id) {
-      if (server?.serverType === ServerType.AIProvider && !state.isInitialized) {
+      if (isAIServer(server) && !state.isInitialized) {
         get().connect();
       }
       return;
     }
 
-    const bothAI = prevServer?.serverType === ServerType.AIProvider
-      && server?.serverType === ServerType.AIProvider;
+    const bothAI = isAIServer(prevServer) && isAIServer(server);
 
     _service?.disconnect();
     setService(null);
@@ -134,8 +140,10 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       stopReason: null,
       isStreaming: false,
     });
+    // Persist selection
+    if (id) SessionStorage.saveActiveServerId(id).catch(() => {});
     if (id) {
-      if (server?.serverType === ServerType.AIProvider) {
+      if (isAIServer(server)) {
         get().connect();
       }
       if (!bothAI) {
@@ -149,10 +157,14 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     const server = state.servers.find(s => s.id === state.selectedServerId);
     if (!server) return;
 
-    if (server.serverType === ServerType.AIProvider) {
-      const providerInfo = server.aiProviderConfig
-        ? getProviderInfo(server.aiProviderConfig.providerType)
-        : null;
+    // Treat servers with aiProviderConfig OR legacy format (no serverType + no host) as AI providers
+    if (isAIServer(server)) {
+      let providerInfo: ReturnType<typeof getProviderInfo> | null = null;
+      try {
+        if (server.aiProviderConfig?.providerType) {
+          providerInfo = getProviderInfo(server.aiProviderConfig.providerType);
+        }
+      } catch { /* legacy server with unknown provider type */ }
       set({
         connectionState: ACPConnectionState.Connected,
         isInitialized: true,
@@ -169,6 +181,10 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     }
 
     // Sanitize host: strip accidental protocol prefix
+    if (!server.host) {
+      set({ connectionError: 'Server has no host configured' });
+      return;
+    }
     const cleanHost = server.host.replace(/^wss?:\/\//i, '').replace(/^https?:\/\//i, '').replace(/\/+$/, '');
     const endpoint = `${server.scheme || 'ws'}://${cleanHost}`;
     get().appendLog(`Connecting to ${endpoint}`);

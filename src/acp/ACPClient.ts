@@ -55,10 +55,6 @@ export class ACPClient {
     this.setState(ACPConnectionState.Connecting);
 
     try {
-      // Build headers for auth
-      const protocols: string[] = [];
-      // React Native WebSocket doesn't support custom headers directly,
-      // but we can pass auth token via protocol or URL params if needed
       this.ws = new WebSocket(this.config.endpoint);
 
       this.ws.onopen = () => {

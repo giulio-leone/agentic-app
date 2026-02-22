@@ -8,6 +8,7 @@ import { ACPServerConfiguration, SessionSummary, ChatMessage, ServerType } from 
 import type { MCPServerConfig } from '../mcp/types';
 
 const SERVERS_KEY = '@agentic/servers';
+const ACTIVE_SERVER_KEY = '@agentic/activeServerId';
 const MCP_SERVERS_KEY = '@agentic/mcp-servers';
 
 /** Shared virtual serverId for all AI provider sessions (unified chat history). */
@@ -45,12 +46,32 @@ export const SessionStorage = {
     const servers = await this.fetchServers();
     const filtered = servers.filter(s => s.id !== id);
     await AsyncStorage.setItem(SERVERS_KEY, JSON.stringify(filtered));
+    // Clear active if we're deleting the active server
+    const active = await this.getActiveServerId();
+    if (active === id) await AsyncStorage.removeItem(ACTIVE_SERVER_KEY);
     // Also delete all sessions and messages for this server
     const sessions = await this.fetchSessions(id);
     for (const session of sessions) {
       await AsyncStorage.removeItem(messagesKey(id, session.id));
     }
     await AsyncStorage.removeItem(sessionsKey(id));
+  },
+
+  // --- Active Server ---
+
+  async getActiveServerId(): Promise<string | null> {
+    try {
+      const raw = await AsyncStorage.getItem(ACTIVE_SERVER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  },
+
+  async saveActiveServerId(id: string | null): Promise<void> {
+    if (id) {
+      await AsyncStorage.setItem(ACTIVE_SERVER_KEY, JSON.stringify(id));
+    } else {
+      await AsyncStorage.removeItem(ACTIVE_SERVER_KEY);
+    }
   },
 
   // --- Session Operations ---
