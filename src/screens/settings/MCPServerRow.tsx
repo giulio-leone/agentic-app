@@ -23,6 +23,7 @@ export function MCPServerRow({ server, status, colors, onConnect, onDisconnect, 
   const isConnected = status?.state === MCPConnectionState.Connected;
   const isConnecting = status?.state === MCPConnectionState.Connecting;
   const hasError = status?.state === MCPConnectionState.Error;
+  const btnBase = { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs } as const;
 
   return (
     <YStack borderWidth={StyleSheet.hairlineWidth} borderColor="$separator" borderRadius={Radius.sm} padding={Spacing.md} gap={Spacing.sm}>
@@ -61,7 +62,7 @@ export function MCPServerRow({ server, status, colors, onConnect, onDisconnect, 
       <XStack gap={Spacing.sm}>
         {isConnected ? (
           <TouchableOpacity
-            style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
+            style={{ ...btnBase, borderColor: colors.separator }}
             onPress={onDisconnect}
             accessibilityLabel={`Disconnect from ${server.name}`}
           >
@@ -69,7 +70,7 @@ export function MCPServerRow({ server, status, colors, onConnect, onDisconnect, 
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, backgroundColor: colors.primary, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
+            style={{ ...btnBase, backgroundColor: colors.primary }}
             onPress={onConnect}
             disabled={isConnecting}
             accessibilityLabel={`Connect to ${server.name}`}
@@ -78,7 +79,7 @@ export function MCPServerRow({ server, status, colors, onConnect, onDisconnect, 
           </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.destructive, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
+          style={{ ...btnBase, borderColor: colors.destructive }}
           onPress={onRemove}
           accessibilityLabel={`Remove ${server.name}`}
         >
