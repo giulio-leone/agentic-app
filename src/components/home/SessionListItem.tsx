@@ -1,9 +1,13 @@
 /**
- * SessionListItem — Single session row in the HomeScreen list.
+ * SessionListItem — Single session row with swipe-left-to-delete gesture.
  */
-import React from 'react';
-import { TouchableOpacity, Platform } from 'react-native';
+import React, { useRef, useCallback } from 'react';
+import { TouchableOpacity, Platform, StyleSheet, View } from 'react-native';
 import { Text, XStack } from 'tamagui';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { SharedValue, useAnimatedStyle, FadeIn } from 'react-native-reanimated';
+import { Trash2 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { SessionSummary } from '../../acp/models/types';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 
@@ -11,7 +15,7 @@ interface Props {
   session: SessionSummary;
   isSelected: boolean;
   onPress: (session: SessionSummary) => void;
-  onLongPress: (id: string) => void;
+  onDelete: (id: string) => void;
   colors: { cardBackground: string; primary: string; text: string; textTertiary: string };
 }
 
@@ -28,48 +32,100 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-export const SessionListItem = React.memo(function SessionListItem({
-  session, isSelected, onPress, onLongPress, colors,
-}: Props) {
+const DELETE_THRESHOLD = 80;
+
+function RenderRightActions(_progress: SharedValue<number>, drag: SharedValue<number>) {
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.abs(drag.value) / DELETE_THRESHOLD),
+    transform: [{ scale: Math.min(1, Math.abs(drag.value) / DELETE_THRESHOLD) }],
+  }));
+
   return (
-    <TouchableOpacity
-      style={[
-        {
-          paddingHorizontal: Spacing.lg,
-          paddingVertical: Spacing.md,
-          marginHorizontal: Spacing.lg,
-          marginVertical: 2,
-          backgroundColor: colors.cardBackground,
-          borderRadius: Radius.md,
-          ...Platform.select({ android: { elevation: 1 } }),
-        },
-        isSelected && { backgroundColor: `${colors.primary}15` },
-      ]}
-      onPress={() => onPress(session)}
-      onLongPress={() => onLongPress(session.id)}
-      activeOpacity={0.7}
-      accessibilityLabel={`Session: ${session.title || 'New Session'}`}
-    >
-      <XStack justifyContent="space-between" alignItems="center">
-        <Text color={colors.text} fontSize={FontSize.body} flex={1} numberOfLines={1}>
-          {session.title || 'New Session'}
-        </Text>
-        {session.updatedAt && (
-          <Text color={colors.textTertiary} fontSize={FontSize.caption} marginLeft={Spacing.sm}>
-            {timeAgo(session.updatedAt)}
-          </Text>
-        )}
-      </XStack>
-      {session.cwd && (
-        <Text
-          color={colors.textTertiary}
-          fontSize={FontSize.caption}
-          numberOfLines={1}
-          marginTop={2}
-        >
-          {session.cwd}
-        </Text>
-      )}
-    </TouchableOpacity>
+    <View style={styles.deleteContainer}>
+      <Animated.View style={[styles.deleteIcon, animStyle]}>
+        <Trash2 size={20} color="#FFFFFF" />
+      </Animated.View>
+    </View>
   );
+}
+
+export const SessionListItem = React.memo(function SessionListItem({
+  session, isSelected, onPress, onDelete, colors,
+}: Props) {
+  const swipeRef = useRef<any>(null);
+
+  const handleSwipeOpen = useCallback((direction: string) => {
+    if (direction === 'right') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onDelete(session.id);
+      swipeRef.current?.close();
+    }
+  }, [onDelete, session.id]);
+
+  return (
+    <Animated.View entering={FadeIn.duration(200)}>
+      <ReanimatedSwipeable
+        ref={swipeRef}
+        renderRightActions={RenderRightActions}
+        rightThreshold={DELETE_THRESHOLD}
+        onSwipeableOpen={handleSwipeOpen}
+        overshootRight={false}
+        friction={2}
+      >
+        <TouchableOpacity
+          style={[
+            {
+              paddingHorizontal: Spacing.lg,
+              paddingVertical: Spacing.md,
+              marginHorizontal: Spacing.lg,
+              marginVertical: 2,
+              backgroundColor: colors.cardBackground,
+              borderRadius: Radius.md,
+              ...Platform.select({ android: { elevation: 1 } }),
+            },
+            isSelected && { backgroundColor: `${colors.primary}15` },
+          ]}
+          onPress={() => onPress(session)}
+          activeOpacity={0.7}
+          accessibilityLabel={`Session: ${session.title || 'New Session'}`}
+        >
+          <XStack justifyContent="space-between" alignItems="center">
+            <Text color={colors.text} fontSize={FontSize.body} flex={1} numberOfLines={1}>
+              {session.title || 'New Session'}
+            </Text>
+            {session.updatedAt && (
+              <Text color={colors.textTertiary} fontSize={FontSize.caption} marginLeft={Spacing.sm}>
+                {timeAgo(session.updatedAt)}
+              </Text>
+            )}
+          </XStack>
+          {session.cwd && (
+            <Text
+              color={colors.textTertiary}
+              fontSize={FontSize.caption}
+              numberOfLines={1}
+              marginTop={2}
+            >
+              {session.cwd}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </ReanimatedSwipeable>
+    </Animated.View>
+  );
+});
+
+const styles = StyleSheet.create({
+  deleteContainer: {
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: DELETE_THRESHOLD,
+    borderRadius: Radius.md,
+    marginVertical: 2,
+  },
+  deleteIcon: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
