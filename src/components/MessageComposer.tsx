@@ -7,12 +7,10 @@ import {
   TextInput,
   TouchableOpacity,
   Platform,
-  Image,
-  ScrollView,
   Alert,
 } from 'react-native';
-import { YStack, XStack, Text } from 'tamagui';
-import { Plus, ArrowUp, Mic, Square, X, ImageIcon, Camera, FileText } from 'lucide-react-native';
+import { YStack, XStack } from 'tamagui';
+import { Plus, ImageIcon, Camera, FileText } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -21,9 +19,8 @@ import { FontSize, Spacing, Radius } from '../utils/theme';
 import { Attachment } from '../acp/models/types';
 import { useFilePicker } from '../hooks/useFilePicker';
 import { AttachmentSheet } from './AttachmentSheet';
-
-// File type icons
-import { getFileIcon, formatSize } from '../utils/fileUtils';
+import { AttachmentPreviewStrip } from './composer/AttachmentPreviewStrip';
+import { ComposerActionButton } from './composer/ComposerActionButton';
 
 interface Props {
   value: string;
@@ -136,55 +133,7 @@ export function MessageComposer({
   const content = (
     <YStack paddingHorizontal={Spacing.md} paddingBottom={Math.max(insets.bottom, Spacing.sm)}>
       {/* Attachment preview strip */}
-      {attachments.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: Spacing.xs, maxHeight: 80 }}
-          contentContainerStyle={{ gap: Spacing.xs, paddingHorizontal: 2 }}
-        >
-          {attachments.map(att => (
-            <XStack
-              key={att.id}
-              alignItems="center"
-              borderRadius={12}
-              borderWidth={1}
-              paddingRight={Spacing.sm}
-              overflow="hidden"
-              maxWidth={200}
-              backgroundColor={colors.inputBackground}
-              borderColor={colors.inputBorder}
-            >
-              {att.mediaType.startsWith('image/') ? (
-                <Image
-                  source={{ uri: att.uri }}
-                  style={{ width: 52, height: 52, borderTopLeftRadius: 11, borderBottomLeftRadius: 11 }}
-                />
-              ) : (
-                <YStack width={52} height={52} justifyContent="center" alignItems="center">
-                  {React.createElement(getFileIcon(att.mediaType), { size: 24, color: colors.textTertiary })}
-                </YStack>
-              )}
-              <YStack flex={1} paddingHorizontal={Spacing.xs} justifyContent="center">
-                <Text fontSize={12} fontWeight="500" color={colors.text} numberOfLines={1}>{att.name}</Text>
-                {att.size ? <Text fontSize={10} color={colors.textTertiary} marginTop={1}>{formatSize(att.size)}</Text> : null}
-              </YStack>
-              <TouchableOpacity
-                style={{
-                  width: 18, height: 18, borderRadius: 9,
-                  justifyContent: 'center', alignItems: 'center',
-                  position: 'absolute', top: 4, right: 4,
-                  backgroundColor: colors.text,
-                }}
-                onPress={() => removeAttachment(att.id)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <X size={10} color={colors.background} />
-              </TouchableOpacity>
-            </XStack>
-          ))}
-        </ScrollView>
-      )}
+      <AttachmentPreviewStrip attachments={attachments} onRemove={removeAttachment} colors={colors} />
 
       <XStack
         alignItems="center"
@@ -239,63 +188,16 @@ export function MessageComposer({
           accessibilityLabel="Message input"
           accessibilityHint="Type your message here"
         />
-        {isStreaming ? (
-          <TouchableOpacity
-            style={{
-              width: 32, height: 32, borderRadius: 16,
-              justifyContent: 'center', alignItems: 'center',
-              marginLeft: Spacing.sm, marginBottom: 1,
-              backgroundColor: colors.text,
-            }}
-            onPress={handleCancel}
-            activeOpacity={0.7}
-            accessibilityLabel="Stop generating"
-          >
-            <YStack width={12} height={12} borderRadius={2} backgroundColor={colors.background} />
-          </TouchableOpacity>
-        ) : canSend ? (
-          <TouchableOpacity
-            style={{
-              width: 32, height: 32, borderRadius: 16,
-              justifyContent: 'center', alignItems: 'center',
-              marginLeft: Spacing.sm, marginBottom: 1,
-              backgroundColor: colors.sendButtonBg,
-            }}
-            onPress={handleSend}
-            activeOpacity={0.7}
-            accessibilityLabel="Send message"
-          >
-            <ArrowUp size={18} color={colors.sendButtonIcon} />
-          </TouchableOpacity>
-        ) : onToggleVoice ? (
-          <TouchableOpacity
-            style={{
-              width: 32, height: 32, borderRadius: 16,
-              justifyContent: 'center', alignItems: 'center',
-              marginLeft: Spacing.sm, marginBottom: 1,
-              backgroundColor: isListening ? colors.destructive : colors.sendButtonDisabledBg,
-            }}
-            onPress={handleVoiceToggle}
-            activeOpacity={0.7}
-            accessibilityLabel={isListening ? 'Stop recording' : 'Start voice input'}
-          >
-            {isListening ? <Square size={14} fill={colors.contrastText} color={colors.contrastText} /> : <Mic size={18} color={colors.textTertiary} />}
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={{
-              width: 32, height: 32, borderRadius: 16,
-              justifyContent: 'center', alignItems: 'center',
-              marginLeft: Spacing.sm, marginBottom: 1,
-              backgroundColor: colors.sendButtonDisabledBg,
-            }}
-            onPress={handleSend}
-            disabled
-            activeOpacity={0.7}
-          >
-            <ArrowUp size={18} color={colors.textTertiary} />
-          </TouchableOpacity>
-        )}
+        <ComposerActionButton
+          isStreaming={isStreaming}
+          canSend={canSend}
+          isListening={isListening}
+          hasVoice={!!onToggleVoice}
+          onSend={handleSend}
+          onCancel={handleCancel}
+          onToggleVoice={handleVoiceToggle}
+          colors={colors}
+        />
       </XStack>
     </YStack>
   );
