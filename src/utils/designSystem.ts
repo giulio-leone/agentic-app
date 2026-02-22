@@ -304,5 +304,5 @@ export type DesignSystemStyles = ReturnType<typeof createThemedStyles>;
 export function useDesignSystem() {
   const theme = useTheme();
   const ds = useMemo(() => createThemedStyles(theme.colors), [theme.colors]);
-  return { ds, colors: theme.colors, dark: theme.dark, layout, typography };
+  return { ds, colors: theme.colors, dark: theme.dark, fontScale: theme.fontScale, layout, typography };
 }

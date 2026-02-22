@@ -227,16 +227,19 @@ export const Radius = {
 export interface Theme {
   colors: ThemeColors;
   dark: boolean;
+  fontScale: number;
 }
 
 export function useTheme(): Theme {
   const colorScheme = useColorScheme();
   let themeMode: 'system' | 'light' | 'dark' | 'amoled' = 'system';
   let accentColor: AccentColorKey = 'green';
+  let fontScale = 1.0;
   try {
     const { useAppStore } = require('../stores/appStore');
     themeMode = useAppStore((s: any) => s.themeMode) ?? 'system';
     accentColor = useAppStore((s: any) => s.accentColor) ?? 'green';
+    fontScale = useAppStore((s: any) => s.fontScale) ?? 1.0;
   } catch { /* store not ready yet */ }
 
   return useMemo(() => {
@@ -258,6 +261,6 @@ export function useTheme(): Theme {
     palette.primaryMuted = accent + (dark ? '26' : '1A'); // 15% / 10% alpha
     palette.healthyGreen = accent;
 
-    return { colors: palette, dark };
-  }, [colorScheme, themeMode, accentColor]);
+    return { colors: palette, dark, fontScale };
+  }, [colorScheme, themeMode, accentColor, fontScale]);
 }
