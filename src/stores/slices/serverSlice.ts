@@ -7,7 +7,7 @@ import {
 import {
   ACPServiceListener,
 } from '../../acp/ACPService';
-import { ACPClientConfig } from '../../acp/ACPClient';
+import type { ACPTransportConfig } from '../../acp/ACPTransport';
 import {
   parseSessionUpdate,
   applySessionUpdate,
@@ -185,21 +185,25 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       set({ connectionError: 'Server has no host configured' });
       return;
     }
-    const cleanHost = server.host.replace(/^wss?:\/\//i, '').replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-    const endpoint = `${server.scheme || 'ws'}://${cleanHost}`;
+    const cleanHost = server.host
+      .replace(/^(wss?|https?|tcp):\/\//i, '')
+      .replace(/\/+$/, '');
+    const scheme = server.scheme || 'ws';
+    const endpoint = `${scheme}://${cleanHost}`;
     get().appendLog(`Connecting to ${endpoint}`);
 
-    // Validate URL before attempting WebSocket
-    try { new URL(endpoint); } catch {
-      set({ connectionError: `Invalid endpoint: ${endpoint}` });
-      get().appendLog(`✗ Invalid endpoint: ${endpoint}`);
-      return;
+    // Validate endpoint format (skip URL validation for tcp:// which isn't a valid URL scheme)
+    if (scheme !== 'tcp') {
+      try { new URL(endpoint); } catch {
+        set({ connectionError: `Invalid endpoint: ${endpoint}` });
+        get().appendLog(`✗ Invalid endpoint: ${endpoint}`);
+        return;
+      }
     }
 
-    const config: ACPClientConfig = {
+    const config: ACPTransportConfig = {
       endpoint,
       authToken: server.token || undefined,
-      appendNewline: true,
     };
 
     const listener: ACPServiceListener = {

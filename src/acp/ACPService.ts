@@ -1,9 +1,11 @@
 /**
- * ACPService – high-level RPC layer over ACPClient.
+ * ACPService – high-level RPC layer over any ACP transport.
  * Mirrors the Swift ACPService: send JSON-RPC requests and await responses.
  */
 
-import { ACPClient, ACPClientConfig, ACPClientListener } from './ACPClient';
+import { ACPClient, ACPClientConfig } from './ACPClient';
+import { TCPClient } from './TCPClient';
+import type { ACPTransport, ACPTransportConfig, ACPTransportListener } from './ACPTransport';
 import { ACPMethods } from './ACPMethods';
 import {
   makeRequest,
@@ -45,18 +47,17 @@ export type ACPServiceListener = {
 };
 
 export class ACPService {
-  private client: ACPClient;
+  private transport: ACPTransport;
   private idCounter = 0;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private serviceListener: ACPServiceListener;
 
-  constructor(config: ACPClientConfig, listener: ACPServiceListener = {}) {
+  constructor(config: ACPTransportConfig, listener: ACPServiceListener = {}) {
     this.serviceListener = listener;
 
-    const clientListener: ACPClientListener = {
+    const transportListener: ACPTransportListener = {
       onStateChange: (state) => {
         if (state === ACPConnectionState.Disconnected || state === ACPConnectionState.Failed) {
-          // Fail all pending requests
           for (const [, pending] of this.pendingRequests) {
             pending.reject(new Error('Disconnected'));
           }
@@ -72,19 +73,27 @@ export class ACPService {
       },
     };
 
-    this.client = new ACPClient(config, clientListener);
+    // Choose transport based on endpoint scheme
+    if (config.endpoint.startsWith('tcp://')) {
+      this.transport = new TCPClient(config, transportListener);
+    } else {
+      this.transport = new ACPClient(
+        { ...config, appendNewline: true } as ACPClientConfig,
+        transportListener,
+      );
+    }
   }
 
   get state(): ACPConnectionState {
-    return this.client.state;
+    return this.transport.state;
   }
 
   connect(): void {
-    this.client.connect();
+    this.transport.connect();
   }
 
   disconnect(): void {
-    this.client.disconnect();
+    this.transport.disconnect();
   }
 
   // --- RPC methods ---
@@ -122,7 +131,7 @@ export class ACPService {
   }
 
   sendRawMessage(message: ACPWireMessage): void {
-    this.client.send(message);
+    this.transport.send(message);
   }
 
   // --- Internal ---
@@ -139,7 +148,7 @@ export class ACPService {
       this.pendingRequests.set(idKey, { resolve, reject });
 
       try {
-        this.client.send(request);
+        this.transport.send(request);
       } catch (error) {
         this.pendingRequests.delete(idKey);
         reject(error);

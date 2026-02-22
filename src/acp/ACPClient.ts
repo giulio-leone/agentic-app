@@ -13,22 +13,17 @@ import {
   isNotification,
 } from './models';
 import { ACPConnectionState } from './models/types';
+import type { ACPTransport, ACPTransportConfig, ACPTransportListener } from './ACPTransport';
 
-export interface ACPClientConfig {
-  endpoint: string;
-  authToken?: string;
-  additionalHeaders?: Record<string, string>;
+export interface ACPClientConfig extends ACPTransportConfig {
   pingIntervalMs?: number;
   appendNewline?: boolean;
 }
 
-export type ACPClientListener = {
-  onStateChange?: (state: ACPConnectionState) => void;
-  onMessage?: (message: ACPWireMessage) => void;
-  onError?: (error: Error) => void;
-};
+/** @deprecated Use ACPTransportListener instead */
+export type ACPClientListener = ACPTransportListener;
 
-export class ACPClient {
+export class ACPClient implements ACPTransport {
   private config: ACPClientConfig;
   private ws: WebSocket | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;

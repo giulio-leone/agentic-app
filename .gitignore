@@ -77,3 +77,4 @@ temp/
 android/app/release.keystore
 # Gradle properties contain keystore passwords
 android/gradle.properties
+logs/security/

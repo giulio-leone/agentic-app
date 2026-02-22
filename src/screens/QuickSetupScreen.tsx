@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain, Globe, Bot, Gem, Zap, type LucideIcon } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain, Globe, Bot, Gem, Zap, Github, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -54,10 +54,10 @@ interface PresetProvider {
 }
 
 interface ACPPreset {
-  serverType: ServerType.ACP | ServerType.Codex;
+  serverType: ServerType.ACP | ServerType.Codex | ServerType.CopilotCLI;
   label: string;
   description: string;
-  defaultScheme: 'ws' | 'wss';
+  defaultScheme: 'ws' | 'wss' | 'tcp';
   defaultHost: string;
 }
 
@@ -100,6 +100,13 @@ const AI_PRESETS: PresetProvider[] = [
 ];
 
 const ACP_PRESETS: ACPPreset[] = [
+  {
+    serverType: ServerType.CopilotCLI,
+    label: 'Copilot CLI',
+    description: 'GitHub Copilot agent locale via ACP (TCP)',
+    defaultScheme: 'tcp',
+    defaultHost: 'localhost:3020',
+  },
   {
     serverType: ServerType.Codex,
     label: 'Codex CLI',
@@ -158,8 +165,8 @@ export function QuickSetupScreen() {
   );
 
   // ACP state
-  const [acpScheme, setAcpScheme] = useState<'ws' | 'wss'>(
-    (editingServer?.scheme as 'ws' | 'wss') ?? 'ws',
+  const [acpScheme, setAcpScheme] = useState<'ws' | 'wss' | 'tcp'>(
+    (editingServer?.scheme as 'ws' | 'wss' | 'tcp') ?? 'ws',
   );
   const [acpHost, setAcpHost] = useState(editingServer?.host ?? '');
   const [acpToken, setAcpToken] = useState(editingServer?.token ?? '');
@@ -497,6 +504,8 @@ export function QuickSetupScreen() {
           <XStack alignItems="center" gap={Spacing.md}>
             {preset.serverType === ServerType.Codex ? (
               <Terminal size={24} color={colors.text} />
+            ) : preset.serverType === ServerType.CopilotCLI ? (
+              <Github size={24} color={colors.text} />
             ) : (
               <Server size={24} color={colors.text} />
             )}
@@ -650,7 +659,7 @@ export function QuickSetupScreen() {
         <YStack gap={Spacing.xs}>
           <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>Protocollo</Text>
           <XStack gap={Spacing.sm}>
-            {(['ws', 'wss'] as const).map(s => (
+            {(['ws', 'wss', 'tcp'] as const).map(s => (
               <TouchableOpacity
                 key={s}
                 style={[
