@@ -23,6 +23,18 @@ import {
   setService, setAiAbortController,
 } from '../storePrivate';
 import type { ACPServerConfiguration } from '../../acp/models/types';
+import { showErrorToast, showInfoToast } from '../../utils/toast';
+
+// Retry state (module-level to avoid store bloat)
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1500;
+let retryCount = 0;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearRetry() {
+  retryCount = 0;
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+}
 
 /** Detect AI provider servers, including legacy entries without serverType. */
 const isAIServer = (s?: ACPServerConfiguration) =>
@@ -51,7 +63,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       .filter(s => s.serverType === ServerType.AIProvider)
       .map(s => s.id);
     if (aiIds.length > 0) {
-      SessionStorage.migrateAISessionsToShared(aiIds).catch(() => {});
+      SessionStorage.migrateAISessionsToShared(aiIds).catch(e => console.warn('[SessionStorage] Migration failed:', e));
     }
 
     // Restore active server from storage, or auto-select first
@@ -141,7 +153,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       isStreaming: false,
     });
     // Persist selection
-    if (id) SessionStorage.saveActiveServerId(id).catch(() => {});
+    if (id) SessionStorage.saveActiveServerId(id).catch(e => console.warn('[SessionStorage] Save active ID failed:', e));
     if (id) {
       if (isAIServer(server)) {
         get().connect();
@@ -211,10 +223,26 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
         set({ connectionState: newState });
         if (newState === ACPConnectionState.Connected) {
           set({ connectionError: null });
+          clearRetry();
           get().initialize();
         }
         if (newState === ACPConnectionState.Disconnected || newState === ACPConnectionState.Failed) {
           set({ isInitialized: false });
+          // Auto-retry with exponential backoff
+          if (newState === ACPConnectionState.Failed && retryCount < MAX_RETRIES) {
+            const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+            retryCount++;
+            get().appendLog(`Retry ${retryCount}/${MAX_RETRIES} in ${delay}ms…`);
+            showInfoToast('Reconnecting…', `Attempt ${retryCount}/${MAX_RETRIES}`);
+            retryTimer = setTimeout(() => {
+              if (_service && get().connectionState === ACPConnectionState.Failed) {
+                _service.connect();
+              }
+            }, delay);
+          } else if (newState === ACPConnectionState.Failed && retryCount >= MAX_RETRIES) {
+            showErrorToast('Connection Failed', 'Max retries reached. Tap server to reconnect.');
+            clearRetry();
+          }
         }
       },
       onNotification: (method, params) => {
@@ -251,11 +279,13 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     };
 
     setService(new ACPService(config, listener));
+    clearRetry();
     _service!.connect();
     set({ connectionError: null });
   },
 
   disconnect: () => {
+    clearRetry();
     _service?.disconnect();
     setService(null);
     set({

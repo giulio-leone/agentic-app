@@ -12,13 +12,16 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { TamaguiProvider } from 'tamagui';
+import Toast from 'react-native-toast-message';
 import tamaguiConfig from './tamagui.config';
 import { AppNavigator } from './src/navigation';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { configureNotifications, requestNotificationPermissions } from './src/services/notifications';
+import { setupGlobalErrorHandler } from './src/utils/globalErrorHandler';
 
-// Configure notification handler at module level (before any component renders)
+// Module-level setup (before any component renders)
 configureNotifications();
+setupGlobalErrorHandler();
 
 export default function App() {
   const scheme = useColorScheme();
@@ -33,6 +36,7 @@ export default function App() {
       <TamaguiProvider config={tamaguiConfig} defaultTheme={scheme === 'dark' ? 'dark' : 'light'}>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
         <AppNavigator />
+        <Toast />
       </TamaguiProvider>
     </ErrorBoundary>
   );

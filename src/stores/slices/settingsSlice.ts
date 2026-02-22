@@ -53,7 +53,7 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   updateConsensusConfig: (partial) => {
     set(s => {
       const updated = { ...s.consensusConfig, ...partial };
-      AsyncStorage.setItem(CONSENSUS_CONFIG_KEY, JSON.stringify(updated)).catch(() => {});
+      AsyncStorage.setItem(CONSENSUS_CONFIG_KEY, JSON.stringify(updated)).catch(e => console.warn('[AsyncStorage] Save consensus config failed:', e));
       return { consensusConfig: updated };
     });
   },
@@ -68,7 +68,7 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
 
   setThemeMode: (mode) => {
     set({ themeMode: mode });
-    AsyncStorage.setItem(THEME_MODE_KEY, mode).catch(() => {});
+    AsyncStorage.setItem(THEME_MODE_KEY, mode).catch(e => console.warn('[AsyncStorage] Save theme failed:', e));
   },
 
   appendLog: (log) => {

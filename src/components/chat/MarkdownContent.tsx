@@ -28,7 +28,7 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]) as any;
 
   const handleLinkPress = useCallback((url: string) => {
-    Linking.openURL(url).catch(() => {});
+    Linking.openURL(url).catch(e => console.warn('[Linking] Failed to open URL:', e));
     return false; // prevent default
   }, []);
 
