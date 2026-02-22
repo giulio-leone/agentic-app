@@ -14,6 +14,7 @@ export interface ElectronAPI {
   getClients(): Promise<number>;
   getAutoLaunch(): Promise<boolean>;
   setAutoLaunch(enabled: boolean): Promise<boolean>;
+  pickDirectory(): Promise<string | null>;
   onStatusChange(cb: (status: string) => void): () => void;
   onLog(cb: (line: string) => void): () => void;
   onAction(cb: (action: string) => void): () => void;
@@ -31,6 +32,7 @@ const api: ElectronAPI = {
   getClients: () => ipcRenderer.invoke('bridge:getClients'),
   getAutoLaunch: () => ipcRenderer.invoke('app:getAutoLaunch'),
   setAutoLaunch: (e) => ipcRenderer.invoke('app:setAutoLaunch', e),
+  pickDirectory: () => ipcRenderer.invoke('dialog:pickDirectory'),
   onStatusChange: (cb) => {
     const handler = (_: unknown, s: string) => cb(s);
     ipcRenderer.on('bridge:status', handler);
