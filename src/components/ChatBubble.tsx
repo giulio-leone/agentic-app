@@ -20,7 +20,7 @@ import { Sparkles, Volume1, Volume2 } from 'lucide-react-native';
 import { ChatMessage, Attachment } from '../acp/models/types';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
-import { getFileIcon } from '../utils/fileUtils';
+import { getFileIcon, formatSize } from '../utils/fileUtils';
 import { MarkdownContent, createMarkdownStyles } from './chat/MarkdownContent';
 import { ReasoningView } from './chat/ReasoningView';
 import { ConsensusDetailView } from './chat/ConsensusDetailView';
@@ -205,7 +205,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.message.isStreaming === nextProps.message.isStreaming &&
     prevProps.isSpeaking === nextProps.isSpeaking &&
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
-    prevProps.message.segments?.length === nextProps.message.segments?.length
+    prevProps.message.segments?.length === nextProps.message.segments?.length &&
+    prevProps.highlighted === nextProps.highlighted
   );
 });
 
@@ -242,13 +243,19 @@ const AttachmentPreview = React.memo(function AttachmentPreview({
             key={att.id}
             alignItems="center"
             borderRadius={Radius.sm}
-            paddingHorizontal={Spacing.sm}
-            paddingVertical={Spacing.xs}
-            gap={4}
+            paddingHorizontal={Spacing.md}
+            paddingVertical={Spacing.sm}
+            gap={Spacing.sm}
             backgroundColor={colors.codeBackground}
+            minWidth={160}
           >
-            {React.createElement(getFileIcon(att.mediaType), { size: 16, color: colors.textTertiary })}
-            <Text fontSize={FontSize.caption} color={colors.text} maxWidth={150} numberOfLines={1}>{att.name}</Text>
+            {React.createElement(getFileIcon(att.mediaType), { size: 20, color: colors.primary })}
+            <YStack flex={1}>
+              <Text fontSize={FontSize.caption} fontWeight="500" color={colors.text} numberOfLines={1}>{att.name}</Text>
+              {att.size ? (
+                <Text fontSize={FontSize.caption - 1} color={colors.textTertiary}>{formatSize(att.size)}</Text>
+              ) : null}
+            </YStack>
           </XStack>
         );
       })}
