@@ -12,7 +12,7 @@ import {
   Pressable,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Pencil, Copy, RefreshCw, Trash2, Bookmark, Share2 } from 'lucide-react-native';
+import { Pencil, Copy, RefreshCw, Trash2, Bookmark, Share2, FileText } from 'lucide-react-native';
 import type { ChatMessage } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
@@ -36,6 +36,7 @@ interface Props {
   onBookmark?: () => void;
   isBookmarked?: boolean;
   onExport?: () => void;
+  onSaveAsTemplate?: () => void;
 }
 
 export function MessageActionMenu({
@@ -49,6 +50,7 @@ export function MessageActionMenu({
   onBookmark,
   isBookmarked,
   onExport,
+  onSaveAsTemplate,
 }: Props) {
   const { colors } = useDesignSystem();
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -90,6 +92,9 @@ export function MessageActionMenu({
   }
   if (message.role === 'assistant' && onRegenerate) {
     actions.push({ key: 'regenerate', icon: <RefreshCw size={20} color={colors.text} />, label: 'Regenerate', onPress: onRegenerate });
+  }
+  if (message.role === 'assistant' && onSaveAsTemplate) {
+    actions.push({ key: 'save-template', icon: <FileText size={20} color={colors.text} />, label: 'Save as Template', onPress: onSaveAsTemplate });
   }
   if (onDelete) {
     actions.push({ key: 'delete', icon: <Trash2 size={20} color={colors.destructive} />, label: 'Delete', destructive: true, onPress: onDelete });
