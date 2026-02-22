@@ -20,6 +20,73 @@ index 4eaf7d6..a47b620 100644
  var DefaultMcpServerAdapter = class _DefaultMcpServerAdapter {
    tools = [];
    toolsByName = /* @__PURE__ */ new Map();
+diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js
+index 0e14daf..0d86595 100644
+--- a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js
++++ b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js
+@@ -56,27 +56,23 @@ function detectRuntimeName() {
+   return "unknown";
+ }
+ async function createRuntimeAdapterAsync(name) {
+-  const resolved = name ?? detectRuntimeName();
+-  switch (resolved) {
+-    case "deno": {
+-      const { DenoRuntimeAdapter: D } = await import("./deno-runtime.adapter-F744HY7K.js");
+-      return new D();
+-    }
+-    case "bun": {
+-      const { BunRuntimeAdapter: B } = await import("./bun-runtime.adapter-MQDAJLQM.js");
+-      return new B();
+-    }
+-    case "edge": {
+-      const { EdgeRuntimeAdapter: E } = await import("./edge-runtime.adapter-UQCW2F7X.js");
+-      return new E();
+-    }
+-    case "node":
+-    case "unknown":
+-    default: {
+-      const { NodeRuntimeAdapter: N } = await import("./node-runtime.adapter-5L7PJ6W2.js");
+-      return new N();
+-    }
+-  }
++  // React Native polyfill: return a minimal runtime adapter
++  return {
++    name: "react-native",
++    randomUUID: () => "uuid-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
++    readFile: async () => "",
++    writeFile: async () => {},
++    mkdir: async () => {},
++    readdir: async () => [],
++    exists: async () => false,
++    resolve: (...parts) => parts.join("/"),
++    cwd: () => "/",
++    env: (k) => undefined,
++    exit: () => {},
++    hrtime: () => Date.now(),
++    platform: () => "android",
++    capabilities: () => ({ filesystem: false, network: true, subprocess: false }),
++  };
+ }
+ 
+ // src/agent/event-bus.ts
+@@ -1742,7 +1738,7 @@ var SubagentRegistry = class {
+     this.eventBus = eventBus;
+     this.limits = { ...DEFAULT_LIMITS, ...options?.limits };
+     this.telemetry = options?.telemetry;
+-    this.generateId = options?.generateId ?? (() => crypto.randomUUID());
++    this.generateId = options?.generateId ?? (() => ("uuid-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)));
+   }
+   /** Wire the scheduler (called during setup) */
+   setScheduler(scheduler) {
+@@ -3963,7 +3959,7 @@ var DeepAgent = class _DeepAgent {
+   telemetry;
+   constructor(config) {
+     this._runtime = config.runtime ?? null;
+-    this.sessionId = config.id ?? (this._runtime ? this._runtime.randomUUID() : crypto.randomUUID());
++    this.sessionId = config.id ?? (this._runtime ? this._runtime.randomUUID() : ("uuid-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)));
+     this.eventBus = new EventBus(this.sessionId);
+     this.config = config;
+     this.tokenTracker = new TokenTracker(config.tokenCounter, {
 diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js b/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
 index c05ff7a..ec42273 100644
 --- a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js

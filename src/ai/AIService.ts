@@ -355,6 +355,9 @@ export function streamConsensusChat(
   onChunk: (text: string) => void,
   onComplete: (stopReason: string) => void,
   onError: (error: Error) => void,
+  onReasoning?: (text: string) => void,
+  _onToolCall?: (toolName: string, args: string) => void,
+  _onToolResult?: (toolName: string, result: string) => void,
   onAgentEvent?: (event: AgentEvent) => void,
 ): AbortController {
   const controller = new AbortController();
@@ -418,64 +421,55 @@ export function streamConsensusChat(
       for await (const event of stream) {
         if (controller.signal.aborted) break;
 
-        switch (event.type) {
+        const ev = event as Record<string, any>;
+        switch (ev.type) {
           case 'node:start':
+            if (onReasoning) onReasoning(`🔄 Starting node: ${ev.nodeId}\n`);
             if (onAgentEvent) {
-              onAgentEvent({
-                type: 'subagent:spawn',
-                data: { nodeId: event.nodeId },
-                timestamp: Date.now(),
-                sessionId: 'graph', // Minimal polyfill for AgentEvent requirements
-              });
+              onAgentEvent({ type: 'subagent:spawn', data: { nodeId: ev.nodeId }, timestamp: Date.now(), sessionId: 'graph' });
             }
             break;
 
           case 'node:complete':
-            if (onAgentEvent) {
-              onAgentEvent({
-                type: 'subagent:complete',
-                data: { nodeId: event.nodeId },
-                timestamp: Date.now(),
-                sessionId: 'graph',
-              });
+            if (onReasoning) {
+              const output = typeof ev.result?.output === 'string' ? ev.result.output : '';
+              if (ev.nodeId !== 'final' && output) {
+                onReasoning(`✅ ${ev.nodeId}: ${output.slice(0, 300)}${output.length > 300 ? '…' : ''}\n\n`);
+              }
             }
-            // If the final node completes, we also extract its output to the UI stream
-            if (event.nodeId === 'final' && event.result?.output) {
-              onChunk(event.result.output);
+            if (onAgentEvent) {
+              onAgentEvent({ type: 'subagent:complete', data: { nodeId: ev.nodeId }, timestamp: Date.now(), sessionId: 'graph' });
+            }
+            if (ev.nodeId === 'final' && ev.result?.output) {
+              onChunk(ev.result.output);
             }
             break;
 
           case 'consensus:start':
+            if (onReasoning) onReasoning(`⚖️ Consensus evaluation starting…\n`);
             if (onAgentEvent) {
-              onAgentEvent({
-                type: 'subagent:spawn',
-                data: { nodeId: `consensus-${event.forkId}` },
-                timestamp: Date.now(),
-                sessionId: 'graph',
-              });
+              onAgentEvent({ type: 'subagent:spawn', data: { nodeId: `consensus-${ev.forkId}` }, timestamp: Date.now(), sessionId: 'graph' });
             }
             break;
 
           case 'consensus:result':
+            if (onReasoning) {
+              const summary = typeof ev.result === 'string' ? ev.result : (ev.result?.summary ?? '');
+              if (summary) onReasoning(`⚖️ Consensus: ${summary.slice(0, 300)}${summary.length > 300 ? '…' : ''}\n\n`);
+            }
             if (onAgentEvent) {
-              onAgentEvent({
-                type: 'subagent:complete',
-                data: { nodeId: `consensus-${event.forkId}` },
-                timestamp: Date.now(),
-                sessionId: 'graph',
-              });
+              onAgentEvent({ type: 'subagent:complete', data: { nodeId: `consensus-${ev.forkId}` }, timestamp: Date.now(), sessionId: 'graph' });
             }
             break;
 
           case 'graph:complete':
-            // Execution done
             break;
 
           case 'node:error':
-            throw new Error(`Graph error in node ${event.nodeId}: ${event.error}`);
+            throw new Error(`Graph error in node ${ev.nodeId}: ${ev.error}`);
 
           case 'graph:error':
-            throw new Error(`Graph execution error: ${event.error}`);
+            throw new Error(`Graph execution error: ${ev.error}`);
         }
       }
 
