@@ -5,18 +5,19 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, ScrollView } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Code, Globe, Palette, BarChart3, Table, FileText, Image, Paperclip, type LucideIcon } from 'lucide-react-native';
 import type { Artifact, ArtifactType } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 
-const ARTIFACT_ICONS: Record<ArtifactType, string> = {
-  code: '💻',
-  html: '🌐',
-  svg: '🎨',
-  mermaid: '📊',
-  csv: '📋',
-  markdown: '📝',
-  image: '🖼️',
+const ARTIFACT_ICONS: Record<ArtifactType, LucideIcon> = {
+  code: Code,
+  html: Globe,
+  svg: Palette,
+  mermaid: BarChart3,
+  csv: Table,
+  markdown: FileText,
+  image: Image,
 };
 
 export const ArtifactCard = React.memo(function ArtifactCard({
@@ -37,7 +38,7 @@ export const ArtifactCard = React.memo(function ArtifactCard({
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={8}>
-        <Text fontSize={20}>{ARTIFACT_ICONS[artifact.type] ?? '📎'}</Text>
+        {React.createElement(ARTIFACT_ICONS[artifact.type] ?? Paperclip, { size: 18, color: colors.primary })}
         <YStack flex={1}>
           <Text fontWeight="500" fontSize={FontSize.footnote} color={colors.text}>{artifact.title}</Text>
           {artifact.language && (

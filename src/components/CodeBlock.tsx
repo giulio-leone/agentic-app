@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Text as RNText, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Copy, Check } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useDesignSystem } from '../utils/designSystem';
 import { type ThemeColors, FontSize, Spacing, Radius } from '../utils/theme';
@@ -200,9 +201,10 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
         <Text fontSize={FontSize.caption - 1} fontWeight="600" letterSpacing={0.5} color={colors.textTertiary}>
           {displayLang}
         </Text>
-        <TouchableOpacity onPress={handleCopy} style={{ paddingHorizontal: 8, paddingVertical: 2 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleCopy} style={{ paddingHorizontal: 8, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }} activeOpacity={0.7}>
+          {copied ? <Check size={13} color="#10A37F" /> : <Copy size={13} color={colors.textTertiary} />}
           <Text fontSize={FontSize.caption} fontWeight="500" color={copied ? '#10A37F' : colors.textTertiary}>
-            {copied ? '✓ Copied' : '⎘ Copy'}
+            {copied ? 'Copied' : 'Copy'}
           </Text>
         </TouchableOpacity>
       </XStack>

@@ -31,7 +31,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
-import { Settings, X, Square, Play, Eye, Brain } from 'lucide-react-native';
+import { Settings, X, Square, Play, Eye, Brain, Search } from 'lucide-react-native';
 import type { Attachment } from '../acp/models/types';
 
 // Single service instance
@@ -443,9 +443,12 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                     {/* Hardware Optical Zoom */}
                     <YStack paddingHorizontal={Spacing.xl} gap={Spacing.md}>
                         <XStack justifyContent="space-between" alignItems="center">
-                            <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.textSecondary}>
-                                🔍 Hardware Optical Zoom
-                            </Text>
+                            <XStack alignItems="center" gap={4}>
+                                <Search size={13} color={colors.textSecondary} />
+                                <Text fontSize={FontSize.footnote} fontWeight="600" color={colors.textSecondary}>
+                                    Hardware Optical Zoom
+                                </Text>
+                            </XStack>
                             <Text fontSize={FontSize.footnote} color={colors.primary} fontWeight="bold">
                                 {zoomLevel.toFixed(1)}x
                             </Text>

@@ -162,7 +162,7 @@ export function MessageComposer({
                 />
               ) : (
                 <YStack width={52} height={52} justifyContent="center" alignItems="center">
-                  <Text fontSize={24}>{getFileIcon(att.mediaType)}</Text>
+                  {React.createElement(getFileIcon(att.mediaType), { size: 24, color: colors.textTertiary })}
                 </YStack>
               )}
               <YStack flex={1} paddingHorizontal={Spacing.xs} justifyContent="center">

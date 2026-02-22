@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
+import { Wrench, Loader, Check, ChevronDown, ChevronRight } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import type { MessageSegment } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
@@ -42,9 +43,9 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
           activeOpacity={0.7}
         >
           <XStack alignItems="center" gap={8}>
-            <Text fontSize={16} color={colors.textTertiary}>
-              {segment.isComplete ? '🔧' : '⏳'}
-            </Text>
+            {segment.isComplete
+              ? <Wrench size={15} color={colors.textTertiary} />
+              : <Loader size={15} color={colors.primary} />}
             <YStack flex={1}>
               <XStack alignItems="center" gap={6}>
                 <Text fontWeight="600" fontSize={FontSize.footnote} fontFamily="monospace" color={colors.textSecondary}>{segment.toolName}</Text>
@@ -61,10 +62,8 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
               </Text>
             </YStack>
             {!segment.isComplete && <ActivityIndicator size="small" color={colors.primary} />}
-            {segment.isComplete && <Text fontSize={14} color={colors.healthyGreen}>✓</Text>}
-            <Text fontSize={14} fontWeight="600" paddingLeft={4} color={colors.textTertiary}>
-              {expanded ? '▾' : '▸'}
-            </Text>
+            {segment.isComplete && <Check size={15} color={colors.healthyGreen} />}
+            {expanded ? <ChevronDown size={14} color={colors.textTertiary} /> : <ChevronRight size={14} color={colors.textTertiary} />}
           </XStack>
           {expanded && (
             <YStack marginTop={8} gap={4}>

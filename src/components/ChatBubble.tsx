@@ -245,7 +245,7 @@ const AttachmentPreview = React.memo(function AttachmentPreview({
             gap={4}
             backgroundColor={colors.codeBackground}
           >
-            <Text fontSize={16}>{getFileIcon(att.mediaType)}</Text>
+            {React.createElement(getFileIcon(att.mediaType), { size: 16, color: colors.textTertiary })}
             <Text fontSize={FontSize.caption} color={colors.text} maxWidth={150} numberOfLines={1}>{att.name}</Text>
           </XStack>
         );

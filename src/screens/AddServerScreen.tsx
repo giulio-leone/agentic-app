@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { YStack, XStack, Text, Separator } from 'tamagui';
+import { Lock, Brain, Eye } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -399,9 +400,12 @@ export function AddServerScreen() {
                   secureTextEntry
                 />
               </XStack>
-              <Text color="$textTertiary" fontSize={FontSize.caption} paddingBottom={Spacing.md}>
-                🔒 Stored securely on device
-              </Text>
+              <XStack alignItems="center" gap={4}>
+                <Lock size={12} color={colors.textTertiary} />
+                <Text color="$textTertiary" fontSize={FontSize.caption} paddingBottom={Spacing.md}>
+                  Stored securely on device
+                </Text>
+              </XStack>
             </YStack>
 
             {/* Model Picker */}
@@ -473,10 +477,10 @@ export function AddServerScreen() {
                             </Text>
                           )}
                           {model.supportsReasoning && (
-                            <Text color="$primary" fontSize={FontSize.caption}>🧠</Text>
+                            <Brain size={12} color={colors.primary} />
                           )}
                           {model.supportsVision && (
-                            <Text color="$primary" fontSize={FontSize.caption}>👁</Text>
+                            <Eye size={12} color={colors.primary} />
                           )}
                         </XStack>
                       </YStack>

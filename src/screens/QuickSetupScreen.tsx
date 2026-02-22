@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain, Globe, Bot, Gem, Zap, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -49,7 +49,7 @@ interface PresetProvider {
   type: AIProviderType;
   label: string;
   description: string;
-  icon: string;
+  icon: LucideIcon;
   defaultModelId: string;
 }
 
@@ -66,35 +66,35 @@ const AI_PRESETS: PresetProvider[] = [
     type: AIProviderType.OpenRouter,
     label: 'OpenRouter',
     description: 'Accesso a 200+ modelli con una sola API key',
-    icon: '🌐',
+    icon: Globe,
     defaultModelId: 'anthropic/claude-sonnet-4',
   },
   {
     type: AIProviderType.OpenAI,
     label: 'OpenAI',
     description: 'GPT-4o, o3 e famiglia ChatGPT',
-    icon: '🤖',
+    icon: Bot,
     defaultModelId: 'gpt-4o',
   },
   {
     type: AIProviderType.Anthropic,
     label: 'Anthropic',
     description: 'Claude Sonnet 4, Opus e famiglia',
-    icon: '🧠',
+    icon: Brain,
     defaultModelId: 'claude-sonnet-4-20250514',
   },
   {
     type: AIProviderType.Google,
     label: 'Google AI',
     description: 'Gemini 2.5 Pro e Flash',
-    icon: '💎',
+    icon: Gem,
     defaultModelId: 'gemini-2.5-pro-preview-06-05',
   },
   {
     type: AIProviderType.Groq,
     label: 'Groq',
     description: 'Ultra veloce — Llama, Mixtral',
-    icon: '⚡',
+    icon: Zap,
     defaultModelId: 'llama-3.3-70b-versatile',
   },
 ];
@@ -447,7 +447,7 @@ export function QuickSetupScreen() {
             activeOpacity={0.7}
           >
             <XStack alignItems="center" gap={Spacing.md}>
-              <Text fontSize={28}>{preset.icon}</Text>
+              <preset.icon size={26} color={colors.primary} />
               <YStack flex={1}>
                 <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
                   {preset.label}
@@ -504,15 +504,21 @@ export function QuickSetupScreen() {
       <XStack justifyContent="space-between" marginTop={Spacing.md}>
         {servers.length > 0 && (
           <TouchableOpacity style={styles.advancedLink} onPress={() => navigation.goBack()}>
-            <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
-              ← Torna alla chat
-            </Text>
+            <XStack alignItems="center" gap={4}>
+              <ChevronLeft size={14} color={colors.textTertiary} />
+              <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
+                Torna alla chat
+              </Text>
+            </XStack>
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.advancedLink} onPress={handleAdvancedSetup}>
-          <Text fontSize={FontSize.footnote} color={colors.primary}>
-            Configurazione avanzata →
-          </Text>
+          <XStack alignItems="center" gap={4}>
+            <Text fontSize={FontSize.footnote} color={colors.primary}>
+              Configurazione avanzata
+            </Text>
+            <ChevronRight size={14} color={colors.primary} />
+          </XStack>
         </TouchableOpacity>
       </XStack>
     </YStack>
@@ -527,9 +533,12 @@ export function QuickSetupScreen() {
       </TouchableOpacity>
 
       <YStack alignItems="center" gap={Spacing.xs}>
-        <Text fontSize={24} fontWeight="700" color={colors.text}>
-          {selectedPreset?.icon} {selectedPreset?.label}
-        </Text>
+        <XStack alignItems="center" gap={Spacing.sm}>
+          {selectedPreset && <selectedPreset.icon size={22} color={colors.primary} />}
+          <Text fontSize={24} fontWeight="700" color={colors.text}>
+            {selectedPreset?.label}
+          </Text>
+        </XStack>
         <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
           Inserisci la tua API key
         </Text>
@@ -562,9 +571,12 @@ export function QuickSetupScreen() {
           </Text>
         )}
         {models.length > 0 && !isFetching && (
-          <Text fontSize={FontSize.caption} color={colors.healthyGreen}>
-            ✓ {models.length} modelli trovati
-          </Text>
+          <XStack alignItems="center" gap={4}>
+            <Check size={14} color={colors.healthyGreen} />
+            <Text fontSize={FontSize.caption} color={colors.healthyGreen}>
+              {models.length} modelli trovati
+            </Text>
+          </XStack>
         )}
 
         <Text fontSize={FontSize.caption} color={colors.textTertiary}>
@@ -579,9 +591,12 @@ export function QuickSetupScreen() {
         disabled={!apiKey.trim() && !isEditing}
         activeOpacity={0.8}
       >
-        <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
-          Scegli modello →
-        </Text>
+        <XStack alignItems="center" gap={Spacing.xs}>
+          <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
+            Scegli modello
+          </Text>
+          <ChevronRight size={18} color={colors.contrastText} />
+        </XStack>
       </TouchableOpacity>
     </YStack>
   );
@@ -685,9 +700,12 @@ export function QuickSetupScreen() {
         {saving ? (
           <ActivityIndicator color={colors.contrastText} />
         ) : (
-          <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
-            {isEditing ? 'Salva modifiche ✓' : 'Connetti ✨'}
-          </Text>
+          <XStack alignItems="center" gap={Spacing.xs}>
+            <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
+              {isEditing ? 'Salva modifiche' : 'Connetti'}
+            </Text>
+            <Check size={18} color={colors.contrastText} />
+          </XStack>
         )}
       </TouchableOpacity>
     </YStack>
@@ -900,9 +918,12 @@ export function QuickSetupScreen() {
         {saving ? (
           <ActivityIndicator color={colors.contrastText} />
         ) : (
-          <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
-            {isEditing ? 'Salva modifiche ✓' : 'Inizia a chattare ✨'}
-          </Text>
+          <XStack alignItems="center" gap={Spacing.xs}>
+            <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
+              {isEditing ? 'Salva modifiche' : 'Inizia a chattare'}
+            </Text>
+            {isEditing ? <Check size={18} color={colors.contrastText} /> : <MessageSquare size={18} color={colors.contrastText} />}
+          </XStack>
         )}
       </TouchableOpacity>
     </YStack>

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Eye, Brain } from 'lucide-react-native';
+import { Eye, Brain, Wrench, Check } from 'lucide-react-native';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { ACPServerConfiguration, ServerType } from '../acp/models/types';
@@ -139,11 +139,11 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
           </Text>
           <XStack gap={4} marginTop={2}>
             {item.supportsVision && <Eye size={10} color={colors.textTertiary} />}
-            {item.supportsTools && <Text fontSize={10}>🔧</Text>}
+            {item.supportsTools && <Wrench size={10} color={colors.textTertiary} />}
             {item.supportsReasoning && <Brain size={10} color={colors.textTertiary} />}
           </XStack>
         </YStack>
-        {isSelected && <Text fontSize={14} color={colors.primary}>✓</Text>}
+        {isSelected && <Check size={16} color={colors.primary} />}
       </TouchableOpacity>
     );
   }, [config.modelId, colors, selectModel]);

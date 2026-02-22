@@ -13,6 +13,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
+import { Palette, Smartphone, Sun, Moon, Wrench, XCircle } from 'lucide-react-native';
 import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import type { ThemeColors } from '../utils/theme';
@@ -94,7 +95,10 @@ export function SettingsScreen() {
 
       {/* Appearance */}
       <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
-        <Text fontSize={17} fontWeight="600" color="$color">🎨 Appearance</Text>
+        <XStack alignItems="center" gap={8}>
+          <Palette size={18} color={colors.text} />
+          <Text fontSize={17} fontWeight="600" color="$color">Appearance</Text>
+        </XStack>
         <Text fontSize={12} marginTop={2} color="$textTertiary">
           Override system theme or follow device settings
         </Text>
@@ -113,9 +117,14 @@ export function SettingsScreen() {
               }}
               onPress={() => setThemeMode(mode)}
             >
-              <Text fontSize={13} fontWeight={themeMode === mode ? '600' : '400'} color={themeMode === mode ? '$contrastText' : '$color'}>
-                {mode === 'system' ? '📱 System' : mode === 'light' ? '☀️ Light' : '🌙 Dark'}
-              </Text>
+              <XStack alignItems="center" justifyContent="center" gap={4}>
+                {mode === 'system' ? <Smartphone size={14} color={themeMode === mode ? colors.contrastText : colors.text} /> :
+                 mode === 'light' ? <Sun size={14} color={themeMode === mode ? colors.contrastText : colors.text} /> :
+                 <Moon size={14} color={themeMode === mode ? colors.contrastText : colors.text} />}
+                <Text fontSize={13} fontWeight={themeMode === mode ? '600' : '400'} color={themeMode === mode ? '$contrastText' : '$color'}>
+                  {mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'}
+                </Text>
+              </XStack>
             </TouchableOpacity>
           ))}
         </XStack>
@@ -252,15 +261,19 @@ function MCPServerRow({
         </YStack>
         <XStack alignItems="center" gap={4}>
           {isConnected && (
-            <XStack borderRadius={10} paddingHorizontal={8} paddingVertical={3} backgroundColor={colors.primary + '20'}>
+            <XStack borderRadius={10} paddingHorizontal={8} paddingVertical={3} backgroundColor={colors.primary + '20'} alignItems="center" gap={4}>
+              <Wrench size={11} color={colors.primary} />
               <Text fontSize={11} fontWeight="600" color="$primary">
-                🔧 {status?.toolCount ?? 0} tools
+                {status?.toolCount ?? 0} tools
               </Text>
             </XStack>
           )}
           {isConnecting && <ActivityIndicator size="small" color={colors.primary} />}
           {hasError && (
-            <Text color={colors.destructive} fontSize={12}>✗ Error</Text>
+            <XStack alignItems="center" gap={4}>
+              <XCircle size={12} color={colors.destructive} />
+              <Text color={colors.destructive} fontSize={12}>Error</Text>
+            </XStack>
           )}
         </XStack>
       </XStack>

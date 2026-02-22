@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { Image, TouchableOpacity, Dimensions } from 'react-native';
-import { YStack, Text } from 'tamagui';
+import { YStack, XStack, Text } from 'tamagui';
+import { ImageOff } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
 import { ImageModal } from './ImageModal';
 
@@ -23,7 +24,10 @@ export const InlineImage = React.memo(function InlineImage({ url, alt, colors }:
   if (error) {
     return (
       <YStack borderWidth={1} borderRadius={8} padding={12} alignItems="center" marginVertical={4} borderColor={colors.separator}>
-        <Text color={colors.textTertiary}>🖼️ Image failed to load</Text>
+        <XStack alignItems="center" gap={6}>
+          <ImageOff size={16} color={colors.textTertiary} />
+          <Text color={colors.textTertiary}>Image failed to load</Text>
+        </XStack>
       </YStack>
     );
   }

@@ -20,11 +20,13 @@ export enum AIProviderType {
   Custom = 'custom',
 }
 
+import type { LucideIcon } from 'lucide-react-native';
+
 /** Provider metadata for the UI. */
 export interface AIProviderInfo {
   type: AIProviderType;
   name: string;
-  icon: string;
+  icon: LucideIcon;
   models: AIModelInfo[];
   requiresApiKey: boolean;
   requiresBaseUrl: boolean;

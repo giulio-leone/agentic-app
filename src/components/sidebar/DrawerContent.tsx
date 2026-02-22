@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { YStack, XStack, Text, Separator } from 'tamagui';
-import { Trash2, X, PenLine, Settings } from 'lucide-react-native';
+import { Trash2, X, PenLine, Settings, Check, Plus } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -282,7 +282,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             {servers.map(server => {
               const isSelected = server.id === selectedServerId;
               const isAIProvider = server.serverType === ServerType.AIProvider;
-              const providerIcon = isAIProvider && server.aiProviderConfig
+              const ProviderIcon = isAIProvider && server.aiProviderConfig
                 ? getProviderInfo(server.aiProviderConfig.providerType).icon
                 : null;
               return (
@@ -304,8 +304,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   }}
                   activeOpacity={0.7}
                 >
-                  {providerIcon && (
-                    <Text fontSize={14} marginRight={4}>{providerIcon}</Text>
+                  {ProviderIcon && (
+                    <ProviderIcon size={14} color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary} style={{ marginRight: 4 }} />
                   )}
                   <Text
                     color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary}
@@ -348,7 +348,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   onPress={() => rootNav.navigate('QuickSetup')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text color={colors.sidebarTextSecondary} fontSize={20} fontWeight="300">+</Text>
+                  <Plus size={18} color={colors.sidebarTextSecondary} />
                 </TouchableOpacity>
               </XStack>
             )}
@@ -360,14 +360,17 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 paddingHorizontal={Spacing.md}
                 marginTop={Spacing.xs}
               >
-                <Text color={colors.primary} fontSize={FontSize.caption} fontWeight="600" flex={1}>
-                  ✓ Ready
-                </Text>
+                <XStack alignItems="center" gap={4} flex={1}>
+                  <Check size={13} color={colors.primary} />
+                  <Text color={colors.primary} fontSize={FontSize.caption} fontWeight="600">
+                    Ready
+                  </Text>
+                </XStack>
                 <TouchableOpacity
                   onPress={() => rootNav.navigate('QuickSetup')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text color={colors.sidebarTextSecondary} fontSize={20} fontWeight="300">+</Text>
+                  <Plus size={18} color={colors.sidebarTextSecondary} />
                 </TouchableOpacity>
               </XStack>
             )}

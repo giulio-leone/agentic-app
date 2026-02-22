@@ -3,6 +3,7 @@
  */
 
 import { AIProviderType, AIProviderInfo, AIModelInfo } from './types';
+import { Bot, Brain, Hexagon, X as XIcon, Shuffle, Moon, Pentagon, Circle, Anchor, Zap, Handshake, RotateCw, Search, Wrench, Globe } from 'lucide-react-native';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ function m(
 const openai: AIProviderInfo = {
   type: AIProviderType.OpenAI,
   name: 'OpenAI',
-  icon: '🤖',
+  icon: Bot,
   requiresApiKey: true,
   requiresBaseUrl: false,
   models: [
@@ -44,7 +45,7 @@ const openai: AIProviderInfo = {
 const anthropicProvider: AIProviderInfo = {
   type: AIProviderType.Anthropic,
   name: 'Anthropic',
-  icon: '🧠',
+  icon: Brain,
   requiresApiKey: true,
   requiresBaseUrl: false,
   models: [
@@ -57,7 +58,7 @@ const anthropicProvider: AIProviderInfo = {
 const googleProvider: AIProviderInfo = {
   type: AIProviderType.Google,
   name: 'Google',
-  icon: '🔷',
+  icon: Hexagon,
   requiresApiKey: true,
   requiresBaseUrl: false,
   models: [
@@ -70,7 +71,7 @@ const googleProvider: AIProviderInfo = {
 const xaiProvider: AIProviderInfo = {
   type: AIProviderType.xAI,
   name: 'xAI',
-  icon: '✖️',
+  icon: XIcon,
   requiresApiKey: true,
   requiresBaseUrl: false,
   models: [
@@ -83,7 +84,7 @@ const xaiProvider: AIProviderInfo = {
 const openRouter: AIProviderInfo = {
   type: AIProviderType.OpenRouter,
   name: 'OpenRouter',
-  icon: '🔀',
+  icon: Shuffle,
   requiresApiKey: true,
   requiresBaseUrl: false,
   models: [
@@ -97,7 +98,7 @@ const openRouter: AIProviderInfo = {
 const kimi: AIProviderInfo = {
   type: AIProviderType.Kimi,
   name: 'Kimi (Moonshot)',
-  icon: '🌙',
+  icon: Moon,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.moonshot.cn/v1',
@@ -111,7 +112,7 @@ const kimi: AIProviderInfo = {
 const minimax: AIProviderInfo = {
   type: AIProviderType.MiniMax,
   name: 'MiniMax',
-  icon: '🔶',
+  icon: Pentagon,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.minimax.chat/v1',
@@ -124,7 +125,7 @@ const minimax: AIProviderInfo = {
 const glm: AIProviderInfo = {
   type: AIProviderType.GLM,
   name: 'GLM (Zhipu AI)',
-  icon: '🟢',
+  icon: Circle,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4/',
@@ -137,7 +138,7 @@ const glm: AIProviderInfo = {
 const deepseek: AIProviderInfo = {
   type: AIProviderType.DeepSeek,
   name: 'DeepSeek',
-  icon: '🐋',
+  icon: Anchor,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.deepseek.com/v1',
@@ -150,7 +151,7 @@ const deepseek: AIProviderInfo = {
 const groq: AIProviderInfo = {
   type: AIProviderType.Groq,
   name: 'Groq',
-  icon: '⚡',
+  icon: Zap,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.groq.com/openai/v1',
@@ -163,7 +164,7 @@ const groq: AIProviderInfo = {
 const together: AIProviderInfo = {
   type: AIProviderType.Together,
   name: 'Together',
-  icon: '🤝',
+  icon: Handshake,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.together.xyz/v1',
@@ -175,7 +176,7 @@ const together: AIProviderInfo = {
 const mistral: AIProviderInfo = {
   type: AIProviderType.Mistral,
   name: 'Mistral',
-  icon: '🌀',
+  icon: RotateCw,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.mistral.ai/v1',
@@ -188,7 +189,7 @@ const mistral: AIProviderInfo = {
 const perplexity: AIProviderInfo = {
   type: AIProviderType.Perplexity,
   name: 'Perplexity',
-  icon: '🔍',
+  icon: Search,
   requiresApiKey: true,
   requiresBaseUrl: false,
   defaultBaseUrl: 'https://api.perplexity.ai',
@@ -201,7 +202,7 @@ const perplexity: AIProviderInfo = {
 const custom: AIProviderInfo = {
   type: AIProviderType.Custom,
   name: 'Custom',
-  icon: '🔧',
+  icon: Wrench,
   requiresApiKey: true,
   requiresBaseUrl: true,
   models: [
