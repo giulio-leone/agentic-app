@@ -10,6 +10,7 @@ import { JSONValue } from '../../acp/models';
 import { SessionStorage } from '../../storage/SessionStorage';
 import { showErrorToast, showInfoToast } from '../../utils/toast';
 import { _service } from '../storePrivate';
+import { terminalEvents } from '../../acp/terminalEvents';
 
 // Retry state (module-level to avoid store bloat)
 const MAX_RETRIES = 3;
@@ -72,6 +73,16 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
         if (state.selectedServerId && state.selectedSessionId) {
           SessionStorage.saveMessages(messages, state.selectedServerId, state.selectedSessionId);
         }
+      }
+
+      // Terminal notifications
+      if (method === 'terminal/data') {
+        const p = params as Record<string, unknown> | undefined;
+        if (p?.id && p?.data) terminalEvents.emitData(p.id as string, p.data as string);
+      }
+      if (method === 'terminal/exit') {
+        const p = params as Record<string, unknown> | undefined;
+        if (p?.id !== undefined) terminalEvents.emitExit(p.id as string, (p.code as number) ?? 0);
       }
     },
     onMessage: (message) => {

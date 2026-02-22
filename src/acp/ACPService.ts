@@ -130,6 +130,32 @@ export class ACPService {
     return this.sendRequest(ACPMethods.sessionSetMode, buildSessionSetModeParams(opts));
   }
 
+  // ── Terminal methods ──
+
+  async terminalSpawn(opts?: { shell?: string; cwd?: string; cols?: number; rows?: number }): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.terminalSpawn, (opts ?? {}) as JSONValue);
+  }
+
+  async terminalList(): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.terminalList, {} as JSONValue);
+  }
+
+  async terminalConnectTmux(session: string, cols = 80, rows = 24): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.terminalConnectTmux, { session, cols, rows } as JSONValue);
+  }
+
+  async terminalInput(id: string, data: string): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.terminalInput, { id, data } as JSONValue);
+  }
+
+  async terminalResize(id: string, cols: number, rows: number): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.terminalResize, { id, cols, rows } as JSONValue);
+  }
+
+  async terminalClose(id: string): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.terminalClose, { id } as JSONValue);
+  }
+
   sendRawMessage(message: ACPWireMessage): void {
     this.transport.send(message);
   }
