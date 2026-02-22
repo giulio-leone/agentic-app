@@ -127,13 +127,19 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
 
     // For ACP servers, try server-side session replay first
     if (_service && id) {
+      const session = get().sessions.find(s => s.id === id);
       try {
-        await _service.loadSession({ sessionId: id });
+        const resp = await _service.loadSession({
+          sessionId: id,
+          cwd: session?.cwd,
+        });
         // loadSession replays the full conversation via session/update notifications.
         // Messages are populated by onNotification handler in serverSlice.
-        return;
+        const replayedCount = get().chatMessages.length;
+        if (replayedCount > 0) return;
+        // If no messages were replayed, fall through to local storage
       } catch {
-        // loadSession not supported — fall back to local storage
+        // loadSession not supported or failed — fall back to local storage
       }
     }
 
