@@ -111,7 +111,7 @@ export function SessionDetailScreen() {
   });
 
   // Load bookmarks on mount
-  useEffect(() => { loadBookmarks(); }, []);
+  useEffect(() => { loadBookmarks(); }, [loadBookmarks]);
 
   // Smart auto-scroll: only scroll when user is near the bottom
   const isNearBottom = useRef(true);
@@ -560,6 +560,12 @@ export function SessionDetailScreen() {
         renderItem={renderMessage}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={showTyping ? <TypingIndicator /> : null}
+        onScrollToIndexFailed={(info) => {
+          flatListRef.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: true,
+          });
+        }}
         contentContainerStyle={
           chatMessages.length === 0 ? emptyListStyle : messageListStyle
         }

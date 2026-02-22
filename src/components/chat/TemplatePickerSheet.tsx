@@ -66,7 +66,7 @@ export const TemplatePickerSheet = React.memo(function TemplatePickerSheet({
             {item.title}
           </Text>
           <Text fontSize={FontSize.caption} color={colors.textTertiary} numberOfLines={1}>
-            {item.prompt.slice(0, 60)}...
+            {item.prompt.length > 60 ? item.prompt.slice(0, 60) + '…' : item.prompt}
           </Text>
         </YStack>
         {!item.isBuiltIn && (
