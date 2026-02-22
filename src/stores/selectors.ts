@@ -36,6 +36,8 @@ export const useMCPStatuses = () => useAppStore(s => s.mcpStatuses);
 export const useChatSearchVisible = () => useAppStore(s => s.chatSearchVisible);
 export const useThemeMode = () => useAppStore(s => s.themeMode);
 export const useAccentColor = () => useAppStore(s => s.accentColor);
+export const useFontScale = () => useAppStore(s => s.fontScale);
+export const useHapticsEnabled = () => useAppStore(s => s.hapticsEnabled);
 
 // ── Settings selectors ───────────────────────────────────────────────────────
 
@@ -93,6 +95,9 @@ export const useSettingsActions = () => useAppStore(useShallow(s => ({
   toggleAutoStartVisionDetect: s.toggleAutoStartVisionDetect,
   setThemeMode: s.setThemeMode,
   setAccentColor: s.setAccentColor,
+  setFontScale: s.setFontScale,
+  setHapticsEnabled: s.setHapticsEnabled,
+  clearAppCache: s.clearAppCache,
   appendLog: s.appendLog,
   clearLogs: s.clearLogs,
 })));
