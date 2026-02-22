@@ -496,14 +496,38 @@ export function streamConsensusChat(
             if (onReasoning) onReasoning(`\n⚖️ Reviewer evaluating…\n`);
             break;
 
-          case 'consensus:result':
-            details.reviewerVerdict = typeof ev.output === 'string' ? ev.output : '';
+          case 'consensus:result': {
+            // Build a human-readable reviewer verdict from reasoning + scores
+            const reasoning = typeof ev.reasoning === 'string' ? ev.reasoning : '';
+            const winnerId = typeof ev.winnerId === 'string' ? ev.winnerId : '';
+            const scores = ev.scores as Record<string, number> | undefined;
+
+            let verdictParts: string[] = [];
+            if (reasoning) verdictParts.push(reasoning);
+            if (scores && Object.keys(scores).length > 0) {
+              const scoreLines = Object.entries(scores)
+                .map(([id, score], i) => {
+                  const agent = details.agentResults[i];
+                  return `- **${agent?.role ?? id}**: ${score}/10`;
+                }).join('\n');
+              verdictParts.push(`\n**Scores:**\n${scoreLines}`);
+            }
+            if (winnerId) {
+              const winIdx = parseInt(winnerId.replace(/\D/g, ''), 10);
+              const winAgent = !isNaN(winIdx) ? details.agentResults[winIdx] : undefined;
+              verdictParts.push(`\n**Winner:** ${winAgent?.role ?? winnerId}`);
+            }
+
+            details.reviewerVerdict = verdictParts.length > 0
+              ? verdictParts.join('\n')
+              : (typeof ev.output === 'string' ? ev.output.slice(0, 500) : '');
             details.status = 'complete';
             onConsensusUpdate?.({ ...details, agentResults: [...details.agentResults] });
             if (onReasoning && details.reviewerVerdict) {
-              onReasoning(`⚖️ Verdict: ${details.reviewerVerdict.slice(0, 500)}\n`);
+              onReasoning(`⚖️ ${details.reviewerVerdict.slice(0, 500)}\n`);
             }
             break;
+          }
 
           case 'node:complete':
             if (ev.nodeId === 'final' && ev.result?.output) {

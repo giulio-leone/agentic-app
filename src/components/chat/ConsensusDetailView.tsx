@@ -3,13 +3,14 @@
  * Shows collapsible cards for each analyst and a reviewer card.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Sparkles, ShieldAlert, Wrench, CheckCircle } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ConsensusDetails } from '../../acp/models/types';
+import { MarkdownContent } from './MarkdownContent';
 
 const ROLE_ICONS: Record<string, typeof Sparkles> = {
   optimistic: Sparkles,
@@ -70,9 +71,9 @@ function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: The
         </Text>
       </XStack>
       {expanded && isComplete ? (
-        <Text fontSize={FontSize.footnote} lineHeight={20} marginTop={8} color={colors.textSecondary} selectable>
-          {agent.output}
-        </Text>
+        <YStack marginTop={8}>
+          <MarkdownContent content={agent.output} colors={colors} />
+        </YStack>
       ) : !expanded && isComplete ? (
         <Text fontSize={FontSize.caption} marginTop={4} fontStyle="italic" color={colors.textTertiary} numberOfLines={2}>
           {preview}
@@ -128,9 +129,9 @@ function ReviewerCard({ verdict, modelId, isRunning, colors }: {
         </Text>
       </XStack>
       {expanded && verdict ? (
-        <Text fontSize={FontSize.footnote} lineHeight={20} marginTop={8} color={colors.textSecondary} selectable>
-          {verdict}
-        </Text>
+        <YStack marginTop={8}>
+          <MarkdownContent content={verdict} colors={colors} />
+        </YStack>
       ) : verdict ? (
         <Text fontSize={FontSize.caption} marginTop={4} fontStyle="italic" color={colors.textTertiary} numberOfLines={2}>
           {preview}

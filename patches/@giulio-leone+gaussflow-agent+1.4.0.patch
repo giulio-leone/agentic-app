@@ -21,7 +21,7 @@ index 4eaf7d6..a47b620 100644
    tools = [];
    toolsByName = /* @__PURE__ */ new Map();
 diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js
-index 0e14daf..0d86595 100644
+index 0e14daf..45c8d68 100644
 --- a/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js
 +++ b/node_modules/@giulio-leone/gaussflow-agent/dist/chunk-SZI62RZU.js
 @@ -56,27 +56,23 @@ function detectRuntimeName() {
@@ -87,6 +87,15 @@ index 0e14daf..0d86595 100644
      this.eventBus = new EventBus(this.sessionId);
      this.config = config;
      this.tokenTracker = new TokenTracker(config.tokenCounter, {
+@@ -5088,7 +5084,7 @@ var GraphExecutor = class _GraphExecutor {
+           merged: !!consensusResult.merged
+         });
+         output = consensusResult.merged ?? consensusResult.winnerOutput;
+-        channel.push({ type: "consensus:result", forkId, output });
++        channel.push({ type: "consensus:result", forkId, output, reasoning: consensusResult.reasoning, winnerId: consensusResult.winnerId, scores: consensusResult.scores });
+       } catch (error) {
+         this.eventBus?.emit("consensus:result", {
+           forkId,
 diff --git a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js b/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
 index c05ff7a..ec42273 100644
 --- a/node_modules/@giulio-leone/gaussflow-agent/dist/index.js
