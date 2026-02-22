@@ -12,9 +12,10 @@ import {
   RefreshControl,
   View,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { PenLine } from 'lucide-react-native';
+import { PenLine, GitCompareArrows } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
@@ -27,6 +28,8 @@ import { ChatSearchBar } from '../components/chat/ChatSearchBar';
 import { ServerChipSelector } from '../components/chat/ServerChipSelector';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
+import { ABModelPicker } from '../components/chat/ABModelPicker';
+import { ABCompareView } from '../components/chat/ABCompareView';
 import { SlashCommandAutocomplete } from '../components/chat/SlashCommandAutocomplete';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
@@ -38,6 +41,7 @@ import { FontSize, Spacing } from '../utils/theme';
 import { useChatSpeech } from '../hooks/useChatSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useScrollToBottom, useChatSearch, useMessageActions, useComposition } from '../hooks/chat';
+import { useABTesting } from '../hooks/useABTesting';
 import { clearAll as clearNotifications } from '../services/notifications';
 import {
   useChatMessages, useIsStreaming, usePromptText, useStopReason,
@@ -138,6 +142,23 @@ export function SessionDetailScreen() {
     closeTemplates,
     builtInTemplates,
   } = useComposition({ promptText, setPromptText, sendPrompt, markNearBottom });
+
+  // ── A/B Testing ──
+  const { abState, startTest, cancelTest, clearTest } = useABTesting();
+  const [abPickerVisible, setAbPickerVisible] = useState(false);
+
+  const handleABStart = useCallback((serverIds: string[]) => {
+    const configs = serverIds
+      .map(id => servers.find(s => s.id === id))
+      .filter((s): s is NonNullable<typeof s> => !!s?.aiProviderConfig)
+      .map(s => ({
+        config: s.aiProviderConfig!,
+        apiKey: s.aiProviderConfig!.apiKey ?? '',
+      }));
+    if (configs.length < 2 || !promptText.trim()) return;
+    startTest(promptText.trim(), chatMessages, configs);
+    setPromptText('');
+  }, [servers, promptText, chatMessages, startTest, setPromptText]);
 
   // ── TTS ──
   const { handleSpeak, isSpeakingMessage } = useChatSpeech();
@@ -344,6 +365,18 @@ export function SessionDetailScreen() {
         >
           <PenLine size={18} color={colors.textTertiary} />
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            if (abState.active) { clearTest(); }
+            else { setAbPickerVisible(true); }
+          }}
+          style={{ paddingLeft: Spacing.xs, paddingBottom: Spacing.lg }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="A/B model comparison"
+          accessibilityRole="button"
+        >
+          <GitCompareArrows size={18} color={abState.active ? colors.primary : colors.textTertiary} />
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <MessageComposer
             value={promptText}
@@ -385,6 +418,24 @@ export function SessionDetailScreen() {
         onClose={closeTemplates}
         colors={colors}
       />
+
+      <ABModelPicker
+        visible={abPickerVisible}
+        servers={servers}
+        onStart={handleABStart}
+        onClose={() => setAbPickerVisible(false)}
+        colors={colors}
+      />
+
+      {abState.active && abState.results.length > 0 && (
+        <Modal visible transparent animationType="slide">
+          <ABCompareView
+            state={abState}
+            onClose={clearTest}
+            colors={colors}
+          />
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
