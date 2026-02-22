@@ -9,6 +9,10 @@ import type { MCPServerConfig } from '../mcp/types';
 
 const SERVERS_KEY = '@agentic/servers';
 const MCP_SERVERS_KEY = '@agentic/mcp-servers';
+
+/** Shared virtual serverId for all AI provider sessions (unified chat history). */
+export const AI_SHARED_SERVER_ID = '__ai__';
+
 const sessionsKey = (serverId: string) => `@agentic/sessions/${serverId}`;
 const messagesKey = (serverId: string, sessionId: string) =>
   `@agentic/messages/${serverId}/${sessionId}`;
@@ -139,5 +143,34 @@ export const SessionStorage = {
     const servers = await this.fetchMCPServers();
     const filtered = servers.filter(s => s.id !== id);
     await AsyncStorage.setItem(MCP_SERVERS_KEY, JSON.stringify(filtered));
+  },
+
+  /**
+   * One-time migration: move per-server AI sessions into the shared `__ai__` key.
+   * Safe to call multiple times (idempotent).
+   */
+  async migrateAISessionsToShared(aiServerIds: string[]): Promise<void> {
+    const MIGRATED_KEY = '@agentic/ai-sessions-migrated';
+    const alreadyMigrated = await AsyncStorage.getItem(MIGRATED_KEY);
+    if (alreadyMigrated) return;
+
+    const shared: SessionSummary[] = await this.fetchSessions(AI_SHARED_SERVER_ID);
+    const existingIds = new Set(shared.map(s => s.id));
+
+    for (const serverId of aiServerIds) {
+      const sessions = await this.fetchSessions(serverId);
+      for (const session of sessions) {
+        if (existingIds.has(session.id)) continue;
+        shared.push(session);
+        existingIds.add(session.id);
+        // Move messages
+        const msgs = await this.fetchMessages(serverId, session.id);
+        if (msgs.length > 0) {
+          await this.saveMessages(msgs, AI_SHARED_SERVER_ID, session.id);
+        }
+      }
+    }
+    await AsyncStorage.setItem(sessionsKey(AI_SHARED_SERVER_ID), JSON.stringify(shared));
+    await AsyncStorage.setItem(MIGRATED_KEY, '1');
   },
 };

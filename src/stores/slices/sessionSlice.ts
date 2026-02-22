@@ -7,8 +7,15 @@ import {
   ServerType,
 } from '../../acp/models/types';
 import { JSONValue } from '../../acp/models';
-import { SessionStorage } from '../../storage/SessionStorage';
+import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
 import { _service } from '../storePrivate';
+
+/** Returns the storage key for a server: shared for AI providers, per-server for ACP/Codex. */
+function storageId(state: AppState & AppActions): string | null {
+  const server = state.servers.find(s => s.id === state.selectedServerId);
+  if (!server) return null;
+  return server.serverType === ServerType.AIProvider ? AI_SHARED_SERVER_ID : server.id;
+}
 
 export type SessionSlice = Pick<AppState, 'sessions' | 'selectedSessionId' | 'chatMessages'>
   & Pick<AppActions, 'loadSessions' | 'createSession' | 'selectSession' | 'deleteSession' | 'loadSessionMessages'>;
@@ -23,9 +30,10 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
 
   loadSessions: async () => {
     const state = get();
-    if (!state.selectedServerId) return;
+    const sid = storageId(state);
+    if (!sid) return;
 
-    const stored = await SessionStorage.fetchSessions(state.selectedServerId);
+    const stored = await SessionStorage.fetchSessions(sid);
     set({ sessions: stored });
 
     if (_service && state.isInitialized) {
@@ -42,7 +50,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
           }));
           set({ sessions });
           for (const session of sessions) {
-            await SessionStorage.saveSession(session, state.selectedServerId!);
+            await SessionStorage.saveSession(session, sid);
           }
         }
       } catch {
@@ -55,6 +63,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     const state = get();
     const server = state.servers.find(s => s.id === state.selectedServerId);
     if (!server) return;
+    const sid = storageId(state)!;
 
     if (server.serverType === ServerType.AIProvider) {
       const sessionId = uuidv4();
@@ -71,9 +80,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
         stopReason: null,
         isStreaming: false,
       }));
-      if (state.selectedServerId) {
-        await SessionStorage.saveSession(newSession, state.selectedServerId);
-      }
+      await SessionStorage.saveSession(newSession, sid);
       get().appendLog(`✓ AI session created: ${sessionId}`);
       return;
     }
@@ -101,9 +108,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
           stopReason: null,
           isStreaming: false,
         }));
-        if (state.selectedServerId) {
-          await SessionStorage.saveSession(newSession, state.selectedServerId);
-        }
+        await SessionStorage.saveSession(newSession, sid);
         get().appendLog(`✓ Session created: ${sessionId}`);
       }
     } catch (error) {
@@ -124,8 +129,9 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
 
   deleteSession: async (id) => {
     const state = get();
-    if (state.selectedServerId) {
-      await SessionStorage.deleteSession(id, state.selectedServerId);
+    const sid = storageId(state);
+    if (sid) {
+      await SessionStorage.deleteSession(id, sid);
     }
     set(s => ({
       sessions: s.sessions.filter(sess => sess.id !== id),
@@ -137,8 +143,9 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
 
   loadSessionMessages: async (sessionId) => {
     const state = get();
-    if (!state.selectedServerId) return;
-    const messages = await SessionStorage.fetchMessages(state.selectedServerId, sessionId);
+    const sid = storageId(state);
+    if (!sid) return;
+    const messages = await SessionStorage.fetchMessages(sid, sessionId);
     set({ chatMessages: messages });
   },
 });

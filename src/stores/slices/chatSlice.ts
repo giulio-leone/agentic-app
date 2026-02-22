@@ -7,7 +7,7 @@ import {
   ServerType,
 } from '../../acp/models/types';
 import { JSONValue } from '../../acp/models';
-import { SessionStorage } from '../../storage/SessionStorage';
+import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
 import { streamChat, streamConsensusChat } from '../../ai/AIService';
 import { getApiKey } from '../../storage/SecureStorage';
 import { updateMessageById, detectArtifacts } from '../helpers';
@@ -21,6 +21,14 @@ export type ChatSlice = Pick<AppState, 'streamingMessageId' | 'stopReason' | 'is
   & Pick<AppActions, 'sendPrompt' | 'cancelPrompt' | 'setPromptText' | 'editMessage' | 'deleteMessage' | 'regenerateMessage'>;
 
 export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSlice> = (set, get) => {
+
+  /** Resolve storage key: shared for AI providers, per-server for ACP/Codex. */
+  function chatStorageId(): string | null {
+    const state = get();
+    const server = state.servers.find(s => s.id === state.selectedServerId);
+    if (!server) return null;
+    return server.serverType === ServerType.AIProvider ? AI_SHARED_SERVER_ID : server.id;
+  }
 
   // ── Shared AI streaming helper ──
   function _streamAIResponse(config: AIProviderConfig, apiKey: string) {
@@ -80,10 +88,11 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           get().appendLog(`✗ AI stream ended with empty response (stop reason: ${normalizedStopReason})`);
         }
         const finalState = get();
-        if (finalState.selectedServerId && finalState.selectedSessionId) {
+        const sid = chatStorageId();
+        if (sid && finalState.selectedSessionId) {
           SessionStorage.saveMessages(
             finalState.chatMessages,
-            finalState.selectedServerId,
+            sid,
             finalState.selectedSessionId,
           );
         }
@@ -210,8 +219,9 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
   // Helper to persist current messages
   function _persistMessages() {
     const s = get();
-    if (s.selectedServerId && s.selectedSessionId) {
-      SessionStorage.saveMessages(s.chatMessages, s.selectedServerId, s.selectedSessionId);
+    const sid = chatStorageId();
+    if (sid && s.selectedSessionId) {
+      SessionStorage.saveMessages(s.chatMessages, sid, s.selectedSessionId);
     }
   }
 
@@ -282,15 +292,16 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           : m
         );
       const allMessages = [...state.chatMessages, userMessage];
-      if (state.selectedServerId && sessionId) {
-        SessionStorage.saveMessages(stripBase64(allMessages), state.selectedServerId, sessionId);
+      const sid = chatStorageId();
+      if (sid && sessionId) {
+        SessionStorage.saveMessages(stripBase64(allMessages), sid, sessionId);
         if (state.chatMessages.length === 0) {
           const title = text.substring(0, 50);
           const session = state.sessions.find(s => s.id === sessionId);
           if (session) {
             SessionStorage.saveSession(
               { ...session, title, updatedAt: new Date().toISOString() },
-              state.selectedServerId,
+              sid,
             );
             set(s => ({
               sessions: s.sessions.map(sess =>

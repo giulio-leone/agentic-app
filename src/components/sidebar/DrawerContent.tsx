@@ -298,6 +298,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     ...(isSelected && { backgroundColor: 'rgba(255,255,255,0.06)' }),
                   }}
                   onPress={() => handleServerPress(server.id)}
+                  onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    rootNav.navigate('QuickSetup', { editingServer: server });
+                  }}
                   activeOpacity={0.7}
                 >
                   {providerIcon && (

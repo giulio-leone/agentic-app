@@ -41,6 +41,14 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     const servers = await SessionStorage.fetchServers();
     set({ servers });
 
+    // Migrate per-server AI sessions to shared storage (one-time)
+    const aiIds = servers
+      .filter(s => s.serverType === ServerType.AIProvider)
+      .map(s => s.id);
+    if (aiIds.length > 0) {
+      SessionStorage.migrateAISessionsToShared(aiIds).catch(() => {});
+    }
+
     // Auto-select the first server if none is selected
     const state = get();
     if (!state.selectedServerId && servers.length > 0) {
@@ -90,6 +98,9 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   selectServer: (id) => {
     const state = get();
     const server = id ? state.servers.find(s => s.id === id) : undefined;
+    const prevServer = state.selectedServerId
+      ? state.servers.find(s => s.id === state.selectedServerId)
+      : undefined;
 
     // If same server is already selected, just ensure it's connected
     if (state.selectedServerId === id) {
@@ -99,19 +110,26 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       return;
     }
 
+    const bothAI = prevServer?.serverType === ServerType.AIProvider
+      && server?.serverType === ServerType.AIProvider;
+
     _service?.disconnect();
     setService(null);
     _aiAbortController?.abort();
     setAiAbortController(null);
+
     set({
       selectedServerId: id,
       connectionState: ACPConnectionState.Disconnected,
       isInitialized: false,
       agentInfo: null,
       connectionError: null,
-      sessions: [],
-      selectedSessionId: null,
-      chatMessages: [],
+      // Preserve sessions/messages when switching between AI providers (unified storage)
+      ...(bothAI ? {} : {
+        sessions: [],
+        selectedSessionId: null,
+        chatMessages: [],
+      }),
       streamingMessageId: null,
       stopReason: null,
       isStreaming: false,
@@ -120,7 +138,9 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       if (server?.serverType === ServerType.AIProvider) {
         get().connect();
       }
-      get().loadSessions();
+      if (!bothAI) {
+        get().loadSessions();
+      }
     }
   },
 
