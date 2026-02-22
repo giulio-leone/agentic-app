@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain, Globe, Bot, Gem, Zap, Github, type LucideIcon } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, Search, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain, Globe, Bot, Gem, Zap, Github, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -191,13 +191,12 @@ export function QuickSetupScreen() {
   const [acpHost, setAcpHost] = useState(editingServer?.host ?? '');
   const [acpToken, setAcpToken] = useState(editingServer?.token ?? '');
   const [acpName, setAcpName] = useState(editingServer?.name ?? '');
-  const [cliExpanded, setCliExpanded] = useState(false);
 
   const stepCount = flow === 'acp' ? 2 : 3;
 
-  // Stagger animation for step 0 cards (AI presets + 1 CLI group card)
+  // Stagger animation for step 0 cards (all presets: AI + CLI)
   const cardAnims = useRef(
-    [...AI_PRESETS, 'cli-group'].map(() => new Animated.Value(0)),
+    [...AI_PRESETS, ...ACP_PRESETS].map(() => new Animated.Value(0)),
   ).current;
 
   useEffect(() => {
@@ -461,14 +460,21 @@ export function QuickSetupScreen() {
   );
 
   const renderStep0 = () => {
+    const isFirstOnboarding = !isEditing && servers.length === 0;
     let cardIndex = 0;
     return (
-    <YStack gap={Spacing.sm}>
-      <YStack alignItems="center" gap={Spacing.sm} marginBottom={Spacing.lg}>
-        <Text fontSize={34} fontWeight="700" color={colors.text}>
-          {isEditing ? 'Modifica server' : 'Benvenuto 👋'}
-        </Text>
-        <Text fontSize={FontSize.body} textAlign="center" lineHeight={22} color={colors.textTertiary}>
+    <YStack gap={Spacing.xs}>
+      <YStack alignItems="center" gap={Spacing.xs} marginBottom={Spacing.sm}>
+        {isFirstOnboarding ? (
+          <Text fontSize={28} fontWeight="700" color={colors.text}>
+            Benvenuto 👋
+          </Text>
+        ) : (
+          <Text fontSize={24} fontWeight="700" color={colors.text}>
+            {isEditing ? 'Modifica server' : 'Aggiungi server'}
+          </Text>
+        )}
+        <Text fontSize={FontSize.footnote} textAlign="center" color={colors.textTertiary}>
           Scegli come connetterti
         </Text>
       </YStack>
@@ -482,93 +488,55 @@ export function QuickSetupScreen() {
         return (
         <Animated.View
           key={preset.type}
-          style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}
+          style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}
         >
           <TouchableOpacity
-            style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+            style={[styles.compactCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
             onPress={() => handlePresetSelect(preset)}
             activeOpacity={0.7}
           >
-            <XStack alignItems="center" gap={Spacing.md}>
-              <preset.icon size={26} color={colors.primary} />
-              <YStack flex={1}>
-                <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
-                  {preset.label}
-                </Text>
-                <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
-                  {preset.description}
-                </Text>
-              </YStack>
-              <ChevronRight size={18} color={colors.textTertiary} />
+            <XStack alignItems="center" gap={Spacing.sm}>
+              <preset.icon size={20} color={colors.primary} />
+              <Text fontSize={FontSize.body} fontWeight="600" color={colors.text} flex={1}>
+                {preset.label}
+              </Text>
+              <ChevronRight size={16} color={colors.textTertiary} />
             </XStack>
           </TouchableOpacity>
         </Animated.View>
         );
       })}
 
-      {/* Agent CLI — collapsible group */}
-      <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5} marginTop={Spacing.md}>
+      {/* Agent CLI presets — flat list */}
+      <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5} marginTop={Spacing.xs}>
         Agent CLI (ACP)
       </Text>
-      {(() => {
+      {ACP_PRESETS.map(preset => {
         const idx = cardIndex++;
         return (
         <Animated.View
-          key="cli-group"
-          style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}
+          key={preset.label}
+          style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}
         >
           <TouchableOpacity
-            style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
-            onPress={() => setCliExpanded(prev => !prev)}
+            style={[styles.compactCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+            onPress={() => handleACPSelect(preset)}
             activeOpacity={0.7}
           >
-            <XStack alignItems="center" gap={Spacing.md}>
-              <Terminal size={26} color={colors.text} />
-              <YStack flex={1}>
-                <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
-                  Agent CLI
-                </Text>
-                <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
-                  Copilot, Gemini, Claude Code, Codex…
-                </Text>
-              </YStack>
-              {cliExpanded
-                ? <ChevronUp size={18} color={colors.textTertiary} />
-                : <ChevronDown size={18} color={colors.textTertiary} />}
+            <XStack alignItems="center" gap={Spacing.sm}>
+              <preset.icon size={20} color={colors.primary} />
+              <Text fontSize={FontSize.body} fontWeight="600" color={colors.text} flex={1}>
+                {preset.label}
+              </Text>
+              <ChevronRight size={16} color={colors.textTertiary} />
             </XStack>
           </TouchableOpacity>
-
-          {cliExpanded && (
-            <YStack gap={Spacing.xs} marginTop={Spacing.xs} paddingLeft={Spacing.md}>
-              {ACP_PRESETS.map(preset => (
-                <TouchableOpacity
-                  key={preset.label}
-                  style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator, paddingVertical: 10 }]}
-                  onPress={() => handleACPSelect(preset)}
-                  activeOpacity={0.7}
-                >
-                  <XStack alignItems="center" gap={Spacing.sm}>
-                    <preset.icon size={20} color={colors.primary} />
-                    <YStack flex={1}>
-                      <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>
-                        {preset.label}
-                      </Text>
-                      <Text fontSize={FontSize.caption} color={colors.textTertiary}>
-                        {preset.description}
-                      </Text>
-                    </YStack>
-                    <ChevronRight size={16} color={colors.textTertiary} />
-                  </XStack>
-                </TouchableOpacity>
-              ))}
-            </YStack>
-          )}
         </Animated.View>
         );
-      })()}
+      })}
 
       {/* Skip + Advanced */}
-      <XStack justifyContent="space-between" marginTop={Spacing.md}>
+      <XStack justifyContent="space-between" marginTop={Spacing.xs}>
         {servers.length > 0 && (
           <TouchableOpacity style={styles.advancedLink} onPress={() => navigation.goBack()}>
             <XStack alignItems="center" gap={4}>
@@ -1028,6 +996,12 @@ const styles = StyleSheet.create({
   presetCard: {
     borderRadius: Radius.lg,
     padding: Spacing.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  compactCard: {
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderWidth: StyleSheet.hairlineWidth,
   },
   input: {
