@@ -71,6 +71,7 @@ export const ChatSearchBar = React.memo(function ChatSearchBar({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
+        accessibilityLabel="Search messages"
       />
       {query.length > 0 && (
         <Text fontSize={FontSize.caption} color={colors.textTertiary} minWidth={40} textAlign="center">

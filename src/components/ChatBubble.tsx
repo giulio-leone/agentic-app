@@ -175,13 +175,15 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                   style={{ padding: 4 }}
                   onPress={() => onSpeak?.(message.content, message.id)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={isSpeaking ? 'Stop reading aloud' : 'Read aloud'}
+                  accessibilityRole="button"
                 >
                   <Text fontSize={16} color={isSpeaking ? colors.primary : colors.textTertiary}>
                     {isSpeaking ? <Volume2 size={16} color={colors.primary} /> : <Volume1 size={16} color={colors.textTertiary} />}
                   </Text>
                 </TouchableOpacity>
                 {bookmarked && (
-                  <Bookmark size={14} color={colors.primary} fill={colors.primary} />
+                  <Bookmark size={14} color={colors.primary} fill={colors.primary} accessibilityLabel="Bookmarked" />
                 )}
                 <MessageTimestamp timestamp={message.timestamp} colors={colors} />
               </XStack>
