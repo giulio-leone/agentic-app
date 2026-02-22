@@ -58,6 +58,8 @@ export interface AppState {
   autoStartVisionDetect: boolean;
   themeMode: 'system' | 'light' | 'dark' | 'amoled';
   accentColor: import('../utils/theme').AccentColorKey;
+  fontScale: number; // 0.8 to 1.4
+  hapticsEnabled: boolean;
 
   // Screen Watcher
   isWatching: boolean;
@@ -125,6 +127,9 @@ export interface AppActions {
   toggleAutoStartVisionDetect: () => void;
   setThemeMode: (mode: 'system' | 'light' | 'dark' | 'amoled') => void;
   setAccentColor: (color: import('../utils/theme').AccentColorKey) => void;
+  setFontScale: (scale: number) => void;
+  setHapticsEnabled: (enabled: boolean) => void;
+  clearAppCache: () => Promise<void>;
   appendLog: (log: string) => void;
   clearLogs: () => void;
 

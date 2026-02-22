@@ -6,8 +6,8 @@ import { DEFAULT_CONSENSUS_CONFIG, type ConsensusConfig } from '../../ai/types';
 const CONSENSUS_CONFIG_KEY = '@agentic/consensusConfig';
 const THEME_MODE_KEY = '@agentic/themeMode';
 
-export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect' | 'themeMode' | 'accentColor'>
-  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect' | 'setThemeMode' | 'setAccentColor'>;
+export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect' | 'themeMode' | 'accentColor' | 'fontScale' | 'hapticsEnabled'>
+  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect' | 'setThemeMode' | 'setAccentColor' | 'setFontScale' | 'setHapticsEnabled' | 'clearAppCache'>;
 
 export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], SettingsSlice> = (set, get) => {
   // Hydrate consensus config from AsyncStorage on slice creation
@@ -31,6 +31,16 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
     if (raw) set({ accentColor: raw as any });
   });
 
+  // Hydrate font scale
+  AsyncStorage.getItem('@agentic/fontScale').then(raw => {
+    if (raw) { const n = parseFloat(raw); if (n >= 0.8 && n <= 1.4) set({ fontScale: n }); }
+  });
+
+  // Hydrate haptics
+  AsyncStorage.getItem('@agentic/hapticsEnabled').then(raw => {
+    if (raw !== null) set({ hapticsEnabled: raw === 'true' });
+  });
+
   return {
   // State
   devModeEnabled: false,
@@ -42,6 +52,8 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   autoStartVisionDetect: false,
   themeMode: 'system' as 'system' | 'light' | 'dark' | 'amoled',
   accentColor: 'green' as import('../../utils/theme').AccentColorKey,
+  fontScale: 1.0,
+  hapticsEnabled: true,
 
   // Actions
 
@@ -81,6 +93,27 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   setAccentColor: (color) => {
     set({ accentColor: color });
     AsyncStorage.setItem('@agentic/accentColor', color).catch(e => console.warn('[AsyncStorage] Save accent failed:', e));
+  },
+
+  setFontScale: (scale) => {
+    const clamped = Math.max(0.8, Math.min(1.4, scale));
+    set({ fontScale: clamped });
+    AsyncStorage.setItem('@agentic/fontScale', String(clamped)).catch(e => console.warn('[AsyncStorage] Save fontScale failed:', e));
+  },
+
+  setHapticsEnabled: (enabled) => {
+    set({ hapticsEnabled: enabled });
+    AsyncStorage.setItem('@agentic/hapticsEnabled', String(enabled)).catch(e => console.warn('[AsyncStorage] Save haptics failed:', e));
+  },
+
+  clearAppCache: async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(k => k.startsWith('@agentic/session/') || k.startsWith('@agentic/messages/'));
+      if (cacheKeys.length > 0) await AsyncStorage.multiRemove(cacheKeys);
+    } catch (e) {
+      console.warn('[AsyncStorage] Clear cache failed:', e);
+    }
   },
 
   appendLog: (log) => {

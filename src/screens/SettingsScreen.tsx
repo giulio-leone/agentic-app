@@ -11,14 +11,16 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
-import { Palette, Smartphone, Sun, Moon, Eclipse, Check } from 'lucide-react-native';
+import { Palette, Smartphone, Sun, Moon, Eclipse, Check, Type, Vibrate, Trash2 } from 'lucide-react-native';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, AccentColors, type AccentColorKey } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import {
   useDevMode, useDeveloperLogs, useYoloMode, useAutoStartVisionDetect,
-  useThemeMode, useAccentColor, useMCPServers, useMCPStatuses,
+  useThemeMode, useAccentColor, useFontScale, useHapticsEnabled,
+  useMCPServers, useMCPStatuses,
   useSettingsActions, useMCPActions,
 } from '../stores/selectors';
 import { MCPServerRow } from './settings/MCPServerRow';
@@ -33,10 +35,12 @@ export function SettingsScreen() {
   const autoStartVisionDetect = useAutoStartVisionDetect();
   const themeMode = useThemeMode();
   const accentColor = useAccentColor();
+  const fontScale = useFontScale();
+  const hapticsEnabled = useHapticsEnabled();
   const mcpServers = useMCPServers();
   const mcpStatuses = useMCPStatuses();
 
-  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, setAccentColor, clearLogs } = useSettingsActions();
+  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, setAccentColor, setFontScale, setHapticsEnabled, clearAppCache, clearLogs } = useSettingsActions();
   const { loadMCPServers, addMCPServer, removeMCPServer, connectMCPServer, disconnectMCPServer } = useMCPActions();
 
   const [showAddMCP, setShowAddMCP] = useState(false);
@@ -171,6 +175,75 @@ export function SettingsScreen() {
             </TouchableOpacity>
           ))}
         </XStack>
+      </YStack>
+
+      {/* Font Size */}
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
+        <XStack alignItems="center" gap={Spacing.sm}>
+          <Type size={18} color={colors.text} />
+          <Text fontSize={17} fontWeight="600" color="$color">Font Size</Text>
+          <Text fontSize={13} color="$textTertiary" marginLeft="auto">{Math.round(fontScale * 100)}%</Text>
+        </XStack>
+        <Text fontSize={12} color="$textTertiary">
+          Adjust text size across the app
+        </Text>
+        <XStack alignItems="center" gap={Spacing.sm}>
+          <Text fontSize={11} color="$textTertiary">A</Text>
+          <View style={{ flex: 1 }}>
+            <Slider
+              minimumValue={0.8}
+              maximumValue={1.4}
+              step={0.1}
+              value={fontScale}
+              onSlidingComplete={setFontScale}
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.systemGray4}
+              thumbTintColor={colors.primary}
+            />
+          </View>
+          <Text fontSize={17} color="$textTertiary">A</Text>
+        </XStack>
+        <Text fontSize={14 * fontScale} color="$color" textAlign="center">
+          Preview text at {Math.round(fontScale * 100)}%
+        </Text>
+      </YStack>
+
+      {/* Haptics & Cache */}
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
+        <XStack justifyContent="space-between" alignItems="center">
+          <XStack alignItems="center" gap={Spacing.sm} flex={1}>
+            <Vibrate size={18} color={colors.text} />
+            <YStack flex={1}>
+              <Text fontSize={16} fontWeight="500" color="$color">Haptic Feedback</Text>
+              <Text fontSize={12} marginTop={2} color="$textTertiary">
+                Vibrate on interactions
+              </Text>
+            </YStack>
+          </XStack>
+          <Switch
+            value={hapticsEnabled}
+            onValueChange={setHapticsEnabled}
+            trackColor={{ true: colors.primary, false: colors.systemGray4 }}
+            thumbColor={colors.contrastText}
+            accessibilityLabel="Haptic feedback"
+          />
+        </XStack>
+        <Separator borderColor="$separator" />
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert('Clear Cache', 'Delete all cached sessions and messages?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Clear', style: 'destructive', onPress: () => clearAppCache() },
+            ]);
+          }}
+          accessibilityLabel="Clear app cache"
+          accessibilityRole="button"
+        >
+          <XStack alignItems="center" gap={Spacing.sm}>
+            <Trash2 size={18} color={colors.destructive || '#FF3B30'} />
+            <Text fontSize={16} color={colors.destructive || '#FF3B30'}>Clear App Cache</Text>
+          </XStack>
+        </TouchableOpacity>
       </YStack>
 
       {/* Dev Mode */}
