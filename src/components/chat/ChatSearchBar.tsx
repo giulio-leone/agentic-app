@@ -77,14 +77,13 @@ export const ChatSearchBar = React.memo(function ChatSearchBar({
           {matchCount > 0 ? `${currentMatch + 1}/${matchCount}` : '0'}
         </Text>
       )}
-      <TouchableOpacity onPress={onPrev} disabled={matchCount === 0} style={styles.navBtn} hitSlop={8}>
+      <TouchableOpacity onPress={onPrev} disabled={matchCount === 0} style={styles.navBtn} hitSlop={8} accessibilityLabel="Previous match" accessibilityRole="button">
         <ChevronUp size={18} color={matchCount > 0 ? colors.text : colors.textTertiary} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={onNext} disabled={matchCount === 0} style={styles.navBtn} hitSlop={8}>
+      <TouchableOpacity onPress={onNext} disabled={matchCount === 0} style={styles.navBtn} hitSlop={8} accessibilityLabel="Next match" accessibilityRole="button">
         <ChevronDown size={18} color={matchCount > 0 ? colors.text : colors.textTertiary} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={handleClose} style={styles.navBtn} hitSlop={8}>
-        <X size={18} color={colors.textTertiary} />
+      <TouchableOpacity onPress={handleClose} style={styles.navBtn} hitSlop={8} accessibilityLabel="Close search" accessibilityRole="button">        <X size={18} color={colors.textTertiary} />
       </TouchableOpacity>
     </XStack>
     </Animated.View>

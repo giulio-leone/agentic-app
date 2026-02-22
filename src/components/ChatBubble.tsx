@@ -73,7 +73,12 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
 
   return (
-    <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={400}>
+    <Pressable
+      onLongPress={() => onLongPress?.(message)}
+      delayLongPress={400}
+      accessibilityRole="text"
+      accessibilityLabel={`${isUser ? 'You' : message.serverName || 'Assistant'}: ${message.content.slice(0, 100)}`}
+    >
       <Animated.View
         entering={FadeInDown.duration(250).springify().damping(18)}
         style={[
