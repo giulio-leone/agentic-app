@@ -408,7 +408,7 @@ export function streamConsensusChat(
       }));
 
       // Build the Consensus Graph (analysts fork → final synthesizer, no input node)
-      const graphBuilder = AgentGraph.create()
+      const graphBuilder = AgentGraph.create({ timeoutMs: 120_000, maxConcurrency: 3 })
         .withFilesystem(fs)
         .fork('analysts', analystConfigs)
         .consensus('analysts', new LlmJudgeConsensus({ model: reviewerModel }))
@@ -426,6 +426,14 @@ export function streamConsensusChat(
         const ev = event as Record<string, any>;
 
         switch (ev.type) {
+          case 'graph:start':
+            if (onReasoning) onReasoning(`🧠 Consensus graph started (${ev.nodeCount} nodes)\n`);
+            break;
+
+          case 'node:start':
+            if (onReasoning) onReasoning(`▶ Node "${ev.nodeId}" started…\n`);
+            break;
+
           case 'fork:start':
             // Mark all agents as running
             details.agentResults.forEach(a => { a.status = 'running'; });
