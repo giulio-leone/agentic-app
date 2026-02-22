@@ -21,6 +21,7 @@ export interface StreamContext {
 
 /** Maps agent event types to user-visible labels. */
 export function agentEventLabel(type: string, data: unknown): string | null {
+  const d = data as Record<string, unknown> | undefined;
   switch (type) {
     case 'planning:update':
       return '📋 Planning updated';
@@ -28,16 +29,31 @@ export function agentEventLabel(type: string, data: unknown): string | null {
       return '🔀 Sub-agent started';
     case 'subagent:complete':
       return '✅ Sub-agent completed';
-    case 'step:start': {
-      const d = data as { stepIndex?: number } | undefined;
-      return `⚡ Step ${(d?.stepIndex ?? 0) + 1}`;
-    }
+    case 'step:start':
+      return `⚡ Step ${((d?.stepIndex as number) ?? 0) + 1}`;
     case 'context:summarize':
       return '📝 Context summarized';
     case 'checkpoint:save':
       return '💾 Checkpoint saved';
+    case 'terminal_command':
+      return `🖥️ ${(d?.name as string) || 'command'}`;
+    case 'terminal_output': {
+      const name = (d?.name as string) || 'command';
+      const exitCode = (d?.exitCode as number | undefined);
+      return exitCode === 0 || exitCode === undefined ? `📤 ${name}` : `❌ ${name} (exit ${exitCode})`;
+    }
+    case 'file_edit':
+      return `✏️ ${(d?.name as string) || 'file'}`;
+    case 'file_read':
+      return `📄 ${(d?.name as string) || 'file'}`;
+    case 'reasoning':
+      return '💭 Reasoning';
+    case 'tool_call':
+      return `🔧 ${(d?.name as string) || 'tool'}`;
+    case 'tool_result':
+      return '✅ Tool completed';
     default:
-      return null;
+      return type ? `📎 ${type}` : null;
   }
 }
 

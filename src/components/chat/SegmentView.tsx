@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Wrench, Loader, Check, ChevronDown, ChevronRight } from 'lucide-react-native';
+import { Wrench, Loader, Check, ChevronDown, ChevronRight, Terminal, FileEdit } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import { StyleSheet } from 'react-native';
 import type { MessageSegment } from '../../acp/models/types';
@@ -105,16 +105,89 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
         </TouchableOpacity>
       );
 
-    case 'agentEvent':
+    case 'agentEvent': {
+      const isTerminal = segment.eventType.startsWith('terminal_');
+      const isFile = segment.eventType.startsWith('file_');
+      const hasDetail = !!segment.detail;
+      const Icon = isTerminal ? Terminal : isFile ? FileEdit : null;
+
+      if (!hasDetail) {
+        return (
+          <XStack alignItems="center" gap={6} paddingVertical={3}>
+            {Icon && <Icon size={12} color={colors.textTertiary} />}
+            <Text fontSize={FontSize.caption} color={colors.textTertiary}>
+              {segment.label}
+            </Text>
+          </XStack>
+        );
+      }
+
       return (
-        <XStack alignItems="center" gap={6} paddingVertical={3}>
-          <Text fontSize={FontSize.caption} color={colors.textTertiary}>
-            {segment.label}
-          </Text>
-        </XStack>
+        <TouchableOpacity
+          style={{ marginVertical: 2, paddingVertical: 3, paddingHorizontal: Spacing.xs }}
+          onPress={() => setExpanded(!expanded)}
+          activeOpacity={0.7}
+        >
+          <XStack alignItems="center" gap={6}>
+            {Icon && <Icon size={12} color={colors.textTertiary} />}
+            <Text fontSize={FontSize.caption} color={colors.textTertiary} flex={1}>
+              {segment.label}
+            </Text>
+            {expanded
+              ? <ChevronDown size={12} color={colors.textTertiary} />
+              : <ChevronRight size={12} color={colors.textTertiary} />}
+          </XStack>
+          {expanded && (
+            <YStack marginTop={4}>
+              <Text
+                fontFamily="monospace"
+                fontSize={11}
+                padding={Spacing.xs}
+                borderRadius={4}
+                maxHeight={150}
+                overflow="hidden"
+                color={colors.codeText}
+                backgroundColor={colors.codeBackground}
+                selectable
+              >
+                {formatEventDetail(segment.detail, segment.eventType)}
+              </Text>
+            </YStack>
+          )}
+        </TouchableOpacity>
       );
+    }
 
     default:
       return null;
   }
 });
+
+/** Format event detail JSON into readable text based on event type. */
+function formatEventDetail(detail: string | undefined, eventType: string): string {
+  if (!detail) return '';
+  try {
+    const data = JSON.parse(detail);
+    if (eventType === 'terminal_command') {
+      const cmd = data.name || data.command || '';
+      const args = data.data?.args || '';
+      return args ? `$ ${cmd} ${args}` : `$ ${cmd}`;
+    }
+    if (eventType === 'terminal_output') {
+      const output = data.output || '';
+      const stderr = data.data?.stderr || '';
+      return stderr ? `${output}\n\nstderr:\n${stderr}` : output;
+    }
+    if (eventType === 'file_edit') {
+      const path = data.name || data.path || '';
+      const action = data.data?.action || 'modified';
+      return `${action}: ${path}`;
+    }
+    if (eventType === 'reasoning') {
+      return data.output || data.content || JSON.stringify(data, null, 2);
+    }
+    return JSON.stringify(data, null, 2);
+  } catch {
+    return detail.substring(0, 500);
+  }
+}
