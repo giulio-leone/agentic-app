@@ -56,7 +56,8 @@ export interface AppState {
   consensusConfig: import('../ai/types').ConsensusConfig;
   yoloModeEnabled: boolean;
   autoStartVisionDetect: boolean;
-  themeMode: 'system' | 'light' | 'dark';
+  themeMode: 'system' | 'light' | 'dark' | 'amoled';
+  accentColor: import('../utils/theme').AccentColorKey;
 
   // Screen Watcher
   isWatching: boolean;
@@ -122,7 +123,8 @@ export interface AppActions {
   updateConsensusConfig: (config: Partial<import('../ai/types').ConsensusConfig>) => void;
   toggleYoloMode: () => void;
   toggleAutoStartVisionDetect: () => void;
-  setThemeMode: (mode: 'system' | 'light' | 'dark') => void;
+  setThemeMode: (mode: 'system' | 'light' | 'dark' | 'amoled') => void;
+  setAccentColor: (color: import('../utils/theme').AccentColorKey) => void;
   appendLog: (log: string) => void;
   clearLogs: () => void;
 

@@ -91,6 +91,7 @@ export const useSettingsActions = () => useAppStore(useShallow(s => ({
   toggleYoloMode: s.toggleYoloMode,
   toggleAutoStartVisionDetect: s.toggleAutoStartVisionDetect,
   setThemeMode: s.setThemeMode,
+  setAccentColor: s.setAccentColor,
   appendLog: s.appendLog,
   clearLogs: s.clearLogs,
 })));

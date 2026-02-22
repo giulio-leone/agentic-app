@@ -146,7 +146,42 @@ const DarkPalette: typeof LightPalette = {
   statusBarStyle: 'light' as const,
 };
 
+const AMOLEDPalette: typeof LightPalette = {
+  ...DarkPalette,
+  // Pure black for AMOLED power saving
+  background: '#000000',
+  surface: '#000000',
+  cardBackground: '#111111',
+  systemGray6: '#111111',
+  systemGray5: '#1A1A1A',
+  userBubble: '#111111',
+  assistantBubble: '#000000',
+  userMessageBg: '#111111',
+  assistantMessageBg: '#000000',
+  inputBackground: '#111111',
+  inputBorder: '#222222',
+  separator: 'rgba(255,255,255,0.06)',
+  codeBackground: '#111111',
+  sidebarBackground: '#000000',
+  sidebarHeader: '#000000',
+  sendButtonDisabledBg: '#222222',
+  statusBarStyle: 'light' as const,
+};
+
 export type ThemeColors = typeof LightPalette;
+
+// ─── Accent Color Presets ───
+
+export const AccentColors = {
+  green: '#10A37F',
+  blue: '#3B82F6',
+  purple: '#8B5CF6',
+  orange: '#F97316',
+  pink: '#EC4899',
+  cyan: '#06B6D4',
+} as const;
+
+export type AccentColorKey = keyof typeof AccentColors;
 
 // ─── Legacy static export (used by files that haven't migrated) ───
 export const Colors = LightPalette;
@@ -196,18 +231,33 @@ export interface Theme {
 
 export function useTheme(): Theme {
   const colorScheme = useColorScheme();
-  // Theme mode from store (if available) — uses lazy require to avoid circular imports
-  let themeMode: 'system' | 'light' | 'dark' = 'system';
+  let themeMode: 'system' | 'light' | 'dark' | 'amoled' = 'system';
+  let accentColor: AccentColorKey = 'green';
   try {
     const { useAppStore } = require('../stores/appStore');
     themeMode = useAppStore((s: any) => s.themeMode) ?? 'system';
+    accentColor = useAppStore((s: any) => s.accentColor) ?? 'green';
   } catch { /* store not ready yet */ }
 
   return useMemo(() => {
-    const effective = themeMode === 'system' ? colorScheme : themeMode;
-    return {
-      colors: effective === 'dark' ? DarkPalette : LightPalette,
-      dark: effective === 'dark',
-    };
-  }, [colorScheme, themeMode]);
+    let palette: ThemeColors;
+    let dark: boolean;
+
+    if (themeMode === 'amoled') {
+      palette = { ...AMOLEDPalette };
+      dark = true;
+    } else {
+      const effective = themeMode === 'system' ? colorScheme : themeMode;
+      dark = effective === 'dark';
+      palette = dark ? { ...DarkPalette } : { ...LightPalette };
+    }
+
+    // Apply accent color
+    const accent = AccentColors[accentColor] || AccentColors.green;
+    palette.primary = accent;
+    palette.primaryMuted = accent + (dark ? '26' : '1A'); // 15% / 10% alpha
+    palette.healthyGreen = accent;
+
+    return { colors: palette, dark };
+  }, [colorScheme, themeMode, accentColor]);
 }
