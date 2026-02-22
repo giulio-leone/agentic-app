@@ -34,6 +34,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
   function _streamAIResponse(config: AIProviderConfig, apiKey: string) {
     const assistantId = uuidv4();
     const forceAgentMode = get().agentModeEnabled;
+    const server = get().servers.find(s => s.id === get().selectedServerId);
     set(s => ({
       chatMessages: [...s.chatMessages, {
         id: assistantId,
@@ -41,6 +42,8 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         content: '',
         isStreaming: true,
         timestamp: new Date().toISOString(),
+        serverId: server?.id,
+        serverName: server?.name,
       }],
       streamingMessageId: assistantId,
       isStreaming: true,
@@ -275,6 +278,8 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         content: text,
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
         timestamp: new Date().toISOString(),
+        serverId: server.id,
+        serverName: server.name,
       };
 
       set(s => ({

@@ -21,6 +21,7 @@ import { ChatMessage, Attachment } from '../acp/models/types';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
 import { getFileIcon, formatSize } from '../utils/fileUtils';
+import { getServerColor } from '../utils/serverColors';
 import { MarkdownContent, createMarkdownStyles } from './chat/MarkdownContent';
 import { ReasoningView } from './chat/ReasoningView';
 import { ConsensusDetailView } from './chat/ConsensusDetailView';
@@ -109,13 +110,24 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
           {/* Avatar */}
           {!isUser && !isSystem && (
             <YStack marginRight={Spacing.sm} marginTop={Spacing.xs}>
-              <YStack style={ds.avatar}>
+              <YStack style={[ds.avatar, message.serverId && { backgroundColor: getServerColor(message.serverId) }]}>
                 <Sparkles size={16} color={colors.contrastText} />
               </YStack>
             </YStack>
           )}
 
           <View style={{ flexShrink: 1 }}>
+            {/* Server name badge for multi-agent */}
+            {!isUser && !isSystem && message.serverName && (
+              <Text
+                fontSize={FontSize.caption}
+                fontWeight="600"
+                color={message.serverId ? getServerColor(message.serverId) : colors.textTertiary}
+                marginBottom={2}
+              >
+                {message.serverName}
+              </Text>
+            )}
             {/* Attachments */}
             {isUser && message.attachments && message.attachments.length > 0 && (
               <AttachmentPreview attachments={message.attachments} colors={colors} />
@@ -206,7 +218,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.isSpeaking === nextProps.isSpeaking &&
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
     prevProps.message.segments?.length === nextProps.message.segments?.length &&
-    prevProps.highlighted === nextProps.highlighted
+    prevProps.highlighted === nextProps.highlighted &&
+    prevProps.message.serverId === nextProps.message.serverId
   );
 });
 
