@@ -28,6 +28,7 @@ import { MessageActionMenu } from '../components/chat/MessageActionMenu';
 import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
+import { ServerChipSelector } from '../components/chat/ServerChipSelector';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
@@ -68,6 +69,7 @@ export function SessionDetailScreen() {
     loadSessionMessages,
     chatSearchVisible,
     toggleChatSearch,
+    selectServer,
   } = useAppStore();
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -529,6 +531,14 @@ export function SessionDetailScreen() {
           </Pressable>
         </XStack>
       )}
+
+      {/* Server chip selector for multi-agent */}
+      <ServerChipSelector
+        servers={servers}
+        selectedId={selectedServerId}
+        onSelect={selectServer}
+        colors={colors}
+      />
 
       <MessageComposer
         value={promptText}

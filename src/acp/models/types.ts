@@ -74,6 +74,9 @@ export interface ChatMessage {
   consensusDetails?: ConsensusDetails;
   isStreaming?: boolean;
   timestamp: string;
+  /** Server that generated this message (multi-agent). */
+  serverId?: string;
+  serverName?: string;
 }
 
 /** Consensus details embedded in a chat message for real-time tracking. */
