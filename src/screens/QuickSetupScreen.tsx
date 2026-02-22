@@ -59,6 +59,7 @@ interface ACPPreset {
   description: string;
   defaultScheme: 'ws' | 'wss' | 'tcp';
   defaultHost: string;
+  icon: LucideIcon;
 }
 
 const AI_PRESETS: PresetProvider[] = [
@@ -103,23 +104,42 @@ const ACP_PRESETS: ACPPreset[] = [
   {
     serverType: ServerType.CopilotCLI,
     label: 'Copilot CLI',
-    description: 'GitHub Copilot agent locale via ACP (TCP)',
+    description: 'copilot --acp --port 3020',
     defaultScheme: 'tcp',
     defaultHost: 'localhost:3020',
+    icon: Github,
+  },
+  {
+    serverType: ServerType.ACP,
+    label: 'Gemini CLI',
+    description: 'gemini --acp (stdio→bridge)',
+    defaultScheme: 'tcp',
+    defaultHost: 'localhost:3030',
+    icon: Gem,
+  },
+  {
+    serverType: ServerType.ACP,
+    label: 'Claude Code',
+    description: 'claude-code-acp (stdio→bridge)',
+    defaultScheme: 'tcp',
+    defaultHost: 'localhost:3040',
+    icon: Brain,
   },
   {
     serverType: ServerType.Codex,
     label: 'Codex CLI',
-    description: 'OpenAI Codex agent locale via ACP',
+    description: 'codex --acp --port 8765',
     defaultScheme: 'ws',
     defaultHost: 'localhost:8765',
+    icon: Bot,
   },
   {
     serverType: ServerType.ACP,
-    label: 'ACP Server',
-    description: 'Agent Communication Protocol generico',
+    label: 'CLI Generica',
+    description: 'Qualsiasi agent ACP su rete',
     defaultScheme: 'ws',
     defaultHost: 'localhost:8765',
+    icon: Server,
   },
 ];
 
@@ -171,12 +191,13 @@ export function QuickSetupScreen() {
   const [acpHost, setAcpHost] = useState(editingServer?.host ?? '');
   const [acpToken, setAcpToken] = useState(editingServer?.token ?? '');
   const [acpName, setAcpName] = useState(editingServer?.name ?? '');
+  const [cliExpanded, setCliExpanded] = useState(false);
 
   const stepCount = flow === 'acp' ? 2 : 3;
 
-  // Stagger animation for step 0 cards
+  // Stagger animation for step 0 cards (AI presets + 1 CLI group card)
   const cardAnims = useRef(
-    [...AI_PRESETS, ...ACP_PRESETS].map(() => new Animated.Value(0)),
+    [...AI_PRESETS, 'cli-group'].map(() => new Animated.Value(0)),
   ).current;
 
   useEffect(() => {
@@ -485,44 +506,66 @@ export function QuickSetupScreen() {
         );
       })}
 
-      {/* ACP / Codex presets */}
+      {/* Agent CLI — collapsible group */}
       <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5} marginTop={Spacing.md}>
-        Agent Protocol (ACP)
+        Agent CLI (ACP)
       </Text>
-      {ACP_PRESETS.map(preset => {
+      {(() => {
         const idx = cardIndex++;
         return (
         <Animated.View
-          key={preset.serverType}
+          key="cli-group"
           style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}
         >
           <TouchableOpacity
             style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
-            onPress={() => handleACPSelect(preset)}
+            onPress={() => setCliExpanded(prev => !prev)}
             activeOpacity={0.7}
           >
-          <XStack alignItems="center" gap={Spacing.md}>
-            {preset.serverType === ServerType.Codex ? (
-              <Terminal size={24} color={colors.text} />
-            ) : preset.serverType === ServerType.CopilotCLI ? (
-              <Github size={24} color={colors.text} />
-            ) : (
-              <Server size={24} color={colors.text} />
-            )}
-            <YStack flex={1}>
-              <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
-                {preset.label}
-              </Text>
-              <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
-                {preset.description}
-              </Text>
+            <XStack alignItems="center" gap={Spacing.md}>
+              <Terminal size={26} color={colors.text} />
+              <YStack flex={1}>
+                <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
+                  Agent CLI
+                </Text>
+                <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
+                  Copilot, Gemini, Claude Code, Codex…
+                </Text>
+              </YStack>
+              {cliExpanded
+                ? <ChevronUp size={18} color={colors.textTertiary} />
+                : <ChevronDown size={18} color={colors.textTertiary} />}
+            </XStack>
+          </TouchableOpacity>
+
+          {cliExpanded && (
+            <YStack gap={Spacing.xs} marginTop={Spacing.xs} paddingLeft={Spacing.md}>
+              {ACP_PRESETS.map(preset => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator, paddingVertical: 10 }]}
+                  onPress={() => handleACPSelect(preset)}
+                  activeOpacity={0.7}
+                >
+                  <XStack alignItems="center" gap={Spacing.sm}>
+                    <preset.icon size={20} color={colors.primary} />
+                    <YStack flex={1}>
+                      <Text fontSize={FontSize.body} fontWeight="600" color={colors.text}>
+                        {preset.label}
+                      </Text>
+                      <Text fontSize={FontSize.caption} color={colors.textTertiary}>
+                        {preset.description}
+                      </Text>
+                    </YStack>
+                    <ChevronRight size={16} color={colors.textTertiary} />
+                  </XStack>
+                </TouchableOpacity>
+              ))}
             </YStack>
-            <ChevronRight size={18} color={colors.textTertiary} />
-          </XStack>
-        </TouchableOpacity>
+          )}
         </Animated.View>
         );
-      })}
+      })()}
 
       {/* Skip + Advanced */}
       <XStack justifyContent="space-between" marginTop={Spacing.md}>
