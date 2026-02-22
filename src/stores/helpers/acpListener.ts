@@ -9,6 +9,7 @@ import { parseSessionUpdate, applySessionUpdate } from '../../acp/SessionUpdateH
 import { JSONValue } from '../../acp/models';
 import { SessionStorage } from '../../storage/SessionStorage';
 import { showErrorToast, showInfoToast } from '../../utils/toast';
+import { isAppInBackground, notifyResponseComplete, setBadgeCount } from '../../services/notifications';
 import { _service } from '../storePrivate';
 import { terminalEvents } from '../../acp/terminalEvents';
 
@@ -69,6 +70,15 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
           isStreaming: streamingMessageId !== null,
           ...(stopReason ? { stopReason } : {}),
         });
+
+        // Notify when streaming completes and app is backgrounded
+        if (stopReason && state.streamingMessageId && !streamingMessageId && isAppInBackground()) {
+          const lastMsg = messages[messages.length - 1];
+          if (lastMsg?.role === 'assistant' && lastMsg.content) {
+            notifyResponseComplete(lastMsg.content);
+            setBadgeCount(1);
+          }
+        }
 
         if (state.selectedServerId && state.selectedSessionId) {
           SessionStorage.saveMessages(messages, state.selectedServerId, state.selectedSessionId);
