@@ -65,7 +65,13 @@ interface ChipProps {
 
 const Chip = React.memo(function Chip({ label, accent, isActive, colors, onPress }: ChipProps) {
   return (
-    <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityLabel={`Server: ${label}`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isActive }}
+    >
       <XStack
         alignItems="center"
         gap={Spacing.xs}

@@ -110,6 +110,8 @@ function DrawerNavigator() {
                 onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
                 style={{ paddingHorizontal: Spacing.md }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Open menu"
+                accessibilityRole="button"
               >
                 <Menu size={20} color={colors.text} />
               </TouchableOpacity>
@@ -120,6 +122,8 @@ function DrawerNavigator() {
                   onPress={toggleChatSearch}
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Search messages"
+                  accessibilityRole="button"
                 >
                   <Search size={18} color={colors.text} opacity={0.5} />
                 </TouchableOpacity>
@@ -127,6 +131,8 @@ function DrawerNavigator() {
                   onPress={() => setScreenWatcherVisible(true)}
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={isWatching ? 'Screen watcher active' : 'Open screen watcher'}
+                  accessibilityRole="button"
                 >
                   <Eye size={18} color={isWatching ? colors.destructive : colors.text} opacity={isWatching ? 1 : 0.5} />
                 </TouchableOpacity>
@@ -134,6 +140,9 @@ function DrawerNavigator() {
                   onPress={toggleAgentMode}
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={agentModeEnabled ? 'Disable agent mode' : 'Enable agent mode'}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: agentModeEnabled }}
                 >
                   <Bot size={18} color={agentModeEnabled ? colors.primary : colors.text} opacity={agentModeEnabled ? 1 : 0.5} />
                 </TouchableOpacity>
@@ -143,6 +152,9 @@ function DrawerNavigator() {
                   delayLongPress={400}
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={consensusModeEnabled ? 'Disable consensus mode' : 'Enable consensus mode'}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: consensusModeEnabled }}
                 >
                   <Scale size={18} color={consensusModeEnabled ? colors.primary : colors.text} opacity={consensusModeEnabled ? 1 : 0.5} />
                 </TouchableOpacity>
@@ -209,6 +221,7 @@ function AppContent() {
       <RootStack.Navigator
         screenOptions={{
           headerShown: false,
+          animation: 'slide_from_bottom',
         }}
       >
         <RootStack.Screen name="Main" component={DrawerNavigator} />
