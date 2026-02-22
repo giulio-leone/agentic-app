@@ -39,6 +39,8 @@ export const ScrollToBottomFab = React.memo(function ScrollToBottomFab({
         style={[styles.fab, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
         onPress={handlePress}
         activeOpacity={0.7}
+        accessibilityLabel={`Scroll to bottom${unreadCount > 0 ? `, ${unreadCount} new messages` : ''}`}
+        accessibilityRole="button"
       >
         <ArrowDown size={18} color={colors.text} />
         {unreadCount > 0 && (

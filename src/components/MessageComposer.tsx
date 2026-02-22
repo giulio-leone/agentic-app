@@ -236,6 +236,8 @@ export function MessageComposer({
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
           returnKeyType="send"
+          accessibilityLabel="Message input"
+          accessibilityHint="Type your message here"
         />
         {isStreaming ? (
           <TouchableOpacity
