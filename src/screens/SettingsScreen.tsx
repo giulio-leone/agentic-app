@@ -13,13 +13,13 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
-import { Palette, Smartphone, Sun, Moon, Eclipse, Check, Type, Vibrate, Trash2 } from 'lucide-react-native';
+import { Palette, Smartphone, Sun, Moon, Eclipse, Check, Type, Vibrate, Trash2, TerminalSquare } from 'lucide-react-native';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, AccentColors, type AccentColorKey } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import {
   useDevMode, useDeveloperLogs, useYoloMode, useAutoStartVisionDetect,
-  useThemeMode, useAccentColor, useFontScale, useHapticsEnabled,
+  useThemeMode, useAccentColor, useFontScale, useHapticsEnabled, useTerminalEngine,
   useMCPServers, useMCPStatuses,
   useSettingsActions, useMCPActions,
 } from '../stores/selectors';
@@ -37,10 +37,11 @@ export function SettingsScreen() {
   const accentColor = useAccentColor();
   const fontScale = useFontScale();
   const hapticsEnabled = useHapticsEnabled();
+  const terminalEngine = useTerminalEngine();
   const mcpServers = useMCPServers();
   const mcpStatuses = useMCPStatuses();
 
-  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, setAccentColor, setFontScale, setHapticsEnabled, clearAppCache, clearLogs } = useSettingsActions();
+  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, setAccentColor, setFontScale, setHapticsEnabled, clearAppCache, setTerminalEngine, clearLogs } = useSettingsActions();
   const { loadMCPServers, addMCPServer, removeMCPServer, connectMCPServer, disconnectMCPServer } = useMCPActions();
 
   const [showAddMCP, setShowAddMCP] = useState(false);
@@ -244,6 +245,57 @@ export function SettingsScreen() {
             <Text fontSize={16} color={colors.destructive || '#FF3B30'}>Clear App Cache</Text>
           </XStack>
         </TouchableOpacity>
+      </YStack>
+
+      {/* Terminal Engine */}
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
+        <XStack alignItems="center" gap={Spacing.sm}>
+          <TerminalSquare size={18} color={colors.text} />
+          <Text fontSize={17} fontWeight="600" color="$color">Terminal Engine</Text>
+        </XStack>
+        <Text fontSize={12} color="$textTertiary">
+          Choose the terminal emulator for the remote shell
+        </Text>
+        <XStack gap={Spacing.xs}>
+          {([
+            { key: 'xterm' as const, label: 'xterm.js', desc: 'Classic, stable' },
+            { key: 'ghostty' as const, label: 'Ghostty', desc: 'WASM, better Unicode' },
+          ]).map(({ key, label, desc }) => (
+            <TouchableOpacity
+              key={key}
+              style={{
+                flex: 1,
+                borderRadius: Radius.md,
+                borderWidth: StyleSheet.hairlineWidth,
+                paddingVertical: Spacing.sm,
+                paddingHorizontal: Spacing.sm,
+                backgroundColor: terminalEngine === key ? colors.primary : colors.systemGray5,
+                borderColor: terminalEngine === key ? colors.primary : colors.separator,
+              }}
+              onPress={() => setTerminalEngine(key)}
+              accessibilityLabel={`Terminal: ${label}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: terminalEngine === key }}
+            >
+              <Text
+                fontSize={13}
+                fontWeight={terminalEngine === key ? '600' : '400'}
+                color={terminalEngine === key ? '$contrastText' : '$color'}
+                textAlign="center"
+              >
+                {label}
+              </Text>
+              <Text
+                fontSize={10}
+                color={terminalEngine === key ? '$contrastText' : '$textTertiary'}
+                textAlign="center"
+                marginTop={2}
+              >
+                {desc}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </XStack>
       </YStack>
 
       {/* Dev Mode */}

@@ -38,6 +38,7 @@ export const useThemeMode = () => useAppStore(s => s.themeMode);
 export const useAccentColor = () => useAppStore(s => s.accentColor);
 export const useFontScale = () => useAppStore(s => s.fontScale);
 export const useHapticsEnabled = () => useAppStore(s => s.hapticsEnabled);
+export const useTerminalEngine = () => useAppStore(s => s.terminalEngine);
 
 // ── Settings selectors ───────────────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ export const useSettingsActions = () => useAppStore(useShallow(s => ({
   setFontScale: s.setFontScale,
   setHapticsEnabled: s.setHapticsEnabled,
   clearAppCache: s.clearAppCache,
+  setTerminalEngine: s.setTerminalEngine,
   appendLog: s.appendLog,
   clearLogs: s.clearLogs,
 })));
