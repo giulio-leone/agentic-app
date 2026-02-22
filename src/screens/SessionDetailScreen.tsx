@@ -113,6 +113,7 @@ export function SessionDetailScreen() {
     handleEditStart,
     handleEditSubmit,
     handleEditCancel,
+    handleSaveAsTemplate,
     closeActionMenu,
     closeCanvas,
   } = useMessageActions({
@@ -368,6 +369,7 @@ export function SessionDetailScreen() {
         onBookmark={handleBookmark}
         isBookmarked={actionMenuMessage ? bookmarkedMessageIds.has(actionMenuMessage.id) : false}
         onExport={handleExportChat}
+        onSaveAsTemplate={handleSaveAsTemplate}
       />
 
       <CanvasPanel

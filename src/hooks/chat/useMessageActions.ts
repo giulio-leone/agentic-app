@@ -8,6 +8,8 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { ChatMessage, Artifact } from '../../acp/models/types';
 import { chatToMarkdown, chatToJSON, chatToHTML, chatToPDF, shareExport, shareFile } from '../../utils/chatExport';
+import { PromptLibrary } from '../../storage/PromptLibrary';
+import { v4 as uuidv4 } from 'uuid';
 
 interface UseMessageActionsOptions {
   chatMessages: ChatMessage[];
@@ -125,6 +127,32 @@ export function useMessageActions({
     setEditText('');
   }, []);
 
+  const handleSaveAsTemplate = useCallback(() => {
+    if (!actionMenuMessage || actionMenuMessage.role !== 'assistant') return;
+    const preview = actionMenuMessage.content.slice(0, 50).replace(/\n/g, ' ');
+    Alert.alert(
+      'Save as Template',
+      `Save this response as a prompt template?\n\n"${preview}…"`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async () => {
+            await PromptLibrary.save({
+              id: uuidv4(),
+              title: preview.slice(0, 40) || 'Custom Template',
+              prompt: actionMenuMessage.content,
+              category: 'custom',
+              icon: '⭐',
+              isBuiltIn: false,
+            });
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ],
+    );
+  }, [actionMenuMessage]);
+
   const closeActionMenu = useCallback(() => setActionMenuMessage(null), []);
   const closeCanvas = useCallback(() => setCanvasArtifact(null), []);
 
@@ -144,6 +172,7 @@ export function useMessageActions({
     handleEditStart,
     handleEditSubmit,
     handleEditCancel,
+    handleSaveAsTemplate,
     closeActionMenu,
     closeCanvas,
   };
