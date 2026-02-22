@@ -39,6 +39,7 @@ import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useScrollToBottom, useChatSearch, useMessageActions, useComposition } from '../hooks/chat';
+import { clearAll as clearNotifications } from '../services/notifications';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -163,8 +164,8 @@ export function SessionDetailScreen() {
     onFinalTranscript: onTranscript,
   });
 
-  // ── Load bookmarks + haptic on response complete ──
-  useEffect(() => { loadBookmarks(); }, [loadBookmarks]);
+  // ── Load bookmarks + haptic on response complete + clear badge ──
+  useEffect(() => { loadBookmarks(); clearNotifications(); }, [loadBookmarks]);
 
   const prevStreaming = useRef(isStreaming);
   useEffect(() => {

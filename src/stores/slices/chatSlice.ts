@@ -11,6 +11,7 @@ import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorag
 import { streamChat, streamConsensusChat } from '../../ai/AIService';
 import { getApiKey } from '../../storage/SecureStorage';
 import { updateMessageById, detectArtifacts } from '../helpers';
+import { isAppInBackground, notifyResponseComplete } from '../../services/notifications';
 import {
   _service, _aiAbortController,
   setAiAbortController,
@@ -98,6 +99,10 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
             sid,
             finalState.selectedSessionId,
           );
+        }
+        // Notify when app is in background
+        if (isAppInBackground() && finalContent.length > 0) {
+          notifyResponseComplete(finalContent);
         }
       };
 
