@@ -168,7 +168,18 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       return;
     }
 
-    const endpoint = `${server.scheme}://${server.host}`;
+    // Sanitize host: strip accidental protocol prefix
+    const cleanHost = server.host.replace(/^wss?:\/\//i, '').replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    const endpoint = `${server.scheme || 'ws'}://${cleanHost}`;
+    get().appendLog(`Connecting to ${endpoint}`);
+
+    // Validate URL before attempting WebSocket
+    try { new URL(endpoint); } catch {
+      set({ connectionError: `Invalid endpoint: ${endpoint}` });
+      get().appendLog(`✗ Invalid endpoint: ${endpoint}`);
+      return;
+    }
+
     const config: ACPClientConfig = {
       endpoint,
       authToken: server.token || undefined,

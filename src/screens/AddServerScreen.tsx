@@ -232,8 +232,11 @@ export function AddServerScreen() {
       return;
     }
 
-    // ACP / Codex path
-    const hostValue = host.trim();
+    // ACP / Codex path — sanitize host
+    const hostValue = host.trim()
+      .replace(/^wss?:\/\//i, '')
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/, '');
     if (!hostValue) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Missing Field', 'Please enter a host address (e.g. localhost:8765)');

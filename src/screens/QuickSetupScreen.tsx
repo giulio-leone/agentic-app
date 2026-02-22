@@ -336,12 +336,27 @@ export function QuickSetupScreen() {
       Alert.alert('Host richiesto', 'Inserisci l\'indirizzo del server (es. localhost:8765).');
       return;
     }
+
+    // Sanitize host: strip protocol prefix and trailing slashes
+    let cleanHost = acpHost.trim()
+      .replace(/^wss?:\/\//i, '')
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/, '');
+
+    // Validate host:port format
+    const hostPortRegex = /^[\w.\-]+:\d{1,5}$/;
+    if (!hostPortRegex.test(cleanHost)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Formato host non valido', 'Usa il formato host:porta (es. localhost:4500).');
+      return;
+    }
+
     setSaving(true);
     try {
       const serverData = {
         name: acpName.trim() || selectedACP.label,
         scheme: acpScheme,
-        host: acpHost.trim(),
+        host: cleanHost,
         token: acpToken.trim(),
         cfAccessClientId: '',
         cfAccessClientSecret: '',
