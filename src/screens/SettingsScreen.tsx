@@ -14,24 +14,30 @@ import {
 } from 'react-native';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
 import { Palette, Smartphone, Sun, Moon, Wrench, XCircle } from 'lucide-react-native';
-import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import { MCPAuthType, MCPConnectionState } from '../mcp/types';
 import type { MCPServerConfig } from '../mcp/types';
+import {
+  useDevMode, useDeveloperLogs, useYoloMode, useAutoStartVisionDetect,
+  useThemeMode, useMCPServers, useMCPStatuses,
+  useSettingsActions, useMCPActions,
+} from '../stores/selectors';
 
 export function SettingsScreen() {
   const { colors } = useDesignSystem();
-  const {
-    devModeEnabled, toggleDevMode, developerLogs, clearLogs,
-    yoloModeEnabled, toggleYoloMode,
-    autoStartVisionDetect, toggleAutoStartVisionDetect,
-    themeMode, setThemeMode,
-    mcpServers, mcpStatuses,
-    loadMCPServers, addMCPServer, removeMCPServer,
-    connectMCPServer, disconnectMCPServer,
-  } = useAppStore();
+
+  const devModeEnabled = useDevMode();
+  const developerLogs = useDeveloperLogs();
+  const yoloModeEnabled = useYoloMode();
+  const autoStartVisionDetect = useAutoStartVisionDetect();
+  const themeMode = useThemeMode();
+  const mcpServers = useMCPServers();
+  const mcpStatuses = useMCPStatuses();
+
+  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, clearLogs } = useSettingsActions();
+  const { loadMCPServers, addMCPServer, removeMCPServer, connectMCPServer, disconnectMCPServer } = useMCPActions();
 
   const [showAddMCP, setShowAddMCP] = useState(false);
 

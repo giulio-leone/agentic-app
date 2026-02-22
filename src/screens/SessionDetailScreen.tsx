@@ -18,7 +18,6 @@ import {
 import { YStack, XStack, Text } from 'tamagui';
 import { PenLine } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useAppStore } from '../stores/appStore';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
 import { ModelPickerBar } from '../components/ModelPickerBar';
@@ -40,6 +39,13 @@ import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useScrollToBottom, useChatSearch, useMessageActions, useComposition } from '../hooks/chat';
 import { clearAll as clearNotifications } from '../services/notifications';
+import {
+  useChatMessages, useIsStreaming, usePromptText, useStopReason,
+  useSelectedSessionId, useSelectedServerId, useServers,
+  useConnectionState, useIsInitialized, useChatSearchVisible,
+  useBookmarkedMessageIds,
+  useSessionActions, useChatActions, useServerActions,
+} from '../stores/selectors';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -47,31 +53,23 @@ const messageListStyle = { paddingVertical: Spacing.sm } as const;
 
 export function SessionDetailScreen() {
   const { colors } = useDesignSystem();
-  const {
-    chatMessages,
-    promptText,
-    isStreaming,
-    connectionState,
-    isInitialized,
-    stopReason,
-    selectedSessionId,
-    selectedServerId,
-    servers,
-    sendPrompt,
-    cancelPrompt,
-    setPromptText,
-    editMessage,
-    deleteMessage,
-    regenerateMessage,
-    connect,
-    loadSessionMessages,
-    chatSearchVisible,
-    toggleChatSearch,
-    selectServer,
-    toggleBookmark,
-    bookmarkedMessageIds,
-    loadBookmarks,
-  } = useAppStore();
+
+  // Granular selectors — each only re-renders when its value changes
+  const chatMessages = useChatMessages();
+  const isStreaming = useIsStreaming();
+  const promptText = usePromptText();
+  const stopReason = useStopReason();
+  const selectedSessionId = useSelectedSessionId();
+  const selectedServerId = useSelectedServerId();
+  const servers = useServers();
+  const connectionState = useConnectionState();
+  const isInitialized = useIsInitialized();
+  const chatSearchVisible = useChatSearchVisible();
+  const bookmarkedMessageIds = useBookmarkedMessageIds();
+
+  const { sendPrompt, cancelPrompt, setPromptText, loadSessionMessages } = useSessionActions();
+  const { editMessage, deleteMessage, regenerateMessage, toggleBookmark, loadBookmarks, toggleChatSearch } = useChatActions();
+  const { selectServer, connect } = useServerActions();
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
