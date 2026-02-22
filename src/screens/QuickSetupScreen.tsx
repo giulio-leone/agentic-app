@@ -24,7 +24,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server, ChevronDown, ChevronUp, Sliders, MessageSquare, Brain } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
 import { ServerType } from '../acp/models/types';
@@ -120,34 +120,71 @@ export function QuickSetupScreen() {
   const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { addServer, servers } = useAppStore();
+  const route = useRoute<RouteProp<RootStackParamList, 'QuickSetup'>>();
+  const editingServer = route.params?.editingServer;
+  const { addServer, updateServer, servers } = useAppStore();
+  const isEditing = !!editingServer;
+  const editingAI = editingServer?.aiProviderConfig;
+
+  // Determine initial state from editing server
+  const initialPreset = editingAI
+    ? AI_PRESETS.find(p => p.type === editingAI.providerType) ?? null
+    : null;
+  const initialACP = editingServer && editingServer.serverType !== ServerType.AIProvider
+    ? ACP_PRESETS.find(p => p.serverType === editingServer.serverType) ?? null
+    : null;
+  const initialFlow: SetupFlow = initialACP ? 'acp' : 'ai';
+  const initialStep = isEditing ? 1 : 0;
 
   // Wizard state
-  const [step, setStep] = useState(0);
-  const [flow, setFlow] = useState<SetupFlow>('ai');
-  const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
-  const [selectedACP, setSelectedACP] = useState<ACPPreset | null>(null);
+  const [step, setStep] = useState(initialStep);
+  const [flow, setFlow] = useState<SetupFlow>(initialFlow);
+  const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(initialPreset);
+  const [selectedACP, setSelectedACP] = useState<ACPPreset | null>(initialACP);
   const [apiKey, setApiKey] = useState('');
   const [models, setModels] = useState<FetchedModel[]>([]);
-  const [selectedModelId, setSelectedModelId] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState(editingAI?.modelId ?? '');
   const [modelSearch, setModelSearch] = useState('');
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Advanced AI settings
-  const [systemPrompt, setSystemPrompt] = useState('');
-  const [temperature, setTemperature] = useState<number | undefined>(undefined);
-  const [reasoningEnabled, setReasoningEnabled] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState(editingAI?.systemPrompt ?? '');
+  const [temperature, setTemperature] = useState<number | undefined>(editingAI?.temperature);
+  const [reasoningEnabled, setReasoningEnabled] = useState(editingAI?.reasoningEnabled ?? false);
+  const [showAdvanced, setShowAdvanced] = useState(
+    !!(editingAI?.systemPrompt || editingAI?.temperature !== undefined || editingAI?.reasoningEnabled),
+  );
 
   // ACP state
-  const [acpScheme, setAcpScheme] = useState<'ws' | 'wss'>('ws');
-  const [acpHost, setAcpHost] = useState('');
-  const [acpToken, setAcpToken] = useState('');
-  const [acpName, setAcpName] = useState('');
+  const [acpScheme, setAcpScheme] = useState<'ws' | 'wss'>(
+    (editingServer?.scheme as 'ws' | 'wss') ?? 'ws',
+  );
+  const [acpHost, setAcpHost] = useState(editingServer?.host ?? '');
+  const [acpToken, setAcpToken] = useState(editingServer?.token ?? '');
+  const [acpName, setAcpName] = useState(editingServer?.name ?? '');
 
   const stepCount = flow === 'acp' ? 2 : 3;
+
+  // Stagger animation for step 0 cards
+  const cardAnims = useRef(
+    [...AI_PRESETS, ...ACP_PRESETS].map(() => new Animated.Value(0)),
+  ).current;
+
+  useEffect(() => {
+    if (step !== 0) return;
+    cardAnims.forEach(a => a.setValue(0));
+    const animations = cardAnims.map((anim, i) =>
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 300,
+        delay: i * 60,
+        useNativeDriver: true,
+      }),
+    );
+    Animated.stagger(60, animations).start();
+  }, [step, cardAnims]);
 
   // Animation
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -225,14 +262,14 @@ export function QuickSetupScreen() {
   }, [apiKey, step, selectedPreset, selectedModelId]);
 
   const goToModelStep = useCallback(() => {
-    if (!apiKey.trim()) {
+    if (!apiKey.trim() && !isEditing) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('API Key richiesta', `Inserisci la tua API key per ${selectedPreset?.label}.`);
       return;
     }
     Haptics.selectionAsync();
     animateStep(2);
-  }, [apiKey, selectedPreset, animateStep]);
+  }, [apiKey, selectedPreset, isEditing, animateStep]);
 
   const goBack = useCallback(() => {
     Haptics.selectionAsync();
@@ -263,16 +300,23 @@ export function QuickSetupScreen() {
           providerType: selectedPreset.type,
           modelId: selectedModelId,
           baseUrl: info.defaultBaseUrl || undefined,
-          apiKey: apiKey.trim() || undefined,
+          apiKey: apiKey.trim() || editingAI?.apiKey || undefined,
           systemPrompt: systemPrompt.trim() || undefined,
           temperature,
           reasoningEnabled: reasoningEnabled || undefined,
         },
       };
 
-      const serverId = await addServer(serverData);
-      if (apiKey.trim()) {
-        await saveApiKey(`${serverId}_${selectedPreset.type}`, apiKey.trim());
+      if (isEditing && editingServer) {
+        await updateServer({ ...serverData, id: editingServer.id });
+        if (apiKey.trim()) {
+          await saveApiKey(`${editingServer.id}_${selectedPreset.type}`, apiKey.trim());
+        }
+      } else {
+        const serverId = await addServer(serverData);
+        if (apiKey.trim()) {
+          await saveApiKey(`${serverId}_${selectedPreset.type}`, apiKey.trim());
+        }
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -294,7 +338,7 @@ export function QuickSetupScreen() {
     }
     setSaving(true);
     try {
-      await addServer({
+      const serverData = {
         name: acpName.trim() || selectedACP.label,
         scheme: acpScheme,
         host: acpHost.trim(),
@@ -303,7 +347,13 @@ export function QuickSetupScreen() {
         cfAccessClientSecret: '',
         workingDirectory: '',
         serverType: selectedACP.serverType,
-      });
+      };
+
+      if (isEditing && editingServer) {
+        await updateServer({ ...serverData, id: editingServer.id });
+      } else {
+        await addServer(serverData);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (error) {
@@ -312,7 +362,7 @@ export function QuickSetupScreen() {
     } finally {
       setSaving(false);
     }
-  }, [selectedACP, acpScheme, acpHost, acpToken, acpName, addServer, navigation]);
+  }, [selectedACP, acpScheme, acpHost, acpToken, acpName, isEditing, editingServer, addServer, updateServer, navigation]);
 
   const handleAdvancedSetup = useCallback(() => {
     navigation.navigate('AddServer');
@@ -367,11 +417,13 @@ export function QuickSetupScreen() {
     </XStack>
   );
 
-  const renderStep0 = () => (
+  const renderStep0 = () => {
+    let cardIndex = 0;
+    return (
     <YStack gap={Spacing.sm}>
       <YStack alignItems="center" gap={Spacing.sm} marginBottom={Spacing.lg}>
         <Text fontSize={34} fontWeight="700" color={colors.text}>
-          Benvenuto 👋
+          {isEditing ? 'Modifica server' : 'Benvenuto 👋'}
         </Text>
         <Text fontSize={FontSize.body} textAlign="center" lineHeight={22} color={colors.textTertiary}>
           Scegli come connetterti
@@ -382,39 +434,51 @@ export function QuickSetupScreen() {
       <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5}>
         AI Provider
       </Text>
-      {AI_PRESETS.map(preset => (
-        <TouchableOpacity
+      {AI_PRESETS.map(preset => {
+        const idx = cardIndex++;
+        return (
+        <Animated.View
           key={preset.type}
-          style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
-          onPress={() => handlePresetSelect(preset)}
-          activeOpacity={0.7}
+          style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}
         >
-          <XStack alignItems="center" gap={Spacing.md}>
-            <Text fontSize={28}>{preset.icon}</Text>
-            <YStack flex={1}>
-              <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
-                {preset.label}
-              </Text>
-              <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
-                {preset.description}
-              </Text>
-            </YStack>
-            <ChevronRight size={18} color={colors.textTertiary} />
-          </XStack>
-        </TouchableOpacity>
-      ))}
+          <TouchableOpacity
+            style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+            onPress={() => handlePresetSelect(preset)}
+            activeOpacity={0.7}
+          >
+            <XStack alignItems="center" gap={Spacing.md}>
+              <Text fontSize={28}>{preset.icon}</Text>
+              <YStack flex={1}>
+                <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
+                  {preset.label}
+                </Text>
+                <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
+                  {preset.description}
+                </Text>
+              </YStack>
+              <ChevronRight size={18} color={colors.textTertiary} />
+            </XStack>
+          </TouchableOpacity>
+        </Animated.View>
+        );
+      })}
 
       {/* ACP / Codex presets */}
       <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5} marginTop={Spacing.md}>
         Agent Protocol (ACP)
       </Text>
-      {ACP_PRESETS.map(preset => (
-        <TouchableOpacity
+      {ACP_PRESETS.map(preset => {
+        const idx = cardIndex++;
+        return (
+        <Animated.View
           key={preset.serverType}
-          style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
-          onPress={() => handleACPSelect(preset)}
-          activeOpacity={0.7}
+          style={{ opacity: cardAnims[idx], transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}
         >
+          <TouchableOpacity
+            style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+            onPress={() => handleACPSelect(preset)}
+            activeOpacity={0.7}
+          >
           <XStack alignItems="center" gap={Spacing.md}>
             {preset.serverType === ServerType.Codex ? (
               <Terminal size={24} color={colors.text} />
@@ -432,7 +496,9 @@ export function QuickSetupScreen() {
             <ChevronRight size={18} color={colors.textTertiary} />
           </XStack>
         </TouchableOpacity>
-      ))}
+        </Animated.View>
+        );
+      })}
 
       {/* Skip + Advanced */}
       <XStack justifyContent="space-between" marginTop={Spacing.md}>
@@ -450,7 +516,8 @@ export function QuickSetupScreen() {
         </TouchableOpacity>
       </XStack>
     </YStack>
-  );
+    );
+  };
 
   const renderStep1AI = () => (
     <YStack gap={Spacing.lg}>
@@ -507,9 +574,9 @@ export function QuickSetupScreen() {
       </YStack>
 
       <TouchableOpacity
-        style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: apiKey.trim() ? 1 : 0.4 }]}
+        style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: (apiKey.trim() || isEditing) ? 1 : 0.4 }]}
         onPress={goToModelStep}
-        disabled={!apiKey.trim()}
+        disabled={!apiKey.trim() && !isEditing}
         activeOpacity={0.8}
       >
         <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
@@ -619,7 +686,7 @@ export function QuickSetupScreen() {
           <ActivityIndicator color={colors.contrastText} />
         ) : (
           <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
-            Connetti ✨
+            {isEditing ? 'Salva modifiche ✓' : 'Connetti ✨'}
           </Text>
         )}
       </TouchableOpacity>
@@ -834,7 +901,7 @@ export function QuickSetupScreen() {
           <ActivityIndicator color={colors.contrastText} />
         ) : (
           <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
-            Inizia a chattare ✨
+            {isEditing ? 'Salva modifiche ✓' : 'Inizia a chattare ✨'}
           </Text>
         )}
       </TouchableOpacity>
