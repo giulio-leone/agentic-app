@@ -131,7 +131,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       });
       return (
         <XStack
-          backgroundColor="#EF4444"
+          backgroundColor={colors.destructive}
           justifyContent="center"
           alignItems="center"
           width={72}
@@ -139,7 +139,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           marginBottom={1}
         >
           <Animated.View style={{ transform: [{ scale }] }}>
-            <Trash2 size={18} color="#FFFFFF" />
+            <Trash2 size={18} color={colors.contrastText} />
           </Animated.View>
         </XStack>
       );
@@ -168,7 +168,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               paddingVertical: Spacing.sm + 2,
               borderRadius: Radius.sm,
               marginBottom: 1,
-              ...(isActive && { backgroundColor: 'rgba(255,255,255,0.10)' }),
+              ...(isActive && { backgroundColor: colors.sidebarActiveItem }),
             }}
             onPress={() => handleSessionPress(item)}
             activeOpacity={0.6}
@@ -237,7 +237,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           style={{
             flex: 1,
             height: 36,
-            backgroundColor: 'rgba(255,255,255,0.08)',
+            backgroundColor: colors.sidebarInputBg,
             borderRadius: Radius.sm,
             paddingHorizontal: Spacing.sm + 2,
             fontSize: FontSize.footnote,
@@ -253,7 +253,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         {searchQuery.length > 0 && (
           <TouchableOpacity
             onPress={() => setSearchQuery('')}
-            style={{ position: 'absolute', right: Spacing.md + 8, padding: 4 }}
+            style={{ position: 'absolute', right: Spacing.lg + Spacing.xs, padding: 4 }}
           >
             <X size={16} color={colors.sidebarTextSecondary} />
           </TouchableOpacity>
@@ -303,7 +303,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     paddingHorizontal: Spacing.md,
                     paddingVertical: Spacing.sm,
                     borderRadius: Radius.sm,
-                    ...(isSelected && { backgroundColor: 'rgba(255,255,255,0.06)' }),
+                    ...(isSelected && { backgroundColor: colors.sidebarSelectedItem }),
                   }}
                   onPress={() => handleServerPress(server.id)}
                   onLongPress={() => {
@@ -324,6 +324,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     ]);
                   }}
                   activeOpacity={0.7}
+                  accessibilityLabel={`Server: ${server.name || server.host}`}
+                  accessibilityRole="button"
+                  accessibilityHint="Tap to select, long press to edit or delete"
                 >
                   {ProviderIcon && (
                     <ProviderIcon size={14} color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary} style={{ marginRight: 4 }} />
@@ -357,17 +360,19 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                     paddingHorizontal: Spacing.lg,
                     paddingVertical: 6,
                     borderRadius: Radius.md,
-                    backgroundColor: isConnected ? 'rgba(239,68,68,0.8)' : colors.primary,
+                    backgroundColor: isConnected ? colors.destructive : colors.primary,
                   }}
                   onPress={handleConnect}
                 >
-                  <Text color="#FFFFFF" fontSize={FontSize.caption} fontWeight="600">
+                  <Text color={colors.contrastText} fontSize={FontSize.caption} fontWeight="600">
                     {isConnected ? 'Disconnect' : 'Connect'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => rootNav.navigate('QuickSetup')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Add server"
+                  accessibilityRole="button"
                 >
                   <Plus size={18} color={colors.sidebarTextSecondary} />
                 </TouchableOpacity>
@@ -390,6 +395,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 <TouchableOpacity
                   onPress={() => rootNav.navigate('QuickSetup')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Add server"
+                  accessibilityRole="button"
                 >
                   <Plus size={18} color={colors.sidebarTextSecondary} />
                 </TouchableOpacity>
@@ -428,7 +435,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
         {connectionError && (
           <Text
-            color="#F87171"
+            color={colors.destructive}
             fontSize={FontSize.caption}
             paddingHorizontal={Spacing.md}
             numberOfLines={2}
