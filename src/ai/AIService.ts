@@ -25,7 +25,7 @@ try {
   // fallback to global fetch (web)
 }
 
-import { AIProviderType, type AIProviderConfig } from './types';
+import { AIProviderType, type AIProviderConfig, type ConsensusConfig, type ConsensusDetails, DEFAULT_CONSENSUS_CONFIG } from './types';
 import { getProviderInfo } from './providers';
 import type { ChatMessage } from '../acp/models/types';
 
@@ -359,110 +359,150 @@ export function streamConsensusChat(
   _onToolCall?: (toolName: string, args: string) => void,
   _onToolResult?: (toolName: string, result: string) => void,
   onAgentEvent?: (event: AgentEvent) => void,
+  consensusConfig?: ConsensusConfig,
+  onConsensusUpdate?: (details: ConsensusDetails) => void,
 ): AbortController {
   const controller = new AbortController();
   const fs = new VirtualFilesystemRN();
+  const cfg = consensusConfig ?? DEFAULT_CONSENSUS_CONFIG;
 
   (async () => {
     try {
-      const model = await createModel(config, apiKey);
+      const defaultModel = await createModel(config, apiKey);
+
+      // Build per-agent models (if not shared, and modelId is set)
+      const agentModels = new Map<string, LanguageModel>();
+      if (!cfg.useSharedModel) {
+        for (const agent of cfg.agents) {
+          if (agent.modelId && agent.modelId !== config.modelId) {
+            agentModels.set(agent.id, await createModel({ ...config, modelId: agent.modelId }, apiKey));
+          }
+        }
+      }
+      const reviewerModel = (!cfg.useSharedModel && cfg.reviewerModelId && cfg.reviewerModelId !== config.modelId)
+        ? await createModel({ ...config, modelId: cfg.reviewerModelId }, apiKey)
+        : defaultModel;
+
       const coreMessages = toCoreMessages(messages);
       const userPrompt = coreMessages
         .filter(m => m.role === 'user')
         .map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
         .join('\n');
 
-      if (!userPrompt) {
-        throw new Error('No user prompt provided for Consensus Mode.');
-      }
+      if (!userPrompt) throw new Error('No user prompt provided for Consensus Mode.');
 
-      // Base configuration for our analysts
-      const baseAgentConfig = {
-        model,
-        maxSteps: 5,
+      // Initialize consensus details for real-time tracking
+      const details: ConsensusDetails = {
+        agentResults: cfg.agents.map(a => ({
+          agentId: a.id, role: a.role, output: '', status: 'pending' as const,
+          modelId: cfg.useSharedModel ? config.modelId : (a.modelId ?? config.modelId),
+        })),
+        status: 'agents_running',
       };
 
-      // Define 3 diverse analysts
-      const analystConfigs = [
-        {
-          ...baseAgentConfig,
-          instructions: 'You are an optimistic analyst. Focus on the positive aspects, potential opportunities, and creative solutions to the problem.',
-        },
-        {
-          ...baseAgentConfig,
-          instructions: 'You are a critical, pessimistic analyst. Focus on risks, edge cases, potential failures, and constraints.',
-        },
-        {
-          ...baseAgentConfig,
-          instructions: 'You are a pragmatic, logical analyst. Focus on the facts, straightforward implementations, and step-by-step reasoning.',
-        },
-      ];
+      // Build analyst configs for the graph
+      const analystConfigs = cfg.agents.map(agent => ({
+        model: agentModels.get(agent.id) ?? defaultModel,
+        maxSteps: 5,
+        instructions: `You are a ${agent.role}. ${agent.instructions}`,
+      }));
 
       // Build the Consensus Graph
-      const graph = AgentGraph.create()
+      const graphBuilder = AgentGraph.create()
         .withFilesystem(fs)
-        .node('input', {
-          model,
-          instructions: 'Pass the prompt directly to the analysts.',
-        })
+        .node('input', { model: defaultModel, instructions: 'Pass the prompt directly to the analysts.' })
         .fork('analysts', analystConfigs)
-        .consensus('analysts', new LlmJudgeConsensus({ model }))
+        .consensus('analysts', new LlmJudgeConsensus({ model: reviewerModel }))
         .edge('input', 'analysts')
         .node('final', {
-          model,
+          model: defaultModel,
           instructions: 'You are the final synthesizer. Based on the consensus result, provide a coherent, unified response to the user. Do not explicitly mention the internal debate, just give the best answer.',
         })
-        .edge('analysts', 'final')
-        .build();
+        .edge('analysts', 'final');
 
-      // Execute graph via generator
+      const graph = graphBuilder.build();
       const stream = graph.stream(userPrompt);
 
       for await (const event of stream) {
         if (controller.signal.aborted) break;
-
         const ev = event as Record<string, any>;
+
         switch (ev.type) {
-          case 'node:start':
-            if (onReasoning) onReasoning(`🔄 Starting node: ${ev.nodeId}\n`);
-            if (onAgentEvent) {
-              onAgentEvent({ type: 'subagent:spawn', data: { nodeId: ev.nodeId }, timestamp: Date.now(), sessionId: 'graph' });
+          case 'fork:start':
+            // Mark all agents as running
+            details.agentResults.forEach(a => { a.status = 'running'; });
+            details.status = 'agents_running';
+            onConsensusUpdate?.({ ...details, agentResults: [...details.agentResults] });
+            if (onReasoning) onReasoning(`🔄 ${ev.agentCount} analysts started…\n`);
+            break;
+
+          case 'fork:partial': {
+            // Update individual agents as they complete
+            const partial = ev.partialResults as Array<{ nodeId: string; output: string }>;
+            for (const r of partial) {
+              const idx = details.agentResults.findIndex(a =>
+                r.nodeId.includes(a.agentId) || details.agentResults.indexOf(
+                  details.agentResults[parseInt(r.nodeId.replace(/\D/g, ''), 10)] ?? details.agentResults[0]
+                ) >= 0
+              );
+              // Match by index (fork nodes are 0-indexed: analysts_0, analysts_1, etc.)
+              const nodeIdx = parseInt(r.nodeId.replace(/\D/g, ''), 10);
+              if (!isNaN(nodeIdx) && nodeIdx < details.agentResults.length) {
+                details.agentResults[nodeIdx] = {
+                  ...details.agentResults[nodeIdx],
+                  output: r.output,
+                  status: 'complete',
+                };
+              }
+            }
+            onConsensusUpdate?.({ ...details, agentResults: [...details.agentResults] });
+            if (onReasoning) onReasoning(`📊 ${ev.completedCount}/${ev.totalCount} analysts complete\n`);
+            break;
+          }
+
+          case 'fork:complete': {
+            // All agents done - extract their outputs
+            const results = ev.results as Array<{ nodeId: string; output: string }>;
+            results.forEach((r, i) => {
+              if (i < details.agentResults.length) {
+                details.agentResults[i] = {
+                  ...details.agentResults[i],
+                  output: r.output,
+                  status: 'complete',
+                };
+              }
+            });
+            onConsensusUpdate?.({ ...details, agentResults: [...details.agentResults] });
+            // Emit full agent responses to reasoning
+            if (onReasoning) {
+              for (let i = 0; i < details.agentResults.length; i++) {
+                const a = details.agentResults[i];
+                onReasoning(`\n── ${a.role} ──\n${a.output}\n`);
+              }
+            }
+            break;
+          }
+
+          case 'consensus:start':
+            details.status = 'consensus_running';
+            details.reviewerModelId = cfg.useSharedModel ? config.modelId : (cfg.reviewerModelId ?? config.modelId);
+            onConsensusUpdate?.({ ...details, agentResults: [...details.agentResults] });
+            if (onReasoning) onReasoning(`\n⚖️ Reviewer evaluating…\n`);
+            break;
+
+          case 'consensus:result':
+            details.reviewerVerdict = typeof ev.output === 'string' ? ev.output : '';
+            details.status = 'complete';
+            onConsensusUpdate?.({ ...details, agentResults: [...details.agentResults] });
+            if (onReasoning && details.reviewerVerdict) {
+              onReasoning(`⚖️ Verdict: ${details.reviewerVerdict.slice(0, 500)}\n`);
             }
             break;
 
           case 'node:complete':
-            if (onReasoning) {
-              const output = typeof ev.result?.output === 'string' ? ev.result.output : '';
-              if (ev.nodeId !== 'final' && output) {
-                onReasoning(`✅ ${ev.nodeId}: ${output.slice(0, 300)}${output.length > 300 ? '…' : ''}\n\n`);
-              }
-            }
-            if (onAgentEvent) {
-              onAgentEvent({ type: 'subagent:complete', data: { nodeId: ev.nodeId }, timestamp: Date.now(), sessionId: 'graph' });
-            }
             if (ev.nodeId === 'final' && ev.result?.output) {
               onChunk(ev.result.output);
             }
-            break;
-
-          case 'consensus:start':
-            if (onReasoning) onReasoning(`⚖️ Consensus evaluation starting…\n`);
-            if (onAgentEvent) {
-              onAgentEvent({ type: 'subagent:spawn', data: { nodeId: `consensus-${ev.forkId}` }, timestamp: Date.now(), sessionId: 'graph' });
-            }
-            break;
-
-          case 'consensus:result':
-            if (onReasoning) {
-              const summary = typeof ev.result === 'string' ? ev.result : (ev.result?.summary ?? '');
-              if (summary) onReasoning(`⚖️ Consensus: ${summary.slice(0, 300)}${summary.length > 300 ? '…' : ''}\n\n`);
-            }
-            if (onAgentEvent) {
-              onAgentEvent({ type: 'subagent:complete', data: { nodeId: `consensus-${ev.forkId}` }, timestamp: Date.now(), sessionId: 'graph' });
-            }
-            break;
-
-          case 'graph:complete':
             break;
 
           case 'node:error':

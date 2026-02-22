@@ -41,22 +41,17 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
     const contextMessages = get().chatMessages.filter(m => m.id !== assistantId);
 
     const isConsensusMode = get().consensusModeEnabled;
-    const streamFunc = isConsensusMode ? streamConsensusChat : streamChat;
 
-    setAiAbortController(streamFunc(
-      contextMessages,
-      config,
-      apiKey,
-      // onChunk
-      (chunk) => {
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-            ...m, content: m.content + chunk,
-          })),
-        }));
-      },
-      // onComplete
-      (stopReason) => {
+    // Common callbacks
+    const onChunk = (chunk: string) => {
+      set(s => ({
+        chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+          ...m, content: m.content + chunk,
+        })),
+      }));
+    };
+
+    const onComplete = (stopReason: string) => {
         setAiAbortController(null);
 
         const finalMessage = get().chatMessages.find(m => m.id === assistantId);
@@ -92,9 +87,9 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
             finalState.selectedSessionId,
           );
         }
-      },
-      // onError
-      (error) => {
+      };
+
+    const onErrorCb = (error: Error) => {
         setAiAbortController(null);
         get().appendLog(`✗ AI stream error: ${error.message}`);
         const errorMessage: ChatMessage = {
@@ -111,46 +106,39 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           isStreaming: false,
           streamingMessageId: null,
         }));
-      },
-      // onReasoning
-      (reasoningChunk) => {
+      };
+
+    const onReasoningCb = (reasoningChunk: string) => {
         set(s => ({
           chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
             ...m, reasoning: (m.reasoning ?? '') + reasoningChunk,
           })),
         }));
-      },
-      // onToolCall — group repeated calls with the same tool name
-      (toolName, args) => {
+      };
+
+    const onToolCallCb = (toolName: string, args: string) => {
         set(s => ({
           chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
             const segs = m.segments ?? [];
-            // Find the last segment: if it's the same tool, increment counter
             const lastSeg = segs[segs.length - 1];
             if (lastSeg && lastSeg.type === 'toolCall' && lastSeg.toolName === toolName && !lastSeg.isComplete) {
               const updated = [...segs];
               updated[segs.length - 1] = {
                 ...lastSeg,
                 callCount: (lastSeg.callCount ?? 1) + 1,
-                input: args, // show latest args
+                input: args,
               };
               return { ...m, segments: updated };
             }
-            // New tool or different tool — create new segment
             const segment: import('../../acp/models/types').MessageSegment = {
-              type: 'toolCall',
-              toolName,
-              input: args,
-              isComplete: false,
-              callCount: 1,
-              completedCount: 0,
+              type: 'toolCall', toolName, input: args, isComplete: false, callCount: 1, completedCount: 0,
             };
             return { ...m, segments: [...segs, segment] };
           }),
         }));
-      },
-      // onToolResult — increment completed count on grouped segment
-      (toolName, result) => {
+      };
+
+    const onToolResultCb = (toolName: string, result: string) => {
         set(s => ({
           chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
             let matched = false;
@@ -159,27 +147,20 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
                 matched = true;
                 const completed = (seg.completedCount ?? 0) + 1;
                 const total = seg.callCount ?? 1;
-                return {
-                  ...seg,
-                  result,
-                  completedCount: completed,
-                  isComplete: completed >= total,
-                };
+                return { ...seg, result, completedCount: completed, isComplete: completed >= total };
               }
               return seg;
             });
             return { ...m, segments };
           }),
         }));
-      },
-      // onAgentEvent
-      (event) => {
+      };
+
+    const onAgentEventCb = (event: { type: string; data: any }) => {
         const label = agentEventLabel(event.type, event.data);
         if (!label) return;
         const segment: import('../../acp/models/types').MessageSegment = {
-          type: 'agentEvent',
-          eventType: event.type,
-          label,
+          type: 'agentEvent', eventType: event.type, label,
           detail: typeof event.data === 'object' ? JSON.stringify(event.data) : undefined,
         };
         set(s => ({
@@ -187,23 +168,43 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
             ...m, segments: [...(m.segments ?? []), segment],
           })),
         }));
-      },
-      forceAgentMode,
-      (req) => new Promise((resolve) => {
-        if (get().yoloModeEnabled) {
-          return resolve(true);
-        }
-        Alert.alert(
-          'Tool Execution Approval',
-          `The agent wants to run '${req.toolName}'.\n\nArguments:\n${JSON.stringify(req.args, null, 2)}`,
-          [
-            { text: 'Deny', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Approve', style: 'default', onPress: () => resolve(true) }
-          ],
-          { cancelable: false }
-        );
-      })
-    ));
+      };
+
+    const onConsensusUpdate = (details: import('../../ai/types').ConsensusDetails) => {
+        set(s => ({
+          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
+            ...m, consensusDetails: details,
+          })),
+        }));
+      };
+
+    if (isConsensusMode) {
+      setAiAbortController(streamConsensusChat(
+        contextMessages, config, apiKey,
+        onChunk, onComplete, onErrorCb, onReasoningCb,
+        onToolCallCb, onToolResultCb, onAgentEventCb,
+        get().consensusConfig, onConsensusUpdate,
+      ));
+    } else {
+      setAiAbortController(streamChat(
+        contextMessages, config, apiKey,
+        onChunk, onComplete, onErrorCb, onReasoningCb,
+        onToolCallCb, onToolResultCb, onAgentEventCb,
+        forceAgentMode,
+        (req) => new Promise((resolve) => {
+          if (get().yoloModeEnabled) return resolve(true);
+          Alert.alert(
+            'Tool Execution Approval',
+            `The agent wants to run '${req.toolName}'.\n\nArguments:\n${JSON.stringify(req.args, null, 2)}`,
+            [
+              { text: 'Deny', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Approve', style: 'default', onPress: () => resolve(true) },
+            ],
+            { cancelable: false },
+          );
+        }),
+      ));
+    }
   }
 
   // Helper to persist current messages

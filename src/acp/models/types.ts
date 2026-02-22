@@ -70,8 +70,24 @@ export interface ChatMessage {
   segments?: MessageSegment[];
   attachments?: Attachment[];
   artifacts?: Artifact[];
+  consensusDetails?: ConsensusDetails;
   isStreaming?: boolean;
   timestamp: string;
+}
+
+/** Consensus details embedded in a chat message for real-time tracking. */
+export interface ConsensusDetails {
+  agentResults: Array<{
+    agentId: string;
+    role: string;
+    output: string;
+    modelId?: string;
+    status: 'pending' | 'running' | 'complete' | 'error';
+    error?: string;
+  }>;
+  reviewerVerdict?: string;
+  reviewerModelId?: string;
+  status: 'agents_running' | 'consensus_running' | 'complete' | 'error';
 }
 
 export interface Attachment {

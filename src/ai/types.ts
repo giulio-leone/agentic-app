@@ -57,3 +57,32 @@ export interface AIProviderConfig {
   reasoningEffort?: ReasoningEffort;
   webSearchEnabled?: boolean;
 }
+
+// ── Consensus Mode Configuration ─────────────────────────────────
+
+export interface ConsensusAgentConfig {
+  id: string;
+  role: string;           // e.g. "Optimistic Analyst"
+  instructions: string;
+  modelId?: string;       // override per-agent model; undefined = use shared
+}
+
+export interface ConsensusConfig {
+  agents: ConsensusAgentConfig[];
+  reviewerModelId?: string;   // undefined = use server's default model
+  useSharedModel: boolean;    // true = all agents + reviewer use the same model
+}
+
+export const DEFAULT_CONSENSUS_AGENTS: ConsensusAgentConfig[] = [
+  { id: 'optimistic', role: 'Optimistic Analyst', instructions: 'Focus on positive aspects, opportunities, and creative solutions.' },
+  { id: 'critical', role: 'Critical Analyst', instructions: 'Focus on risks, edge cases, potential failures, and constraints.' },
+  { id: 'pragmatic', role: 'Pragmatic Analyst', instructions: 'Focus on facts, straightforward implementations, and step-by-step reasoning.' },
+];
+
+export const DEFAULT_CONSENSUS_CONFIG: ConsensusConfig = {
+  agents: DEFAULT_CONSENSUS_AGENTS,
+  useSharedModel: true,
+};
+
+// Re-export ConsensusDetails from the canonical message types
+export type { ConsensusDetails } from '../acp/models/types';

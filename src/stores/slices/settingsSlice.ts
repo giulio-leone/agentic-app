@@ -1,8 +1,9 @@
 import { StateCreator } from 'zustand';
 import type { AppState, AppActions } from '../appStore';
+import { DEFAULT_CONSENSUS_CONFIG, type ConsensusConfig } from '../../ai/types';
 
-export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'yoloModeEnabled' | 'autoStartVisionDetect'>
-  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect'>;
+export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect'>
+  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect'>;
 
 export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], SettingsSlice> = (set, get) => ({
   // State
@@ -10,6 +11,7 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   developerLogs: [],
   agentModeEnabled: false,
   consensusModeEnabled: false,
+  consensusConfig: DEFAULT_CONSENSUS_CONFIG,
   yoloModeEnabled: true,
   autoStartVisionDetect: false,
 
@@ -25,6 +27,10 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
 
   toggleConsensusMode: () => {
     set(s => ({ consensusModeEnabled: !s.consensusModeEnabled }));
+  },
+
+  updateConsensusConfig: (partial) => {
+    set(s => ({ consensusConfig: { ...s.consensusConfig, ...partial } }));
   },
 
   toggleYoloMode: () => {

@@ -53,6 +53,7 @@ export interface AppState {
   developerLogs: string[];
   agentModeEnabled: boolean;
   consensusModeEnabled: boolean;
+  consensusConfig: import('../ai/types').ConsensusConfig;
   yoloModeEnabled: boolean;
   autoStartVisionDetect: boolean;
 
@@ -114,6 +115,7 @@ export interface AppActions {
   toggleDevMode: () => void;
   toggleAgentMode: () => void;
   toggleConsensusMode: () => void;
+  updateConsensusConfig: (config: Partial<import('../ai/types').ConsensusConfig>) => void;
   toggleYoloMode: () => void;
   toggleAutoStartVisionDetect: () => void;
   appendLog: (log: string) => void;

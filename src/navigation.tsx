@@ -2,7 +2,7 @@
  * Navigation — Drawer + Stack layout, ChatGPT-style header with glass effects.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text } from 'tamagui';
 import { Eye, Bot, Scale, PenLine, Menu } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import { SessionDetailScreen } from './screens/SessionDetailScreen';
 import { AddServerScreen } from './screens/AddServerScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DrawerContent } from './components/sidebar/DrawerContent';
+import { ConsensusConfigSheet } from './components/ConsensusConfigSheet';
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
@@ -67,6 +68,7 @@ function DrawerNavigator() {
   const { width } = useWindowDimensions();
   const { createSession, isInitialized, agentModeEnabled, toggleAgentMode, consensusModeEnabled, toggleConsensusMode } = useAppStore();
   const { screenWatcherVisible, setScreenWatcherVisible, isWatching } = useAppStore();
+  const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
 
   return (
     <>
@@ -128,6 +130,8 @@ function DrawerNavigator() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={toggleConsensusMode}
+                  onLongPress={() => setConsensusSheetVisible(true)}
+                  delayLongPress={400}
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
@@ -146,6 +150,10 @@ function DrawerNavigator() {
         />
       </Drawer.Navigator>
       <ScreenWatcherPanel />
+      <ConsensusConfigSheet
+        visible={consensusSheetVisible}
+        onClose={() => setConsensusSheetVisible(false)}
+      />
     </>
   );
 }

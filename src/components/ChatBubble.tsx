@@ -23,6 +23,7 @@ import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
 import { getFileIcon } from '../utils/fileUtils';
 import { MarkdownContent, createMarkdownStyles } from './chat/MarkdownContent';
 import { ReasoningView } from './chat/ReasoningView';
+import { ConsensusDetailView } from './chat/ConsensusDetailView';
 import { SegmentView } from './chat/SegmentView';
 import { ImageModal } from './chat/ImageModal';
 
@@ -119,11 +120,20 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             )}
 
             {/* Reasoning */}
-            {!isUser && !isSystem && message.reasoning && (
+            {!isUser && !isSystem && message.reasoning && !message.consensusDetails && (
               <ReasoningView
                 reasoning={message.reasoning}
                 colors={colors}
                 isStreaming={!!message.isStreaming && !message.content}
+              />
+            )}
+
+            {/* Consensus Details (replaces reasoning for consensus messages) */}
+            {!isUser && !isSystem && message.consensusDetails && (
+              <ConsensusDetailView
+                details={message.consensusDetails}
+                colors={colors}
+                isStreaming={!!message.isStreaming}
               />
             )}
 
