@@ -2,7 +2,7 @@
  * QuickSetup — Preset data for AI providers and ACP agents.
  */
 
-import { Server, Globe, Bot, Brain, Gem, Zap, Github, Code, Terminal, type LucideIcon } from 'lucide-react-native';
+import { Server, Globe, Bot, Brain, Gem, Zap, Github, Code, Terminal, Layers, type LucideIcon } from 'lucide-react-native';
 import { ServerType } from '../../acp/models/types';
 import { AIProviderType } from '../../ai/types';
 
@@ -63,12 +63,12 @@ export const AI_PRESETS: PresetProvider[] = [
 
 export const ACP_PRESETS: ACPPreset[] = [
   {
-    serverType: ServerType.CopilotCLI,
-    label: 'GitHub Copilot',
-    description: 'Copilot SDK Bridge (tcp:3020)',
+    serverType: ServerType.ACP,
+    label: 'Unified Bridge',
+    description: 'Copilot + Codex multi-provider (tcp:3020)',
     defaultScheme: 'tcp',
     defaultHost: 'localhost:3020',
-    icon: Github,
+    icon: Layers,
   },
   {
     serverType: ServerType.ACP,
@@ -93,14 +93,6 @@ export const ACP_PRESETS: ACPPreset[] = [
     defaultScheme: 'tcp',
     defaultHost: 'localhost:3050',
     icon: Code,
-  },
-  {
-    serverType: ServerType.Codex,
-    label: 'Codex CLI',
-    description: 'codex --acp --port 8765',
-    defaultScheme: 'ws',
-    defaultHost: 'localhost:8765',
-    icon: Terminal,
   },
   {
     serverType: ServerType.ACP,
