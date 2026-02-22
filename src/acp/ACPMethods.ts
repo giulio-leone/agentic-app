@@ -10,4 +10,11 @@ export const ACPMethods = {
   sessionCancel: 'session/cancel',
   sessionList: 'session/list',
   sessionSetMode: 'session/set_mode',
+  // Terminal
+  terminalSpawn: 'terminal/spawn',
+  terminalList: 'terminal/list',
+  terminalConnectTmux: 'terminal/connect_tmux',
+  terminalInput: 'terminal/input',
+  terminalResize: 'terminal/resize',
+  terminalClose: 'terminal/close',
 } as const;

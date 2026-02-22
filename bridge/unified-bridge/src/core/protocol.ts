@@ -18,6 +18,7 @@ import type {
 import type { ProviderRegistry } from './provider-registry.js';
 import { createStreamCallbacks } from './event-mapper.js';
 import type { CopilotProvider } from '../providers/copilot/adapter.js';
+import type { TerminalManager } from '../terminal/manager.js';
 
 // ── Helpers ──
 
@@ -45,7 +46,8 @@ interface ConnectionState {
 export function createProtocolHandler(
   registry: ProviderRegistry,
   config: BridgeConfig,
-  socket: Socket
+  socket: Socket,
+  terminalManager?: TerminalManager,
 ) {
   const state: ConnectionState = {
     activeSessionId: null,
@@ -84,6 +86,27 @@ export function createProtocolHandler(
           handleAskUserResponse(params);
           if (id !== undefined) sendResponse(socket, id, { success: true });
           break;
+
+        // ── Terminal methods ──
+        case 'terminal/spawn':
+          handleTerminalSpawn(id, params ?? {});
+          break;
+        case 'terminal/list':
+          handleTerminalList(id);
+          break;
+        case 'terminal/connect_tmux':
+          handleTerminalConnectTmux(id, params ?? {});
+          break;
+        case 'terminal/input':
+          handleTerminalInput(id, params ?? {});
+          break;
+        case 'terminal/resize':
+          handleTerminalResize(id, params ?? {});
+          break;
+        case 'terminal/close':
+          handleTerminalClose(id, params ?? {});
+          break;
+
         default:
           sendError(socket, id, -32601, `Method not found: ${method}`);
       }
@@ -294,10 +317,84 @@ export function createProtocolHandler(
   // ── Cleanup ──
 
   async function cleanup(): Promise<void> {
-    // Clean up per-socket resources
     const copilot = registry.get('copilot') as CopilotProvider | undefined;
     copilot?.cleanupSocket(socket);
     state.activeSessionId = null;
+  }
+
+  // ── Terminal handlers ──
+
+  function handleTerminalSpawn(id: string | number, params: Record<string, unknown>): void {
+    if (!terminalManager) return sendError(socket, id, -32000, 'Terminal not available');
+    const shell = params?.shell as string | undefined;
+    const cwd = params?.cwd as string | undefined;
+    const cols = (params?.cols as number) || 80;
+    const rows = (params?.rows as number) || 24;
+    const info = terminalManager.spawn(shell, cwd, cols, rows);
+    wireTerminal(info.id);
+    sendResponse(socket, id, info);
+  }
+
+  function handleTerminalList(id: string | number): void {
+    if (!terminalManager) return sendError(socket, id, -32000, 'Terminal not available');
+    const active = terminalManager.listActive();
+    const tmuxSessions = terminalManager.listTmuxSessions();
+    sendResponse(socket, id, { active, tmuxSessions });
+  }
+
+  function handleTerminalConnectTmux(id: string | number, params: Record<string, unknown>): void {
+    if (!terminalManager) return sendError(socket, id, -32000, 'Terminal not available');
+    const sessionName = params?.session as string;
+    if (!sessionName) return sendError(socket, id, -32602, 'Missing session name');
+    const cols = (params?.cols as number) || 80;
+    const rows = (params?.rows as number) || 24;
+    const info = terminalManager.connectTmux(sessionName, cols, rows);
+    wireTerminal(info.id);
+    sendResponse(socket, id, info);
+  }
+
+  function handleTerminalInput(id: string | number, params: Record<string, unknown>): void {
+    if (!terminalManager) return sendError(socket, id, -32000, 'Terminal not available');
+    const termId = params?.id as string;
+    const data = params?.data as string;
+    if (!termId || data === undefined) return sendError(socket, id, -32602, 'Missing id or data');
+    const ok = terminalManager.write(termId, data);
+    sendResponse(socket, id, { success: ok });
+  }
+
+  function handleTerminalResize(id: string | number, params: Record<string, unknown>): void {
+    if (!terminalManager) return sendError(socket, id, -32000, 'Terminal not available');
+    const termId = params?.id as string;
+    const cols = params?.cols as number;
+    const rows = params?.rows as number;
+    if (!termId || !cols || !rows) return sendError(socket, id, -32602, 'Missing id, cols, or rows');
+    const ok = terminalManager.resize(termId, cols, rows);
+    sendResponse(socket, id, { success: ok });
+  }
+
+  function handleTerminalClose(id: string | number, params: Record<string, unknown>): void {
+    if (!terminalManager) return sendError(socket, id, -32000, 'Terminal not available');
+    const termId = params?.id as string;
+    if (!termId) return sendError(socket, id, -32602, 'Missing id');
+    const ok = terminalManager.close(termId);
+    sendResponse(socket, id, { success: ok });
+  }
+
+  /** Wire PTY data/exit events to ACP notifications on this socket. */
+  function wireTerminal(termId: string): void {
+    if (!terminalManager) return;
+    const onData = (id: string, data: string) => {
+      if (id !== termId) return;
+      send(socket, { method: 'terminal/data', params: { id: termId, data } });
+    };
+    const onExit = (id: string, code: number) => {
+      if (id !== termId) return;
+      send(socket, { method: 'terminal/exit', params: { id: termId, code } });
+      terminalManager!.off('data', onData);
+      terminalManager!.off('exit', onExit);
+    };
+    terminalManager.on('data', onData);
+    terminalManager.on('exit', onExit);
   }
 
   return { handle, cleanup };

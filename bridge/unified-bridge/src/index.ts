@@ -24,6 +24,7 @@ import { ProviderRegistry } from './core/provider-registry.js';
 import { createProtocolHandler } from './core/protocol.js';
 import { CopilotProvider } from './providers/copilot/adapter.js';
 import { CodexProvider } from './providers/codex/adapter.js';
+import { TerminalManager } from './terminal/manager.js';
 import type { BridgeConfig, ProviderConfig } from './core/types.js';
 
 // ── CLI args ──
@@ -83,13 +84,17 @@ function createProvider(pc: ProviderConfig) {
   }
 }
 
+// ── Terminal Manager ──
+
+const terminalManager = new TerminalManager();
+
 // ── Connection handler ──
 
 function handleConnection(socket: Socket): void {
   const addr = `${socket.remoteAddress}:${socket.remotePort}`;
   console.log(`[server] Client connected: ${addr}`);
 
-  const handler = createProtocolHandler(registry, config, socket);
+  const handler = createProtocolHandler(registry, config, socket, terminalManager);
 
   let buffer = '';
 
@@ -178,6 +183,7 @@ Connect from Agentic: tcp://localhost:${config.port}
   async function shutdown(): Promise<void> {
     console.log('\n[server] Shutting down...');
     server.close();
+    terminalManager.shutdown();
     await registry.shutdownAll();
     process.exit(0);
   }
