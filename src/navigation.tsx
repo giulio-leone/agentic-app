@@ -5,7 +5,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text, YStack } from 'tamagui';
-import { Eye, Bot, Scale, PenLine, Menu, Search } from 'lucide-react-native';
+import { Eye, Bot, Scale, PenLine, Menu, Search, Terminal as TerminalIcon } from 'lucide-react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -19,6 +19,7 @@ const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').the
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
 import { ConsensusConfigSheet } from './components/ConsensusConfigSheet';
+import { TerminalPanel } from './components/TerminalPanel';
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
@@ -89,7 +90,7 @@ function DrawerNavigator() {
   const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
   const { createSession, isInitialized, agentModeEnabled, toggleAgentMode, consensusModeEnabled, toggleConsensusMode } = useAppStore();
-  const { screenWatcherVisible, setScreenWatcherVisible, isWatching, toggleChatSearch } = useAppStore();
+  const { screenWatcherVisible, setScreenWatcherVisible, isWatching, toggleChatSearch, terminalVisible, setTerminalVisible } = useAppStore();
   const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
 
   return (
@@ -148,6 +149,15 @@ function DrawerNavigator() {
                   <Search size={18} color={colors.text} opacity={0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
+                  onPress={() => setTerminalVisible(true)}
+                  style={{ paddingHorizontal: Spacing.sm }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={terminalVisible ? 'Terminal open' : 'Open terminal'}
+                  accessibilityRole="button"
+                >
+                  <TerminalIcon size={18} color={terminalVisible ? colors.primary : colors.text} opacity={terminalVisible ? 1 : 0.5} />
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => setScreenWatcherVisible(true)}
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -191,6 +201,7 @@ function DrawerNavigator() {
         />
       </Drawer.Navigator>
       <ScreenWatcherPanel />
+      <TerminalPanel />
       <ConsensusConfigSheet
         visible={consensusSheetVisible}
         onClose={() => setConsensusSheetVisible(false)}
