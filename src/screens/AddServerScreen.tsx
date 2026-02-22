@@ -309,7 +309,7 @@ export function AddServerScreen() {
             Protocol
           </Text>
           <XStack backgroundColor={colors.systemGray5} borderRadius={Radius.sm} padding={2} marginBottom={Spacing.md}>
-            {([ServerType.ACP, ServerType.Codex, ServerType.AIProvider] as const).map(type => (
+            {([ServerType.ACP, ServerType.Codex, ServerType.CopilotCLI, ServerType.AIProvider] as const).map(type => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -333,7 +333,7 @@ export function AddServerScreen() {
                   fontWeight={serverType === type ? '600' : '500'}
                   color={serverType === type ? '$color' : '$textTertiary'}
                 >
-                  {type === ServerType.AIProvider ? 'AI Provider' : type === ServerType.Codex ? 'Codex' : 'ACP'}
+                  {type === ServerType.AIProvider ? 'AI Provider' : type === ServerType.Codex ? 'Codex' : type === ServerType.CopilotCLI ? 'Copilot' : 'ACP'}
                 </Text>
               </TouchableOpacity>
             ))}

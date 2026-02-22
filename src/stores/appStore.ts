@@ -92,7 +92,7 @@ export interface AppActions {
   // Sessions
   loadSessions: () => Promise<void>;
   createSession: (cwd?: string) => Promise<void>;
-  selectSession: (id: string) => void;
+  selectSession: (id: string) => void | Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
 

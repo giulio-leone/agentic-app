@@ -1,5 +1,7 @@
 export { ACPClient } from './ACPClient';
 export type { ACPClientConfig, ACPClientListener } from './ACPClient';
+export { TCPClient } from './TCPClient';
+export type { ACPTransport, ACPTransportConfig, ACPTransportListener } from './ACPTransport';
 export { ACPService } from './ACPService';
 export type { ACPServiceListener } from './ACPService';
 export { ACPMethods } from './ACPMethods';

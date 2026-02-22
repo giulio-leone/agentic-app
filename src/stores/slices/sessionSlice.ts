@@ -116,7 +116,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     }
   },
 
-  selectSession: (id) => {
+  selectSession: async (id) => {
     set({
       selectedSessionId: id,
       chatMessages: [],
@@ -124,6 +124,43 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
       stopReason: null,
       isStreaming: false,
     });
+
+    // For ACP servers, try server-side session replay first
+    if (_service && id) {
+      const session = get().sessions.find(s => s.id === id);
+      try {
+        await _service.loadSession({
+          sessionId: id,
+          cwd: session?.cwd,
+        });
+        if (get().chatMessages.length > 0) return;
+      } catch {
+        // loadSession not supported or failed
+      }
+
+      // Try local storage
+      const sid = storageId(get());
+      if (sid) {
+        const localMessages = await SessionStorage.fetchMessages(sid, id);
+        if (localMessages.length > 0) {
+          set({ chatMessages: localMessages });
+          return;
+        }
+      }
+
+      // No messages from server or local — show info banner
+      set({
+        chatMessages: [{
+          id: `info-${id}`,
+          role: 'system' as const,
+          content: '📋 Cronologia non disponibile — questa sessione è stata creata nel terminale. Puoi continuare la conversazione da qui.',
+          timestamp: new Date().toISOString(),
+        }],
+      });
+      return;
+    }
+
+    // AI providers: load from AsyncStorage
     get().loadSessionMessages(id);
   },
 

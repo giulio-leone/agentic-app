@@ -24,6 +24,14 @@ export function parseSessionUpdate(
     const sessionUpdate = update.sessionUpdate as string | undefined;
     const content = update.content as Record<string, JSONValue> | undefined;
 
+    if (sessionUpdate === 'user_message_chunk' && content) {
+      const contentType = content.type as string | undefined;
+      if (contentType === 'text') {
+        actions.push({ type: 'userMessage', text: (content.text as string) ?? '' });
+      }
+      return actions;
+    }
+
     if (sessionUpdate === 'agent_message_chunk' && content) {
       const contentType = content.type as string | undefined;
       if (contentType === 'text') {
@@ -130,6 +138,7 @@ export function parseSessionUpdate(
 
 export type SessionUpdateAction =
   | { type: 'appendText'; text: string }
+  | { type: 'userMessage'; text: string }
   | { type: 'toolCall'; toolName: string; input: string }
   | { type: 'toolResult'; result: string }
   | { type: 'thought'; content: string }
@@ -150,6 +159,24 @@ export function applySessionUpdate(
 
   for (const action of actions) {
     switch (action.type) {
+      case 'userMessage': {
+        // Close any current streaming assistant message
+        if (currentStreamId) {
+          const idx = result.findIndex(m => m.id === currentStreamId);
+          if (idx !== -1) {
+            result[idx] = { ...result[idx], isStreaming: false };
+          }
+          currentStreamId = null;
+        }
+        result.push({
+          id: uuidv4(),
+          role: 'user',
+          content: action.text,
+          timestamp: new Date().toISOString(),
+        });
+        break;
+      }
+
       case 'appendText': {
         if (currentStreamId) {
           const idx = result.findIndex(m => m.id === currentStreamId);

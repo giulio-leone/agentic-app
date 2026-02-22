@@ -14,6 +14,7 @@ export enum ACPConnectionState {
 export enum ServerType {
   ACP = 'acp',
   Codex = 'codex',
+  CopilotCLI = 'copilot_cli',
   AIProvider = 'ai_provider',
 }
 
