@@ -35,6 +35,7 @@ export const useMCPStatuses = () => useAppStore(s => s.mcpStatuses);
 
 export const useChatSearchVisible = () => useAppStore(s => s.chatSearchVisible);
 export const useThemeMode = () => useAppStore(s => s.themeMode);
+export const useAccentColor = () => useAppStore(s => s.accentColor);
 
 // ── Settings selectors ───────────────────────────────────────────────────────
 

@@ -9,15 +9,16 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  View,
 } from 'react-native';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
-import { Palette, Smartphone, Sun, Moon } from 'lucide-react-native';
+import { Palette, Smartphone, Sun, Moon, Eclipse, Check } from 'lucide-react-native';
 import { useDesignSystem } from '../utils/designSystem';
-import { FontSize, Spacing, Radius } from '../utils/theme';
+import { FontSize, Spacing, Radius, AccentColors, type AccentColorKey } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import {
   useDevMode, useDeveloperLogs, useYoloMode, useAutoStartVisionDetect,
-  useThemeMode, useMCPServers, useMCPStatuses,
+  useThemeMode, useAccentColor, useMCPServers, useMCPStatuses,
   useSettingsActions, useMCPActions,
 } from '../stores/selectors';
 import { MCPServerRow } from './settings/MCPServerRow';
@@ -31,10 +32,11 @@ export function SettingsScreen() {
   const yoloModeEnabled = useYoloMode();
   const autoStartVisionDetect = useAutoStartVisionDetect();
   const themeMode = useThemeMode();
+  const accentColor = useAccentColor();
   const mcpServers = useMCPServers();
   const mcpStatuses = useMCPStatuses();
 
-  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, clearLogs } = useSettingsActions();
+  const { toggleDevMode, toggleYoloMode, toggleAutoStartVisionDetect, setThemeMode, setAccentColor, clearLogs } = useSettingsActions();
   const { loadMCPServers, addMCPServer, removeMCPServer, connectMCPServer, disconnectMCPServer } = useMCPActions();
 
   const [showAddMCP, setShowAddMCP] = useState(false);
@@ -103,35 +105,69 @@ export function SettingsScreen() {
           <Palette size={18} color={colors.text} />
           <Text fontSize={17} fontWeight="600" color="$color">Appearance</Text>
         </XStack>
+
+        {/* Theme Mode */}
         <Text fontSize={12} marginTop={2} color="$textTertiary">
-          Override system theme or follow device settings
+          Theme
         </Text>
-        <XStack gap={Spacing.xs}>
-          {(['system', 'light', 'dark'] as const).map(mode => (
+        <XStack gap={Spacing.xs} flexWrap="wrap">
+          {([
+            { key: 'system', label: 'System', Icon: Smartphone },
+            { key: 'light', label: 'Light', Icon: Sun },
+            { key: 'dark', label: 'Dark', Icon: Moon },
+            { key: 'amoled', label: 'AMOLED', Icon: Eclipse },
+          ] as const).map(({ key, label, Icon }) => (
             <TouchableOpacity
-              key={mode}
+              key={key}
               style={{
                 flex: 1,
+                minWidth: 70,
                 borderRadius: Radius.md,
                 borderWidth: StyleSheet.hairlineWidth,
                 paddingVertical: Spacing.sm,
                 alignItems: 'center',
-                backgroundColor: themeMode === mode ? colors.primary : colors.systemGray5,
-                borderColor: themeMode === mode ? colors.primary : colors.separator,
+                backgroundColor: themeMode === key ? colors.primary : colors.systemGray5,
+                borderColor: themeMode === key ? colors.primary : colors.separator,
               }}
-              onPress={() => setThemeMode(mode)}
-              accessibilityLabel={`Theme: ${mode}`}
+              onPress={() => setThemeMode(key)}
+              accessibilityLabel={`Theme: ${label}`}
               accessibilityRole="button"
-              accessibilityState={{ selected: themeMode === mode }}
+              accessibilityState={{ selected: themeMode === key }}
             >
               <XStack alignItems="center" justifyContent="center" gap={4}>
-                {mode === 'system' ? <Smartphone size={14} color={themeMode === mode ? colors.contrastText : colors.text} /> :
-                 mode === 'light' ? <Sun size={14} color={themeMode === mode ? colors.contrastText : colors.text} /> :
-                 <Moon size={14} color={themeMode === mode ? colors.contrastText : colors.text} />}
-                <Text fontSize={13} fontWeight={themeMode === mode ? '600' : '400'} color={themeMode === mode ? '$contrastText' : '$color'}>
-                  {mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark'}
+                <Icon size={14} color={themeMode === key ? colors.contrastText : colors.text} />
+                <Text fontSize={12} fontWeight={themeMode === key ? '600' : '400'} color={themeMode === key ? '$contrastText' : '$color'}>
+                  {label}
                 </Text>
               </XStack>
+            </TouchableOpacity>
+          ))}
+        </XStack>
+
+        {/* Accent Color */}
+        <Text fontSize={12} marginTop={Spacing.sm} color="$textTertiary">
+          Accent Color
+        </Text>
+        <XStack gap={Spacing.sm} flexWrap="wrap">
+          {(Object.keys(AccentColors) as AccentColorKey[]).map(key => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setAccentColor(key)}
+              accessibilityLabel={`Accent color: ${key}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: accentColor === key }}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: AccentColors[key],
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: accentColor === key ? 2 : 0,
+                borderColor: colors.contrastText,
+              }}
+            >
+              {accentColor === key && <Check size={16} color="#FFFFFF" strokeWidth={3} />}
             </TouchableOpacity>
           ))}
         </XStack>
