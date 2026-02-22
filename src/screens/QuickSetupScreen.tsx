@@ -1,9 +1,8 @@
 /**
  * QuickSetupScreen — 3-step onboarding wizard with animated transitions.
  *
- * Step 1: Choose provider (preset cards)
- * Step 2: Enter API key + auto-fetch models
- * Step 3: Pick model → save → chat
+ * AI Provider flow:  Step 1: Choose provider → Step 2: API key → Step 3: Pick model
+ * ACP/Codex flow:    Step 1: Choose ACP/Codex → Step 2: Host + token → Save
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -19,12 +18,11 @@ import {
   Animated,
   FlatList,
   View,
-  LayoutAnimation,
   UIManager,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, ChevronRight, Check, Search } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, Search, Terminal, Server } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -45,6 +43,8 @@ if (Platform.OS === 'android') {
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
+type SetupFlow = 'ai' | 'acp';
+
 interface PresetProvider {
   type: AIProviderType;
   label: string;
@@ -53,7 +53,15 @@ interface PresetProvider {
   defaultModelId: string;
 }
 
-const PRESETS: PresetProvider[] = [
+interface ACPPreset {
+  serverType: ServerType.ACP | ServerType.Codex;
+  label: string;
+  description: string;
+  defaultScheme: 'ws' | 'wss';
+  defaultHost: string;
+}
+
+const AI_PRESETS: PresetProvider[] = [
   {
     type: AIProviderType.OpenRouter,
     label: 'OpenRouter',
@@ -91,17 +99,34 @@ const PRESETS: PresetProvider[] = [
   },
 ];
 
-const STEP_COUNT = 3;
+const ACP_PRESETS: ACPPreset[] = [
+  {
+    serverType: ServerType.Codex,
+    label: 'Codex CLI',
+    description: 'OpenAI Codex agent locale via ACP',
+    defaultScheme: 'ws',
+    defaultHost: 'localhost:8765',
+  },
+  {
+    serverType: ServerType.ACP,
+    label: 'ACP Server',
+    description: 'Agent Communication Protocol generico',
+    defaultScheme: 'ws',
+    defaultHost: 'localhost:8765',
+  },
+];
 
 export function QuickSetupScreen() {
   const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { addServer } = useAppStore();
+  const { addServer, servers } = useAppStore();
 
   // Wizard state
   const [step, setStep] = useState(0);
+  const [flow, setFlow] = useState<SetupFlow>('ai');
   const [selectedPreset, setSelectedPreset] = useState<PresetProvider | null>(null);
+  const [selectedACP, setSelectedACP] = useState<ACPPreset | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [models, setModels] = useState<FetchedModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState('');
@@ -109,6 +134,14 @@ export function QuickSetupScreen() {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // ACP state
+  const [acpScheme, setAcpScheme] = useState<'ws' | 'wss'>('ws');
+  const [acpHost, setAcpHost] = useState('');
+  const [acpToken, setAcpToken] = useState('');
+  const [acpName, setAcpName] = useState('');
+
+  const stepCount = flow === 'acp' ? 2 : 3;
 
   // Animation
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -129,14 +162,27 @@ export function QuickSetupScreen() {
     });
   }, [step, fadeAnim, slideAnim]);
 
-  // Step 1 → 2
+  // AI Provider: Step 1 → 2
   const handlePresetSelect = useCallback((preset: PresetProvider) => {
     Haptics.selectionAsync();
+    setFlow('ai');
     setSelectedPreset(preset);
     setApiKey('');
     setModels([]);
     setSelectedModelId(preset.defaultModelId);
     setFetchError(null);
+    animateStep(1);
+  }, [animateStep]);
+
+  // ACP/Codex: Step 1 → 2
+  const handleACPSelect = useCallback((preset: ACPPreset) => {
+    Haptics.selectionAsync();
+    setFlow('acp');
+    setSelectedACP(preset);
+    setAcpScheme(preset.defaultScheme);
+    setAcpHost(preset.defaultHost);
+    setAcpName(preset.label);
+    setAcpToken('');
     animateStep(1);
   }, [animateStep]);
 
@@ -187,8 +233,8 @@ export function QuickSetupScreen() {
     animateStep(step - 1);
   }, [step, animateStep]);
 
-  // Final save
-  const handleSave = useCallback(async () => {
+  // Final save — AI Provider
+  const handleSaveAI = useCallback(async () => {
     if (!selectedPreset || !selectedModelId) return;
     setSaving(true);
     try {
@@ -230,6 +276,35 @@ export function QuickSetupScreen() {
     }
   }, [selectedPreset, selectedModelId, models, apiKey, addServer, navigation]);
 
+  // Final save — ACP/Codex
+  const handleSaveACP = useCallback(async () => {
+    if (!selectedACP || !acpHost.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Host richiesto', 'Inserisci l\'indirizzo del server (es. localhost:8765).');
+      return;
+    }
+    setSaving(true);
+    try {
+      await addServer({
+        name: acpName.trim() || selectedACP.label,
+        scheme: acpScheme,
+        host: acpHost.trim(),
+        token: acpToken.trim(),
+        cfAccessClientId: '',
+        cfAccessClientSecret: '',
+        workingDirectory: '',
+        serverType: selectedACP.serverType,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      navigation.goBack();
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Errore', (error as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedACP, acpScheme, acpHost, acpToken, acpName, addServer, navigation]);
+
   const handleAdvancedSetup = useCallback(() => {
     navigation.navigate('AddServer');
   }, [navigation]);
@@ -266,7 +341,7 @@ export function QuickSetupScreen() {
 
   const renderStepIndicator = () => (
     <XStack justifyContent="center" gap={Spacing.xs} marginBottom={Spacing.lg}>
-      {Array.from({ length: STEP_COUNT }).map((_, i) => (
+      {Array.from({ length: stepCount }).map((_, i) => (
         <View
           key={i}
           style={[
@@ -288,11 +363,15 @@ export function QuickSetupScreen() {
           Benvenuto 👋
         </Text>
         <Text fontSize={FontSize.body} textAlign="center" lineHeight={22} color={colors.textTertiary}>
-          Scegli un provider AI per iniziare
+          Scegli come connetterti
         </Text>
       </YStack>
 
-      {PRESETS.map(preset => (
+      {/* AI Provider presets */}
+      <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5}>
+        AI Provider
+      </Text>
+      {AI_PRESETS.map(preset => (
         <TouchableOpacity
           key={preset.type}
           style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
@@ -314,15 +393,55 @@ export function QuickSetupScreen() {
         </TouchableOpacity>
       ))}
 
-      <TouchableOpacity style={styles.advancedLink} onPress={handleAdvancedSetup}>
-        <Text fontSize={FontSize.footnote} color={colors.primary}>
-          Configurazione avanzata →
-        </Text>
-      </TouchableOpacity>
+      {/* ACP / Codex presets */}
+      <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5} marginTop={Spacing.md}>
+        Agent Protocol (ACP)
+      </Text>
+      {ACP_PRESETS.map(preset => (
+        <TouchableOpacity
+          key={preset.serverType}
+          style={[styles.presetCard, { backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+          onPress={() => handleACPSelect(preset)}
+          activeOpacity={0.7}
+        >
+          <XStack alignItems="center" gap={Spacing.md}>
+            {preset.serverType === ServerType.Codex ? (
+              <Terminal size={24} color={colors.text} />
+            ) : (
+              <Server size={24} color={colors.text} />
+            )}
+            <YStack flex={1}>
+              <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
+                {preset.label}
+              </Text>
+              <Text fontSize={FontSize.footnote} color={colors.textTertiary} marginTop={2}>
+                {preset.description}
+              </Text>
+            </YStack>
+            <ChevronRight size={18} color={colors.textTertiary} />
+          </XStack>
+        </TouchableOpacity>
+      ))}
+
+      {/* Skip + Advanced */}
+      <XStack justifyContent="space-between" marginTop={Spacing.md}>
+        {servers.length > 0 && (
+          <TouchableOpacity style={styles.advancedLink} onPress={() => navigation.goBack()}>
+            <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
+              ← Torna alla chat
+            </Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.advancedLink} onPress={handleAdvancedSetup}>
+          <Text fontSize={FontSize.footnote} color={colors.primary}>
+            Configurazione avanzata →
+          </Text>
+        </TouchableOpacity>
+      </XStack>
     </YStack>
   );
 
-  const renderStep1 = () => (
+  const renderStep1AI = () => (
     <YStack gap={Spacing.lg}>
       <TouchableOpacity onPress={goBack} style={styles.backButton}>
         <ChevronLeft size={20} color={colors.primary} />
@@ -388,6 +507,115 @@ export function QuickSetupScreen() {
       </TouchableOpacity>
     </YStack>
   );
+
+  const renderStep1ACP = () => (
+    <YStack gap={Spacing.lg}>
+      <TouchableOpacity onPress={goBack} style={styles.backButton}>
+        <ChevronLeft size={20} color={colors.primary} />
+        <Text fontSize={FontSize.body} color={colors.primary}>Indietro</Text>
+      </TouchableOpacity>
+
+      <YStack alignItems="center" gap={Spacing.xs}>
+        <Text fontSize={24} fontWeight="700" color={colors.text}>
+          {selectedACP?.label}
+        </Text>
+        <Text fontSize={FontSize.footnote} color={colors.textTertiary}>
+          Configura la connessione al server
+        </Text>
+      </YStack>
+
+      <YStack gap={Spacing.md}>
+        {/* Name */}
+        <YStack gap={Spacing.xs}>
+          <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>Nome</Text>
+          <TextInput
+            style={[styles.input, { color: colors.text, backgroundColor: colors.cardBackground, borderColor: colors.separator, fontFamily: undefined }]}
+            placeholder={selectedACP?.label ?? 'My Agent'}
+            placeholderTextColor={colors.textTertiary}
+            value={acpName}
+            onChangeText={setAcpName}
+            autoCapitalize="none"
+          />
+        </YStack>
+
+        {/* Scheme toggle */}
+        <YStack gap={Spacing.xs}>
+          <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>Protocollo</Text>
+          <XStack gap={Spacing.sm}>
+            {(['ws', 'wss'] as const).map(s => (
+              <TouchableOpacity
+                key={s}
+                style={[
+                  styles.schemeChip,
+                  {
+                    backgroundColor: acpScheme === s ? colors.primary : colors.cardBackground,
+                    borderColor: acpScheme === s ? colors.primary : colors.separator,
+                  },
+                ]}
+                onPress={() => { Haptics.selectionAsync(); setAcpScheme(s); }}
+              >
+                <Text
+                  fontSize={FontSize.footnote}
+                  fontWeight="600"
+                  color={acpScheme === s ? colors.contrastText : colors.text}
+                >
+                  {s.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </XStack>
+        </YStack>
+
+        {/* Host */}
+        <YStack gap={Spacing.xs}>
+          <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>Host</Text>
+          <TextInput
+            style={[styles.input, { color: colors.text, backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+            placeholder="localhost:8765"
+            placeholderTextColor={colors.textTertiary}
+            value={acpHost}
+            onChangeText={setAcpHost}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            autoFocus
+          />
+        </YStack>
+
+        {/* Token (optional) */}
+        <YStack gap={Spacing.xs}>
+          <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>Token (opzionale)</Text>
+          <TextInput
+            style={[styles.input, { color: colors.text, backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
+            placeholder="Bearer token"
+            placeholderTextColor={colors.textTertiary}
+            value={acpToken}
+            onChangeText={setAcpToken}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+          />
+        </YStack>
+      </YStack>
+
+      <TouchableOpacity
+        style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: saving ? 0.7 : (acpHost.trim() ? 1 : 0.4) }]}
+        onPress={handleSaveACP}
+        disabled={saving || !acpHost.trim()}
+        activeOpacity={0.8}
+      >
+        {saving ? (
+          <ActivityIndicator color={colors.contrastText} />
+        ) : (
+          <Text fontSize={FontSize.headline} fontWeight="600" color={colors.contrastText}>
+            Connetti ✨
+          </Text>
+        )}
+      </TouchableOpacity>
+    </YStack>
+  );
+
+  const renderStep1 = () => flow === 'acp' ? renderStep1ACP() : renderStep1AI();
 
   const renderStep2 = () => (
     <YStack gap={Spacing.md} flex={1}>
@@ -469,7 +697,7 @@ export function QuickSetupScreen() {
       {/* Save */}
       <TouchableOpacity
         style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: saving ? 0.7 : 1 }]}
-        onPress={handleSave}
+        onPress={handleSaveAI}
         disabled={saving || !selectedModelId}
         activeOpacity={0.8}
       >
@@ -533,9 +761,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   advancedLink: {
-    marginTop: Spacing.lg,
     alignItems: 'center',
     padding: Spacing.sm,
+  },
+  schemeChip: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   backButton: {
     flexDirection: 'row',
