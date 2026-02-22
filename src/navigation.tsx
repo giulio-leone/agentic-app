@@ -121,7 +121,7 @@ function DrawerNavigator() {
                   style={{ paddingHorizontal: Spacing.sm }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Eye size={18} color={isWatching ? '#EF4444' : colors.text} opacity={isWatching ? 1 : 0.5} />
+                  <Eye size={18} color={isWatching ? colors.destructive : colors.text} opacity={isWatching ? 1 : 0.5} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={toggleAgentMode}
