@@ -21,6 +21,7 @@ import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
 import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
+import { SkeletonMessage } from '../components/chat/SkeletonMessage';
 import { MessageActionMenu } from '../components/chat/MessageActionMenu';
 import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
@@ -242,6 +243,10 @@ export function SessionDetailScreen() {
   const showTyping = isStreaming && chatMessages.length > 0 &&
     chatMessages[chatMessages.length - 1]?.role === 'user';
 
+  // Show skeleton shimmer while waiting for first assistant token
+  const showSkeleton = isStreaming && chatMessages.length > 0 &&
+    chatMessages[chatMessages.length - 1]?.role === 'user';
+
   // Approximate token count from streaming message content (words ≈ tokens × 0.75)
   const streamingTokenCount = useMemo(() => {
     if (!isStreaming) return 0;
@@ -278,7 +283,7 @@ export function SessionDetailScreen() {
         keyExtractor={keyExtractor}
         renderItem={renderMessage}
         ListEmptyComponent={renderEmpty}
-        ListFooterComponent={showTyping ? <TypingIndicator /> : null}
+        ListFooterComponent={showSkeleton ? <SkeletonMessage /> : showTyping ? <TypingIndicator /> : null}
         onScrollToIndexFailed={(info) => {
           flatListRef.current?.scrollToOffset({
             offset: info.averageItemLength * info.index,

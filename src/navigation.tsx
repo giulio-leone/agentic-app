@@ -223,13 +223,26 @@ function AppContent() {
       <RootStack.Navigator
         screenOptions={{
           headerShown: false,
-          animation: 'slide_from_bottom',
+          animation: 'fade_from_bottom',
+          animationDuration: 250,
         }}
       >
         <RootStack.Screen name="Main" component={DrawerNavigator} />
-        <RootStack.Screen name="AddServer" component={LazyAddServer} options={modalOptions('Add Server')} />
-        <RootStack.Screen name="QuickSetup" component={LazyQuickSetup} options={modalOptions('Quick Setup')} />
-        <RootStack.Screen name="Settings" component={LazySettings} options={modalOptions('Settings')} />
+        <RootStack.Screen
+          name="AddServer"
+          component={LazyAddServer}
+          options={{ ...modalOptions('Add Server'), animation: 'slide_from_bottom' }}
+        />
+        <RootStack.Screen
+          name="QuickSetup"
+          component={LazyQuickSetup}
+          options={{ ...modalOptions('Quick Setup'), animation: 'slide_from_bottom' }}
+        />
+        <RootStack.Screen
+          name="Settings"
+          component={LazySettings}
+          options={{ ...modalOptions('Settings'), animation: 'fade_from_bottom' }}
+        />
       </RootStack.Navigator>
     </NavigationContainer>
   );

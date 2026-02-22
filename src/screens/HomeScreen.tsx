@@ -114,7 +114,7 @@ export function HomeScreen() {
         session={item}
         isSelected={item.id === selectedSessionId}
         onPress={handleSessionPress}
-        onLongPress={handleDeleteSession}
+        onDelete={handleDeleteSession}
         colors={colors}
       />
     ),
