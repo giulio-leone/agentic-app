@@ -129,21 +129,38 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     if (_service && id) {
       const session = get().sessions.find(s => s.id === id);
       try {
-        const resp = await _service.loadSession({
+        await _service.loadSession({
           sessionId: id,
           cwd: session?.cwd,
         });
-        // loadSession replays the full conversation via session/update notifications.
-        // Messages are populated by onNotification handler in serverSlice.
-        const replayedCount = get().chatMessages.length;
-        if (replayedCount > 0) return;
-        // If no messages were replayed, fall through to local storage
+        if (get().chatMessages.length > 0) return;
       } catch {
-        // loadSession not supported or failed — fall back to local storage
+        // loadSession not supported or failed
       }
+
+      // Try local storage
+      const sid = storageId(get());
+      if (sid) {
+        const localMessages = await SessionStorage.fetchMessages(sid, id);
+        if (localMessages.length > 0) {
+          set({ chatMessages: localMessages });
+          return;
+        }
+      }
+
+      // No messages from server or local — show info banner
+      set({
+        chatMessages: [{
+          id: `info-${id}`,
+          role: 'system' as const,
+          content: '📋 Cronologia non disponibile — questa sessione è stata creata nel terminale. Puoi continuare la conversazione da qui.',
+          timestamp: new Date().toISOString(),
+        }],
+      });
+      return;
     }
 
-    // AI providers or fallback: load from AsyncStorage
+    // AI providers: load from AsyncStorage
     get().loadSessionMessages(id);
   },
 
