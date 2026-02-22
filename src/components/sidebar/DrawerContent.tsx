@@ -55,6 +55,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     createSession,
     selectSession,
     deleteSession,
+    deleteServer,
     loadSessions,
     mcpStatuses,
   } = useAppStore();
@@ -300,7 +301,20 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   onPress={() => handleServerPress(server.id)}
                   onLongPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    rootNav.navigate('QuickSetup', { editingServer: server });
+                    Alert.alert(server.name || server.host, undefined, [
+                      { text: 'Edit', onPress: () => rootNav.navigate('QuickSetup', { editingServer: server }) },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => {
+                          Alert.alert('Delete Server', `Remove "${server.name || server.host}"?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete', style: 'destructive', onPress: () => deleteServer(server.id) },
+                          ]);
+                        },
+                      },
+                      { text: 'Cancel', style: 'cancel' },
+                    ]);
                   }}
                   activeOpacity={0.7}
                 >
