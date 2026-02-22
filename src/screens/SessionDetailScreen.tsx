@@ -35,7 +35,7 @@ import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
 import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
-import { useSpeech } from '../hooks/useSpeech';
+import { useChatSpeech } from '../hooks/useChatSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useScrollToBottom, useChatSearch, useMessageActions, useComposition } from '../hooks/chat';
 import { clearAll as clearNotifications } from '../services/notifications';
@@ -139,21 +139,7 @@ export function SessionDetailScreen() {
   } = useComposition({ promptText, setPromptText, sendPrompt, markNearBottom });
 
   // ── TTS ──
-  const { toggle: toggleSpeech, isSpeaking, stop: stopSpeech } = useSpeech();
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const speakingRef = useRef({ isSpeaking, speakingMessageId });
-  speakingRef.current = { isSpeaking, speakingMessageId };
-
-  const handleSpeak = useCallback((text: string, messageId?: string) => {
-    const { isSpeaking: speaking, speakingMessageId: speakId } = speakingRef.current;
-    if (speakId === messageId && speaking) {
-      stopSpeech();
-      setSpeakingMessageId(null);
-    } else {
-      setSpeakingMessageId(messageId || null);
-      toggleSpeech(text);
-    }
-  }, [toggleSpeech, stopSpeech]);
+  const { handleSpeak, isSpeakingMessage } = useChatSpeech();
 
   // ── STT ──
   const onTranscript = useCallback((text: string) => setPromptText(text), [setPromptText]);
@@ -256,7 +242,7 @@ export function SessionDetailScreen() {
           <ChatBubble
             message={item}
             onSpeak={handleSpeak}
-            isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
+            isSpeaking={isSpeakingMessage(item.id)}
             onLongPress={handleLongPress}
             onOpenArtifact={handleOpenArtifact}
             highlighted={searchMatchSet.has(index)}
