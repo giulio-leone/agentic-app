@@ -16,7 +16,7 @@ import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
 import { Palette, Smartphone, Sun, Moon, Wrench, XCircle } from 'lucide-react-native';
 import { useAppStore } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
-import type { ThemeColors } from '../utils/theme';
+import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import { MCPAuthType, MCPConnectionState } from '../mcp/types';
 import type { MCPServerConfig } from '../mcp/types';
@@ -42,10 +42,10 @@ export function SettingsScreen() {
   return (
     <ScrollView flex={1} backgroundColor="$background">
       {/* MCP Servers */}
-      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
         <XStack justifyContent="space-between" alignItems="center">
           <Text fontSize={17} fontWeight="600" color="$color">🔌 MCP Servers</Text>
-          <TouchableOpacity onPress={() => setShowAddMCP(!showAddMCP)}>
+          <TouchableOpacity onPress={() => setShowAddMCP(!showAddMCP)} accessibilityLabel={showAddMCP ? 'Cancel adding server' : 'Add MCP server'} accessibilityRole="button">
             <Text fontSize={13} fontWeight="600" color="$primary">
               {showAddMCP ? 'Cancel' : '+ Add'}
             </Text>
@@ -94,28 +94,31 @@ export function SettingsScreen() {
       </YStack>
 
       {/* Appearance */}
-      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
-        <XStack alignItems="center" gap={8}>
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
+        <XStack alignItems="center" gap={Spacing.sm}>
           <Palette size={18} color={colors.text} />
           <Text fontSize={17} fontWeight="600" color="$color">Appearance</Text>
         </XStack>
         <Text fontSize={12} marginTop={2} color="$textTertiary">
           Override system theme or follow device settings
         </Text>
-        <XStack gap={4}>
+        <XStack gap={Spacing.xs}>
           {(['system', 'light', 'dark'] as const).map(mode => (
             <TouchableOpacity
               key={mode}
               style={{
                 flex: 1,
-                borderRadius: 10,
+                borderRadius: Radius.md,
                 borderWidth: StyleSheet.hairlineWidth,
-                paddingVertical: 8,
+                paddingVertical: Spacing.sm,
                 alignItems: 'center',
                 backgroundColor: themeMode === mode ? colors.primary : colors.systemGray5,
                 borderColor: themeMode === mode ? colors.primary : colors.separator,
               }}
               onPress={() => setThemeMode(mode)}
+              accessibilityLabel={`Theme: ${mode}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: themeMode === mode }}
             >
               <XStack alignItems="center" justifyContent="center" gap={4}>
                 {mode === 'system' ? <Smartphone size={14} color={themeMode === mode ? colors.contrastText : colors.text} /> :
@@ -131,7 +134,7 @@ export function SettingsScreen() {
       </YStack>
 
       {/* Dev Mode */}
-      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
         <XStack justifyContent="space-between" alignItems="center">
           <YStack flex={1}>
             <Text fontSize={16} fontWeight="500" color="$color">Developer Mode</Text>
@@ -143,18 +146,18 @@ export function SettingsScreen() {
             value={devModeEnabled}
             onValueChange={toggleDevMode}
             trackColor={{ true: colors.primary, false: colors.systemGray4 }}
-            thumbColor="#FFFFFF"
+            thumbColor={colors.contrastText}
             accessibilityLabel="Developer mode"
           />
         </XStack>
       </YStack>
 
       {/* Auto-Start Vision Detect */}
-      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
         <XStack justifyContent="space-between" alignItems="center">
           <YStack flex={1}>
             <Text fontSize={16} fontWeight="500" color="$color">Auto-Start Vision</Text>
-            <Text fontSize={12} marginTop={2} paddingRight={16} color="$textTertiary">
+            <Text fontSize={12} marginTop={2} paddingRight={Spacing.lg} color="$textTertiary">
               Automatically launch Screen Watcher on app startup.
             </Text>
           </YStack>
@@ -162,18 +165,18 @@ export function SettingsScreen() {
             value={autoStartVisionDetect}
             onValueChange={toggleAutoStartVisionDetect}
             trackColor={{ true: colors.primary, false: colors.systemGray4 }}
-            thumbColor="#FFFFFF"
+            thumbColor={colors.contrastText}
             accessibilityLabel="Auto-Start Vision Detect"
           />
         </XStack>
       </YStack>
 
       {/* YOLO Mode */}
-      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
         <XStack justifyContent="space-between" alignItems="center">
           <YStack flex={1}>
             <Text fontSize={16} fontWeight="500" color="$color">YOLO Mode</Text>
-            <Text fontSize={12} marginTop={2} paddingRight={16} color="$textTertiary">
+            <Text fontSize={12} marginTop={2} paddingRight={Spacing.lg} color="$textTertiary">
               Auto-approve all agent tool executions (no prompts).
             </Text>
           </YStack>
@@ -181,7 +184,7 @@ export function SettingsScreen() {
             value={yoloModeEnabled}
             onValueChange={toggleYoloMode}
             trackColor={{ true: colors.destructive || colors.primary, false: colors.systemGray4 }}
-            thumbColor="#FFFFFF"
+            thumbColor={colors.contrastText}
             accessibilityLabel="YOLO Mode"
           />
         </XStack>
@@ -189,14 +192,14 @@ export function SettingsScreen() {
 
       {/* Developer Logs */}
       {devModeEnabled && (
-        <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+        <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
           <XStack justifyContent="space-between" alignItems="center">
             <Text fontSize={17} fontWeight="600" color="$color">Developer Logs</Text>
-            <TouchableOpacity onPress={clearLogs}>
+            <TouchableOpacity onPress={clearLogs} accessibilityLabel="Clear developer logs" accessibilityRole="button">
               <Text fontSize={13} fontWeight="600" color="$primary">Clear</Text>
             </TouchableOpacity>
           </XStack>
-          <YStack maxHeight={300} borderRadius={8} padding={8} backgroundColor="$codeBackground">
+          <YStack maxHeight={300} borderRadius={Radius.sm} padding={Spacing.sm} backgroundColor="$codeBackground">
             {developerLogs.length === 0 ? (
               <Text fontSize={13} fontStyle="italic" textAlign="center" paddingVertical={16} color="$textTertiary">No logs yet</Text>
             ) : (
@@ -214,7 +217,7 @@ export function SettingsScreen() {
       )}
 
       {/* About */}
-      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
         <XStack justifyContent="space-between" paddingVertical={4}>
           <Text fontSize={16} color="$color">App</Text>
           <Text fontSize={16} color="$textTertiary">{APP_DISPLAY_NAME} v{APP_VERSION}</Text>
@@ -251,8 +254,8 @@ function MCPServerRow({
   const hasError = status?.state === MCPConnectionState.Error;
 
   return (
-    <YStack borderWidth={StyleSheet.hairlineWidth} borderColor="$separator" borderRadius={8} padding={12} gap={8}>
-      <XStack alignItems="center" gap={8}>
+    <YStack borderWidth={StyleSheet.hairlineWidth} borderColor="$separator" borderRadius={Radius.sm} padding={Spacing.md} gap={Spacing.sm}>
+      <XStack alignItems="center" gap={Spacing.sm}>
         <YStack flex={1}>
           <Text fontSize={16} fontWeight="500" color="$color">{server.name}</Text>
           <Text fontSize={12} marginTop={2} color="$textTertiary" numberOfLines={1}>
@@ -284,10 +287,10 @@ function MCPServerRow({
         </Text>
       )}
 
-      <XStack gap={8}>
+      <XStack gap={Spacing.sm}>
         {isConnected ? (
           <TouchableOpacity
-            style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: 12, paddingVertical: 4 }}
+            style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
             onPress={onDisconnect}
             accessibilityLabel={`Disconnect from ${server.name}`}
           >
@@ -295,7 +298,7 @@ function MCPServerRow({
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 4 }}
+            style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, backgroundColor: colors.primary, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
             onPress={onConnect}
             disabled={isConnecting}
             accessibilityLabel={`Connect to ${server.name}`}
@@ -304,7 +307,7 @@ function MCPServerRow({
           </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.destructive, paddingHorizontal: 12, paddingVertical: 4 }}
+          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.destructive, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
           onPress={onRemove}
           accessibilityLabel={`Remove ${server.name}`}
         >
@@ -365,9 +368,9 @@ function AddMCPServerForm({
   };
 
   return (
-    <YStack borderWidth={StyleSheet.hairlineWidth} borderColor="$separator" borderRadius={8} padding={12} gap={8}>
+    <YStack borderWidth={StyleSheet.hairlineWidth} borderColor="$separator" borderRadius={Radius.sm} padding={Spacing.md} gap={Spacing.sm}>
       <TextInput
-        style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
+        style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
         placeholder="Server name (e.g., GitHub MCP)"
         placeholderTextColor={colors.textTertiary}
         value={name}
@@ -375,7 +378,7 @@ function AddMCPServerForm({
       />
 
       <TextInput
-        style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
+        style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
         placeholder="URL (e.g., https://mcp.example.com/mcp)"
         placeholderTextColor={colors.textTertiary}
         value={url}
@@ -393,7 +396,7 @@ function AddMCPServerForm({
             style={{
               borderRadius: 14,
               borderWidth: StyleSheet.hairlineWidth,
-              paddingHorizontal: 12,
+              paddingHorizontal: Spacing.md,
               paddingVertical: 5,
               backgroundColor: authType === at.type ? colors.primary : colors.systemGray5,
               borderColor: authType === at.type ? colors.primary : colors.separator,
@@ -409,7 +412,7 @@ function AddMCPServerForm({
 
       {authType === MCPAuthType.Bearer && (
         <TextInput
-          style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
+          style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
           placeholder="Bearer token"
           placeholderTextColor={colors.textTertiary}
           value={token}
@@ -422,7 +425,7 @@ function AddMCPServerForm({
       {authType === MCPAuthType.ApiKey && (
         <>
           <TextInput
-            style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
+            style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
             placeholder="Header name (default: X-API-Key)"
             placeholderTextColor={colors.textTertiary}
             value={headerName}
@@ -430,7 +433,7 @@ function AddMCPServerForm({
             autoCapitalize="none"
           />
           <TextInput
-            style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
+            style={{ borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16, color: colors.text, borderColor: colors.separator, backgroundColor: colors.systemGray6 }}
             placeholder="API key value"
             placeholderTextColor={colors.textTertiary}
             value={apiKey}
@@ -448,22 +451,22 @@ function AddMCPServerForm({
           value={autoConnect}
           onValueChange={setAutoConnect}
           trackColor={{ true: colors.primary, false: colors.systemGray4 }}
-          thumbColor="#FFFFFF"
+          thumbColor={colors.contrastText}
           accessibilityLabel="Auto-connect on startup"
         />
       </XStack>
 
       {/* Actions */}
-      <XStack justifyContent="flex-end" gap={8} marginTop={8}>
+      <XStack justifyContent="flex-end" gap={Spacing.sm} marginTop={Spacing.sm}>
         <TouchableOpacity
-          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 8, borderColor: colors.separator }}
+          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: Spacing.sm, borderColor: colors.separator }}
           onPress={onCancel}
           accessibilityLabel="Cancel adding MCP server"
         >
           <Text color="$textSecondary">Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 8, borderColor: 'transparent', backgroundColor: colors.primary }}
+          style={{ borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: Spacing.sm, borderColor: 'transparent', backgroundColor: colors.primary }}
           onPress={handleSave}
           disabled={saving}
           accessibilityLabel="Add and connect MCP server"

@@ -56,6 +56,9 @@ const LightPalette = {
   sidebarText: '#ECECF1',
   sidebarTextSecondary: '#8E8EA0',
   sidebarSeparator: 'rgba(255,255,255,0.08)',
+  sidebarActiveItem: 'rgba(255,255,255,0.10)',
+  sidebarSelectedItem: 'rgba(255,255,255,0.06)',
+  sidebarInputBg: 'rgba(255,255,255,0.08)',
 
   // Code & special
   codeBackground: '#F7F7F8',
@@ -122,6 +125,9 @@ const DarkPalette: typeof LightPalette = {
   sidebarText: '#ECECF1',
   sidebarTextSecondary: '#8E8EA0',
   sidebarSeparator: 'rgba(255,255,255,0.08)',
+  sidebarActiveItem: 'rgba(255,255,255,0.10)',
+  sidebarSelectedItem: 'rgba(255,255,255,0.06)',
+  sidebarInputBg: 'rgba(255,255,255,0.08)',
 
   // Code & special
   codeBackground: '#2F2F2F',
