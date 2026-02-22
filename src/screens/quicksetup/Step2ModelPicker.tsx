@@ -1,7 +1,3 @@
-/**
- * Step2ModelPicker — model selection + advanced settings for QuickSetup.
- */
-
 import React from 'react';
 import {
   TouchableOpacity,
@@ -18,6 +14,9 @@ import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ThemeColors } from '../../utils/theme';
 import type { useQuickSetupWizard } from './useQuickSetupWizard';
 import { AdvancedModelSettings } from './AdvancedModelSettings';
+
+const separatorStyle = { height: Spacing.xs } as const;
+const ItemSeparator = () => <View style={separatorStyle} />;
 
 type WizardState = ReturnType<typeof useQuickSetupWizard>;
 
@@ -101,7 +100,7 @@ export function Step2ModelPicker({ w, colors }: Step2ModelPickerProps) {
             </TouchableOpacity>
           );
         }}
-        ItemSeparatorComponent={() => <View style={{ height: Spacing.xs }} />}
+        ItemSeparatorComponent={ItemSeparator}
       />
 
       {/* Advanced Settings (collapsible) */}

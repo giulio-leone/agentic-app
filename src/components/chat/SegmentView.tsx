@@ -7,6 +7,7 @@ import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Wrench, Loader, Check, ChevronDown, ChevronRight } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
+import { StyleSheet } from 'react-native';
 import type { MessageSegment } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
@@ -16,7 +17,7 @@ interface Props {
   segment: MessageSegment;
   colors: ThemeColors;
   isUser: boolean;
-  mdStyles: Record<string, unknown>;
+  mdStyles: StyleSheet.NamedStyles<Record<string, unknown>>;
 }
 
 export const SegmentView = React.memo(function SegmentView({ segment, colors, isUser, mdStyles }: Props) {
@@ -29,7 +30,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
           {segment.content}
         </Text>
       ) : (
-        <Markdown style={mdStyles as any} rules={codeBlockRules}>{segment.content}</Markdown>
+        <Markdown style={mdStyles} rules={codeBlockRules}>{segment.content}</Markdown>
       );
 
     case 'toolCall': {

@@ -102,10 +102,12 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
         const isStabilizing = useSharedValue(false);
 
         const logStateJS = Worklets.createRunOnJS((diff: number, motion: boolean, stabilizing: boolean, trigger: boolean) => {
-            if (trigger) {
-                console.log(`[SmartCameraView] TRIGGER EVENT! diff=${diff.toFixed(2)}`);
-            } else if (motion) {
-                console.log(`[SmartCameraView] MOTION DETECTED! diff=${diff.toFixed(2)}`);
+            if (__DEV__) {
+                if (trigger) {
+                    console.log(`[SmartCameraView] TRIGGER EVENT! diff=${diff.toFixed(2)}`);
+                } else if (motion) {
+                    console.log(`[SmartCameraView] MOTION DETECTED! diff=${diff.toFixed(2)}`);
+                }
             }
         });
 

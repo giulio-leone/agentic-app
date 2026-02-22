@@ -28,6 +28,8 @@ export interface WatcherCallbacks {
 const POLL_INTERVAL_MS = 3_000;   // 3s to account for on-device inference
 const CONFIRM_COUNT = 2;
 
+const DEBUG = __DEV__;
+
 export class ScreenWatcherService {
     private _status: WatcherStatus = 'idle';
     private _pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -65,7 +67,7 @@ export class ScreenWatcherService {
         this._setStatus('watching');
         // Disable the legacy polling loop since we use Native Pixel Diffing
         // this._pollTimer = setInterval(() => this._tick(), POLL_INTERVAL_MS);
-        console.log(`[SW] Started — Native Pixel Diffing detection initialized`);
+        DEBUG && console.log(`[SW] Started — Native Pixel Diffing detection initialized`);
     }
 
     stop(): void {
@@ -85,7 +87,7 @@ export class ScreenWatcherService {
             this._consecutiveChanges = 0;
             this._prevDesc = null;
             this._setStatus('watching');
-            console.log('[SW] Processing complete → watching');
+            DEBUG && console.log('[SW] Processing complete → watching');
         }
     }
 
@@ -110,7 +112,7 @@ export class ScreenWatcherService {
             // First frame: store text as baseline
             if (!this._prevDesc) {
                 this._prevDesc = desc;
-                console.log(`[SW] #${this._frameCount} baseline: "${desc.substring(0, 60)}..."`);
+                DEBUG && console.log(`[SW] #${this._frameCount} baseline: "${desc.substring(0, 60)}..."`);
                 return;
             }
 
@@ -119,24 +121,24 @@ export class ScreenWatcherService {
 
             if (changed) {
                 this._consecutiveChanges++;
-                console.log(
+                DEBUG && console.log(
                     `[SW] #${this._frameCount} DIFFERENT` +
                     ` (${this._consecutiveChanges}/${CONFIRM_COUNT})`
                 );
 
                 if (this._consecutiveChanges >= CONFIRM_COUNT) {
-                    console.log(`[SW] ✅ CONFIRMED change — capture #${this._captureCount + 1}`);
+                    DEBUG && console.log(`[SW] ✅ CONFIRMED change — capture #${this._captureCount + 1}`);
                     this._captureCount++;
                     this._prevDesc = desc;
                     this._consecutiveChanges = 0;
                 }
             } else {
                 if (this._consecutiveChanges > 0) {
-                    console.log(
+                    DEBUG && console.log(
                         `[SW] #${this._frameCount} SAME — false alarm reset (was ${this._consecutiveChanges})`
                     );
                 } else {
-                    console.log(`[SW] #${this._frameCount} SAME ✓`);
+                    DEBUG && console.log(`[SW] #${this._frameCount} SAME ✓`);
                 }
                 this._consecutiveChanges = 0;
                 this._prevDesc = desc;

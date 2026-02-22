@@ -39,6 +39,7 @@ export const typography = StyleSheet.create({
   },
 
   // Ellipsis
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   singleLine: { numberOfLines: 1 } as any,
   italic: { fontStyle: 'italic' },
   mono: { fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }) },

@@ -42,7 +42,7 @@ function guessMimeType(name: string): string {
 async function readFileAsBase64(uri: string): Promise<string> {
   const FileSystem = await import('expo-file-system');
   const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: 'base64' as any,
+    encoding: 'base64',
   });
   return base64;
 }

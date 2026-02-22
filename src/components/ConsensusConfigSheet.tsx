@@ -34,16 +34,18 @@ function ModelPicker({ value, models, onChange, colors, label }: {
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const displayName = value ? (value.split('/').pop() ?? value) : 'Default (server model)';
+  const pickerBtnStyle = {
+    flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+    padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
+    borderColor: colors.separator, backgroundColor: colors.codeBackground,
+  };
+  const optionStyle = { padding: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.separator };
 
   return (
     <YStack>
       <Text fontSize={FontSize.caption} color={colors.textTertiary} marginBottom={2}>{label}</Text>
       <TouchableOpacity
-        style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
-          borderColor: colors.separator, backgroundColor: colors.codeBackground,
-        }}
+        style={pickerBtnStyle}
         onPress={() => setShowPicker(!showPicker)}
       >
         <Text fontSize={FontSize.footnote} color={colors.text} flex={1} numberOfLines={1}>
@@ -56,7 +58,7 @@ function ModelPicker({ value, models, onChange, colors, label }: {
           backgroundColor={colors.cardBackground} marginTop={2} maxHeight={200}>
           <ScrollView>
             <TouchableOpacity
-              style={{ padding: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.separator }}
+              style={optionStyle}
               onPress={() => { onChange(undefined); setShowPicker(false); }}
             >
               <Text fontSize={FontSize.footnote} color={!value ? colors.primary : colors.text} fontWeight={!value ? '600' : '400'}>
@@ -66,7 +68,7 @@ function ModelPicker({ value, models, onChange, colors, label }: {
             {models.map(m => (
               <TouchableOpacity
                 key={m.id}
-                style={{ padding: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.separator }}
+                style={optionStyle}
                 onPress={() => { onChange(m.id); setShowPicker(false); }}
               >
                 <Text fontSize={FontSize.footnote} color={value === m.id ? colors.primary : colors.text}

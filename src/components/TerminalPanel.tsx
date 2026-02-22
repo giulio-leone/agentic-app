@@ -66,7 +66,7 @@ const XTERM_HTML = `
 
     let ws = null;
 
-    function connect(url) {
+    function connect(/** @type {string} */ url) {
       if (ws) ws.close();
       ws = new WebSocket(url);
       ws.onopen = () => {
@@ -114,24 +114,30 @@ const XTERM_HTML = `
     term.writeln('');
 
     // Listen for messages from React Native
-    window.addEventListener('message', (e) => {
+    function handleWindowMessage(e) {
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === 'connect') connect(msg.url);
         if (msg.type === 'write') term.write(msg.data);
         if (msg.type === 'clear') term.clear();
-      } catch {}
-    });
+      } catch (err) {
+        console.warn('[Terminal] Failed to parse message:', err);
+      }
+    }
+    window.addEventListener('message', handleWindowMessage);
 
     // Also handle React Native Android
-    document.addEventListener('message', (e) => {
+    function handleDocMessage(e) {
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === 'connect') connect(msg.url);
         if (msg.type === 'write') term.write(msg.data);
         if (msg.type === 'clear') term.clear();
-      } catch {}
-    });
+      } catch (err) {
+        console.warn('[Terminal] Failed to parse message:', err);
+      }
+    }
+    document.addEventListener('message', handleDocMessage);
 
     // Notify React Native we're ready
     window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'ready' }));

@@ -24,7 +24,7 @@ import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useAddServerForm } from '../hooks/useAddServerForm';
 
-export function AddServerScreen() {
+export const AddServerScreen = React.memo(function AddServerScreen() {
   const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const w = useAddServerForm();
@@ -612,4 +612,4 @@ export function AddServerScreen() {
       </ScrollView>
     </KeyboardAvoidingView>
   );
-}
+});

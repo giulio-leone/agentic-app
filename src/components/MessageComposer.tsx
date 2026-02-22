@@ -34,7 +34,7 @@ interface Props {
   onToggleVoice?: () => void;
 }
 
-export function MessageComposer({
+export const MessageComposer = React.memo(function MessageComposer({
   value,
   onChangeText,
   onSend,
@@ -233,4 +233,4 @@ export function MessageComposer({
       />
     </>
   );
-}
+});

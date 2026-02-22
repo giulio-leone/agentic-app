@@ -9,6 +9,7 @@
  */
 
 import * as GeminiNano from '../../modules/gemini-nano';
+const DEBUG = __DEV__;
 
 let _initialized = false;
 
@@ -16,14 +17,14 @@ let _initialized = false;
 export async function ensureModel(): Promise<void> {
     if (_initialized) return;
 
-    console.log('[ImageDiff] Checking Gemini Nano status...');
+    DEBUG && console.log('[ImageDiff] Checking Gemini Nano status...');
     const status = await GeminiNano.checkStatus();
-    console.log(`[ImageDiff] Gemini Nano status: ${status} (0=unavailable, 1=downloadable, 2=available)`);
+    DEBUG && console.log(`[ImageDiff] Gemini Nano status: ${status} (0=unavailable, 1=downloadable, 2=available)`);
 
-    console.log('[ImageDiff] Initializing Gemini Nano Image Description...');
+    DEBUG && console.log('[ImageDiff] Initializing Gemini Nano Image Description...');
     const t0 = Date.now();
     await GeminiNano.initialize();
-    console.log(`[ImageDiff] ✅ Gemini Nano ready in ${Date.now() - t0}ms`);
+    DEBUG && console.log(`[ImageDiff] ✅ Gemini Nano ready in ${Date.now() - t0}ms`);
     _initialized = true;
 }
 
@@ -42,7 +43,7 @@ export async function extractTextFromFrame(base64: string): Promise<string> {
         const t0 = Date.now();
         // The GeminiNano native module is now mapped to ML Kit Text Recognition
         const extractedText = await GeminiNano.describeImage(base64);
-        console.log(`[ImageDiff] extract=${Date.now() - t0}ms: "${extractedText.substring(0, 80)}..."`);
+        DEBUG && console.log(`[ImageDiff] extract=${Date.now() - t0}ms: "${extractedText.substring(0, 80)}..."`);
         return extractedText;
     } finally {
         _isExtracting = false;
@@ -77,7 +78,7 @@ export function descriptionsAreDifferent(descA: string, descB: string): boolean 
     // If less than 75% word overlap → content changed physically
     // This makes it more sensitive to small lines of code / code scrolling
     const changed = jaccard < 0.75;
-    console.log(
+    DEBUG && console.log(
         `[ImageDiff] jaccard=${(jaccard * 100).toFixed(1)}% ` +
         `(${intersection}/${union} words) → ${changed ? 'DIFFERENT' : 'SAME'}`
     );
