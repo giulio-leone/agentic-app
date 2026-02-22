@@ -38,16 +38,14 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
   const [loading, setLoading] = useState(false);
   const mountedRef = useRef(true);
 
+  const isAIProvider = server.serverType === ServerType.AIProvider && !!server.aiProviderConfig;
+  const config = isAIProvider ? server.aiProviderConfig! : null;
+  const providerInfo = config ? getProviderInfo(config.providerType) : null;
+
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  if (server.serverType !== ServerType.AIProvider || !server.aiProviderConfig) {
-    return null;
-  }
-
-  const config = server.aiProviderConfig;
-  const providerInfo = getProviderInfo(config.providerType);
-
   const openPicker = useCallback(async () => {
+    if (!config || !providerInfo) return;
     setModalVisible(true);
     setSearch('');
     setLoading(true);
@@ -69,7 +67,7 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
         const fresh = await fetchModelsFromProvider(
           config.providerType,
           apiKey,
-          config.baseUrl ?? providerInfo.defaultBaseUrl,
+          config.baseUrl ?? providerInfo!.defaultBaseUrl,
         );
         if (!mountedRef.current) return;
         if (fresh.length > 0) {
@@ -84,6 +82,7 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
   }, [config, server.id, providerInfo]);
 
   const selectModel = useCallback(async (modelId: string) => {
+    if (!config) return;
     setModalVisible(false);
     await updateServer({
       ...server,
@@ -104,6 +103,7 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
   const tempOptions = useMemo(() => [0, 0.3, 0.7, 1.0, 1.5], []);
 
   const setTemperature = useCallback(async (temp: number) => {
+    if (!config) return;
     await updateServer({
       ...server,
       aiProviderConfig: { ...config, temperature: temp },
@@ -111,7 +111,7 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
   }, [server, config, updateServer]);
 
   const renderModelItem = useCallback(({ item }: { item: FetchedModel }) => {
-    const isSelected = item.id === config.modelId;
+    const isSelected = item.id === config?.modelId;
     return (
       <TouchableOpacity
         style={{
@@ -146,7 +146,9 @@ export const ModelPickerBar = React.memo(function ModelPickerBar({ server }: Pro
         {isSelected && <Check size={16} color={colors.primary} />}
       </TouchableOpacity>
     );
-  }, [config.modelId, colors, selectModel]);
+  }, [config?.modelId, colors, selectModel]);
+
+  if (!isAIProvider || !config || !providerInfo) return null;
 
   return (
     <>
