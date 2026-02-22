@@ -29,7 +29,7 @@ export type RootStackParamList = {
   Home: undefined;
   Session: undefined;
   AddServer: { editingServer?: ACPServerConfiguration } | undefined;
-  QuickSetup: undefined;
+  QuickSetup: { editingServer?: ACPServerConfiguration } | undefined;
   Settings: undefined;
 };
 
