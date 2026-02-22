@@ -271,10 +271,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               paddingVertical: Spacing.md,
               alignItems: 'center',
             }}
-            onPress={() => rootNav.navigate('AddServer')}
+            onPress={() => rootNav.navigate('QuickSetup')}
           >
             <Text color={colors.sidebarTextSecondary} fontSize={FontSize.footnote}>
-              + Add a server
+              + Quick Setup
             </Text>
           </TouchableOpacity>
         ) : (
