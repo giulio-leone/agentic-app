@@ -1,0 +1,24 @@
+{
+  "name": "@agentic/unified-bridge",
+  "version": "1.0.0",
+  "description": "Unified ACP bridge — multi-provider (Copilot SDK, Codex app-server)",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "^0.1.10",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^20.14.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
