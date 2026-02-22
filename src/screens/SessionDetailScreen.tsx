@@ -27,6 +27,7 @@ import { TypingIndicator } from '../components/TypingIndicator';
 import { MessageActionMenu } from '../components/chat/MessageActionMenu';
 import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
+import { ChatSearchBar } from '../components/chat/ChatSearchBar';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
@@ -65,6 +66,8 @@ export function SessionDetailScreen() {
     regenerateMessage,
     connect,
     loadSessionMessages,
+    chatSearchVisible,
+    toggleChatSearch,
   } = useAppStore();
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -166,6 +169,42 @@ export function SessionDetailScreen() {
     setQuotedMessage(message);
   }, []);
 
+  // ── Search state ──
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+
+  const searchMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return chatMessages
+      .map((m, i) => (m.content.toLowerCase().includes(q) ? i : -1))
+      .filter(i => i !== -1);
+  }, [chatMessages, searchQuery]);
+
+  const searchMatchSet = useMemo(() => new Set(searchMatches), [searchMatches]);
+
+  const handleSearchNext = useCallback(() => {
+    if (searchMatches.length === 0) return;
+    const next = (currentMatchIdx + 1) % searchMatches.length;
+    setCurrentMatchIdx(next);
+    flatListRef.current?.scrollToIndex({ index: searchMatches[next]!, animated: true, viewPosition: 0.5 });
+  }, [searchMatches, currentMatchIdx]);
+
+  const handleSearchPrev = useCallback(() => {
+    if (searchMatches.length === 0) return;
+    const prev = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+    setCurrentMatchIdx(prev);
+    flatListRef.current?.scrollToIndex({ index: searchMatches[prev]!, animated: true, viewPosition: 0.5 });
+  }, [searchMatches, currentMatchIdx]);
+
+  // Reset match index when query changes
+  useEffect(() => {
+    setCurrentMatchIdx(0);
+    if (searchMatches.length > 0) {
+      flatListRef.current?.scrollToIndex({ index: searchMatches[0]!, animated: true, viewPosition: 0.5 });
+    }
+  }, [searchQuery]);
+
   const handleSend = useCallback((attachments?: Attachment[]) => {
     const text = promptText.trim();
     if (!text && (!attachments || attachments.length === 0)) return;
@@ -261,7 +300,7 @@ export function SessionDetailScreen() {
 
   // Render message — pass stable handleSpeak and handleLongPress callbacks
   const renderMessage = useCallback(
-    ({ item }: { item: ChatMessage }) => {
+    ({ item, index }: { item: ChatMessage; index: number }) => {
       // Inline edit mode for user or assistant messages
       if (editingMessageId === item.id) {
         const isUserEdit = item.role === 'user';
@@ -330,11 +369,12 @@ export function SessionDetailScreen() {
             isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
             onLongPress={handleLongPress}
             onOpenArtifact={handleOpenArtifact}
+            highlighted={searchMatchSet.has(index)}
           />
         </SwipeableMessage>
       );
     },
-    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact],
+    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet],
   );
 
   // Pulsing animation for empty state — properly managed with start/stop
@@ -397,6 +437,17 @@ export function SessionDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
+      <ChatSearchBar
+        visible={chatSearchVisible}
+        query={searchQuery}
+        onChangeQuery={setSearchQuery}
+        onClose={() => { toggleChatSearch(); setSearchQuery(''); }}
+        matchCount={searchMatches.length}
+        currentMatch={currentMatchIdx}
+        onPrev={handleSearchPrev}
+        onNext={handleSearchNext}
+        colors={colors}
+      />
       <FlatList
         ref={flatListRef}
         data={chatMessages}

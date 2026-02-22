@@ -33,6 +33,7 @@ interface Props {
   isSpeaking?: boolean;
   onLongPress?: (message: ChatMessage) => void;
   onOpenArtifact?: (artifact: import('../acp/models/types').Artifact) => void;
+  highlighted?: boolean;
 }
 
 const containerStyle = {
@@ -64,7 +65,7 @@ const systemContainerStyle = {
   alignSelf: 'center',
 } as const;
 
-export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact }: Props) {
+export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact, highlighted }: Props) {
   const { ds, colors } = useDesignSystem();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -94,6 +95,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             justifyContent: isSystem ? 'center' : isUser ? 'flex-end' : 'flex-start',
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
+            backgroundColor: highlighted ? colors.primaryMuted : undefined,
           }
         ]}
       >

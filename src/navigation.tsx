@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text } from 'tamagui';
-import { Eye, Bot, Scale, PenLine, Menu } from 'lucide-react-native';
+import { Eye, Bot, Scale, PenLine, Menu, Search } from 'lucide-react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -69,7 +69,7 @@ function DrawerNavigator() {
   const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
   const { createSession, isInitialized, agentModeEnabled, toggleAgentMode, consensusModeEnabled, toggleConsensusMode } = useAppStore();
-  const { screenWatcherVisible, setScreenWatcherVisible, isWatching } = useAppStore();
+  const { screenWatcherVisible, setScreenWatcherVisible, isWatching, toggleChatSearch } = useAppStore();
   const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
 
   return (
@@ -116,6 +116,13 @@ function DrawerNavigator() {
             ),
             headerRight: () => (
               <XStack alignItems="center" gap={Spacing.xs}>
+                <TouchableOpacity
+                  onPress={toggleChatSearch}
+                  style={{ paddingHorizontal: Spacing.sm }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Search size={18} color={colors.text} opacity={0.5} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setScreenWatcherVisible(true)}
                   style={{ paddingHorizontal: Spacing.sm }}

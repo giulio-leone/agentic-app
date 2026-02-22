@@ -70,6 +70,7 @@ export interface AppState {
   localAIResponse: string | null;
   isWatcherProcessing: boolean;
   screenWatcherVisible: boolean;
+  chatSearchVisible: boolean;
   motionThreshold: number;
   stableThreshold: number;
 }
@@ -134,6 +135,7 @@ export interface AppActions {
   setLocalAIResponse: (text: string | null) => void;
   setWatcherProcessing: (on: boolean) => void;
   setScreenWatcherVisible: (v: boolean) => void;
+  toggleChatSearch: () => void;
   setMotionThreshold: (v: number) => void;
   setStableThreshold: (v: number) => void;
 
