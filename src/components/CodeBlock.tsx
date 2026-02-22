@@ -174,6 +174,7 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
   useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const tokens = useMemo(() => tokenize(code, language), [code, language]);
+  const lines = useMemo(() => code.split('\n'), [code]);
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(code);
@@ -202,8 +203,8 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
           {displayLang}
         </Text>
         <TouchableOpacity onPress={handleCopy} style={{ paddingHorizontal: 8, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }} activeOpacity={0.7}>
-          {copied ? <Check size={13} color="#10A37F" /> : <Copy size={13} color={colors.textTertiary} />}
-          <Text fontSize={FontSize.caption} fontWeight="500" color={copied ? '#10A37F' : colors.textTertiary}>
+          {copied ? <Check size={13} color={colors.primary} /> : <Copy size={13} color={colors.textTertiary} />}
+          <Text fontSize={FontSize.caption} fontWeight="500" color={copied ? colors.primary : colors.textTertiary}>
             {copied ? 'Copied' : 'Copy'}
           </Text>
         </TouchableOpacity>
@@ -211,9 +212,19 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
 
       {/* Code content */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Text padding={Spacing.md} fontFamily="monospace" fontSize={FontSize.caption} selectable>
-          {renderedTokens}
-        </Text>
+        <XStack>
+          {/* Line numbers gutter */}
+          <YStack paddingVertical={Spacing.md} paddingLeft={Spacing.sm} paddingRight={Spacing.xs} borderRightWidth={StyleSheet.hairlineWidth} borderRightColor="rgba(255,255,255,0.06)">
+          {lines.map((_, i) => (
+              <RNText key={i} style={{ color: colors.textTertiary, fontFamily: 'monospace', fontSize: FontSize.caption, lineHeight: FontSize.caption * 1.6, textAlign: 'right', minWidth: lines.length > 99 ? 24 : 16, opacity: 0.5 }}>
+                {i + 1}
+              </RNText>
+            ))}
+          </YStack>
+          <Text padding={Spacing.md} fontFamily="monospace" fontSize={FontSize.caption} lineHeight={FontSize.caption * 1.6} selectable>
+            {renderedTokens}
+          </Text>
+        </XStack>
       </ScrollView>
     </YStack>
   );

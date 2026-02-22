@@ -12,6 +12,7 @@ import {
   Animated,
   TextInput,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
@@ -59,6 +60,8 @@ export function SessionDetailScreen() {
     editMessage,
     deleteMessage,
     regenerateMessage,
+    connect,
+    loadSessionMessages,
   } = useAppStore();
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -168,6 +171,22 @@ export function SessionDetailScreen() {
     setUnreadCount(0);
     Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
   }, [fabOpacity]);
+
+  // ── Pull-to-refresh: reconnect ACP or reload messages ──
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      if (!isAIProvider && connectionState !== ACPConnectionState.Connected) {
+        connect();
+      } else if (selectedSessionId) {
+        await loadSessionMessages(selectedSessionId);
+      }
+    } finally {
+      setTimeout(() => setRefreshing(false), 400);
+    }
+  }, [isAIProvider, connectionState, connect, loadSessionMessages, selectedSessionId]);
 
   // ── Message CRUD state ──
   const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
@@ -376,6 +395,14 @@ export function SessionDetailScreen() {
         windowSize={11}
         removeClippedSubviews={false}
         initialNumToRender={10}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       />
 
       <ScrollToBottomFab
