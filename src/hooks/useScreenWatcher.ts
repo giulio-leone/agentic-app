@@ -189,7 +189,7 @@ export function useScreenWatcher() {
 
     saveToGallery(result.uri);
     sendCaptureToLLM(result.uri, result.base64, 'Auto Scene Change Capture', sendPrompt);
-    delete (result as any).base64;
+    (result as { base64: string }).base64 = '';
   }, [isAutoMode, isWatching, watcherStatus, triggerFlash, incrementCapture, sendPrompt]);
 
   // Bluetooth shutter callback
@@ -204,7 +204,7 @@ export function useScreenWatcher() {
 
     saveToGallery(result.uri);
     sendCaptureToLLM(result.uri, result.base64, 'Manual Bluetooth Capture', sendPrompt);
-    delete (result as any).base64;
+    (result as { base64: string }).base64 = '';
   }, [isWatching, watcherStatus, triggerFlash, incrementCapture, sendPrompt]);
 
   return {

@@ -100,7 +100,7 @@ export function streamChat(
         messages: coreMessages as Array<{ role: string; content: unknown }>,
         abortSignal: controller.signal,
         ...(Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
-      } as any);
+      } as Parameters<typeof agent.stream>[0]);
 
       for await (const part of result.fullStream) {
         if (controller.signal.aborted) break;

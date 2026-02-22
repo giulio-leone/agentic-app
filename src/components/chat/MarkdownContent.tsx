@@ -25,7 +25,7 @@ interface Props {
 }
 
 export const MarkdownContent = React.memo(function MarkdownContent({ content, colors, artifacts, onOpenArtifact }: Props) {
-  const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]) as any;
+  const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
 
   const handleLinkPress = useCallback((url: string) => {
     Linking.openURL(url).catch(e => console.warn('[Linking] Failed to open URL:', e));

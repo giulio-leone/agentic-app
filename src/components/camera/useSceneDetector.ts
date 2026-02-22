@@ -1,7 +1,7 @@
 import { VisionCameraProxy, type Frame } from 'react-native-vision-camera';
 
 const pluginName = 'detectSceneChange';
-const globalAny = global as any;
+const globalAny = global as unknown as Record<string, ReturnType<typeof VisionCameraProxy.initFrameProcessorPlugin> | undefined>;
 
 if (!globalAny.__sceneDetectorPlugin) {
     try {

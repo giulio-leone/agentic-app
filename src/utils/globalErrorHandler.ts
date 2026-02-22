@@ -12,8 +12,15 @@ export function setupGlobalErrorHandler(): void {
   initialized = true;
 
   // Unhandled promise rejections
-  const originalHandler = (globalThis as any).onunhandledrejection;
-  (globalThis as any).onunhandledrejection = (event: { reason: unknown }) => {
+  const g = globalThis as typeof globalThis & {
+    onunhandledrejection?: (event: { reason: unknown }) => void;
+    ErrorUtils?: {
+      getGlobalHandler: () => ((error: Error, isFatal?: boolean) => void) | undefined;
+      setGlobalHandler: (handler: (error: Error, isFatal?: boolean) => void) => void;
+    };
+  };
+  const originalHandler = g.onunhandledrejection;
+  g.onunhandledrejection = (event: { reason: unknown }) => {
     const message = event?.reason instanceof Error
       ? event.reason.message
       : String(event?.reason ?? 'Unknown rejection');
@@ -23,7 +30,7 @@ export function setupGlobalErrorHandler(): void {
   };
 
   // React Native global error handler (non-fatal)
-  const ErrorUtils = (globalThis as any).ErrorUtils;
+  const ErrorUtils = g.ErrorUtils;
   if (ErrorUtils) {
     const prevHandler = ErrorUtils.getGlobalHandler();
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
