@@ -3,9 +3,7 @@
  */
 
 import { useCallback } from 'react';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import type * as ImagePickerTypes from 'expo-image-picker';
 import { v4 as uuidv4 } from 'uuid';
 import { Attachment } from '../acp/models/types';
 
@@ -42,14 +40,16 @@ function guessMimeType(name: string): string {
 }
 
 async function readFileAsBase64(uri: string): Promise<string> {
+  const FileSystem = await import('expo-file-system');
   const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: 'base64',
+    encoding: 'base64' as any,
   });
   return base64;
 }
 
 async function getFileSize(uri: string): Promise<number | undefined> {
   try {
+    const FileSystem = await import('expo-file-system');
     const info = await FileSystem.getInfoAsync(uri);
     return info.exists ? info.size : undefined;
   } catch {
@@ -59,9 +59,9 @@ async function getFileSize(uri: string): Promise<number | undefined> {
 
 export function useFilePicker() {
   const pickImage = useCallback(async (): Promise<Attachment[]> => {
-    // Permissions are handled automatically by launchImageLibraryAsync in SDK 52+
+    const ImagePicker = await import('expo-image-picker');
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as ImagePicker.MediaType[],
+      mediaTypes: ['images'] as ImagePickerTypes.MediaType[],
       allowsMultipleSelection: true,
       quality: 0.8,
       base64: true,
@@ -93,13 +93,14 @@ export function useFilePicker() {
   }, []);
 
   const pickCamera = useCallback(async (): Promise<Attachment | null> => {
+    const ImagePicker = await import('expo-image-picker');
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       throw new Error('Camera permission is required');
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'] as ImagePicker.MediaType[],
+      mediaTypes: ['images'] as ImagePickerTypes.MediaType[],
       quality: 0.8,
       base64: true,
     });
@@ -123,6 +124,7 @@ export function useFilePicker() {
   }, []);
 
   const pickDocument = useCallback(async (): Promise<Attachment[]> => {
+    const DocumentPicker = await import('expo-document-picker');
     const result = await DocumentPicker.getDocumentAsync({
       multiple: true,
       copyToCacheDirectory: true,

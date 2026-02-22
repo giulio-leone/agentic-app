@@ -2,8 +2,6 @@
  * Chat export utilities — Markdown and JSON formats.
  */
 
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import type { ChatMessage } from '../acp/models/types';
 
 function formatTimestamp(iso: string): string {
@@ -61,6 +59,8 @@ export function chatToJSON(messages: ChatMessage[], title?: string): string {
 
 /** Write content to a temp file and open the share sheet. */
 export async function shareExport(content: string, filename: string): Promise<void> {
+  const FileSystem = await import('expo-file-system/legacy');
+  const Sharing = await import('expo-sharing');
   const fileUri = `${FileSystem.cacheDirectory}${filename}`;
   await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
   await Sharing.shareAsync(fileUri, {

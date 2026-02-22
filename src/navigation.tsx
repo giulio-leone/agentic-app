@@ -2,9 +2,9 @@
  * Navigation — Drawer + Stack layout, ChatGPT-style header with glass effects.
  */
 
-import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
-import { XStack, Text } from 'tamagui';
+import React, { Suspense, useEffect, useState } from 'react';
+import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { XStack, Text, YStack } from 'tamagui';
 import { Eye, Bot, Scale, PenLine, Menu, Search } from 'lucide-react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -12,10 +12,12 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
-import { AddServerScreen } from './screens/AddServerScreen';
-import { QuickSetupScreen } from './screens/QuickSetupScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
 import { DrawerContent } from './components/sidebar/DrawerContent';
+
+// Lazy-loaded modal screens — not needed until user interaction
+const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').then(m => ({ default: m.AddServerScreen })));
+const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
+const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
 import { ConsensusConfigSheet } from './components/ConsensusConfigSheet';
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
@@ -39,6 +41,24 @@ export type DrawerParamList = {
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
+
+function ScreenFallback() {
+  return (
+    <YStack flex={1} alignItems="center" justifyContent="center">
+      <ActivityIndicator size="small" />
+    </YStack>
+  );
+}
+
+function LazyAddServer(props: any) {
+  return <Suspense fallback={<ScreenFallback />}><AddServerScreen {...props} /></Suspense>;
+}
+function LazyQuickSetup(props: any) {
+  return <Suspense fallback={<ScreenFallback />}><QuickSetupScreen {...props} /></Suspense>;
+}
+function LazySettings(props: any) {
+  return <Suspense fallback={<ScreenFallback />}><SettingsScreen {...props} /></Suspense>;
+}
 
 function HeaderTitle() {
   const { colors } = useDesignSystem();
@@ -227,7 +247,7 @@ function AppContent() {
         <RootStack.Screen name="Main" component={DrawerNavigator} />
         <RootStack.Screen
           name="AddServer"
-          component={AddServerScreen}
+          component={LazyAddServer}
           options={{
             headerShown: true,
             title: 'Add Server',
@@ -249,7 +269,7 @@ function AppContent() {
         />
         <RootStack.Screen
           name="QuickSetup"
-          component={QuickSetupScreen}
+          component={LazyQuickSetup}
           options={{
             headerShown: true,
             title: 'Quick Setup',
@@ -271,7 +291,7 @@ function AppContent() {
         />
         <RootStack.Screen
           name="Settings"
-          component={SettingsScreen}
+          component={LazySettings}
           options={{
             headerShown: true,
             title: 'Settings',
