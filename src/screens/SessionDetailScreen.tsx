@@ -8,11 +8,9 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  TextInput,
   StyleSheet,
   RefreshControl,
   View,
-  Pressable,
   TouchableOpacity,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
@@ -32,9 +30,11 @@ import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { SlashCommandAutocomplete } from '../components/chat/SlashCommandAutocomplete';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
+import { InlineEditView } from '../components/chat/InlineEditView';
+import { QuotedMessageBar } from '../components/chat/QuotedMessageBar';
 import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
-import { FontSize, Spacing, Radius } from '../utils/theme';
+import { FontSize, Spacing } from '../utils/theme';
 import { useChatSpeech } from '../hooks/useChatSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useScrollToBottom, useChatSearch, useMessageActions, useComposition } from '../hooks/chat';
@@ -179,57 +179,15 @@ export function SessionDetailScreen() {
   const renderMessage = useCallback(
     ({ item, index }: { item: ChatMessage; index: number }) => {
       if (editingMessageId === item.id) {
-        const isUserEdit = item.role === 'user';
         return (
-          <YStack
-            paddingHorizontal={Spacing.lg}
-            paddingVertical={Spacing.md}
-            backgroundColor={isUserEdit ? colors.userBubble : colors.surface}
-          >
-            <XStack maxWidth={768} alignSelf="center" width="100%" gap={Spacing.sm}>
-              <YStack flex={1} paddingLeft={isUserEdit ? 40 : 0}>
-                <TextInput
-                  style={[
-                    inlineEditStyles.input,
-                    {
-                      color: colors.text,
-                      borderColor: colors.primary,
-                      backgroundColor: colors.inputBackground,
-                      minHeight: isUserEdit ? 40 : 100,
-                    },
-                  ]}
-                  value={editText}
-                  onChangeText={setEditText}
-                  multiline
-                  autoFocus
-                  returnKeyType="done"
-                  blurOnSubmit
-                  onSubmitEditing={handleEditSubmit}
-                />
-                <XStack gap={Spacing.sm} marginTop={Spacing.sm} justifyContent="flex-end">
-                  <Text
-                    fontSize={FontSize.footnote}
-                    color={colors.textTertiary}
-                    onPress={handleEditCancel}
-                    paddingHorizontal={Spacing.sm}
-                    paddingVertical={Spacing.xs}
-                  >
-                    Cancel
-                  </Text>
-                  <Text
-                    fontSize={FontSize.footnote}
-                    fontWeight="600"
-                    color={colors.primary}
-                    onPress={handleEditSubmit}
-                    paddingHorizontal={Spacing.sm}
-                    paddingVertical={Spacing.xs}
-                  >
-                    {isUserEdit ? 'Send' : 'Save'}
-                  </Text>
-                </XStack>
-              </YStack>
-            </XStack>
-          </YStack>
+          <InlineEditView
+            isUserEdit={item.role === 'user'}
+            editText={editText}
+            setEditText={setEditText}
+            onSubmit={handleEditSubmit}
+            onCancel={handleEditCancel}
+            colors={colors}
+          />
         );
       }
 
@@ -356,28 +314,7 @@ export function SessionDetailScreen() {
       )}
 
       {quotedMessage && (
-        <XStack
-          paddingHorizontal={Spacing.lg}
-          paddingVertical={Spacing.sm}
-          backgroundColor={colors.cardBackground}
-          borderTopWidth={StyleSheet.hairlineWidth}
-          borderTopColor={colors.separator}
-          alignItems="center"
-          gap={Spacing.sm}
-        >
-          <View style={{ width: 3, height: '100%', backgroundColor: colors.primary, borderRadius: 2, minHeight: 24 }} />
-          <YStack flex={1}>
-            <Text fontSize={FontSize.caption} fontWeight="600" color={colors.primary}>
-              {quotedMessage.role === 'user' ? 'You' : 'Assistant'}
-            </Text>
-            <Text fontSize={FontSize.caption} color={colors.textSecondary} numberOfLines={2}>
-              {quotedMessage.content.slice(0, 120)}
-            </Text>
-          </YStack>
-          <Pressable onPress={clearQuote} hitSlop={8}>
-            <Text fontSize={FontSize.body} color={colors.textTertiary}>✕</Text>
-          </Pressable>
-        </XStack>
+        <QuotedMessageBar message={quotedMessage} onClear={clearQuote} colors={colors} />
       )}
 
       <ServerChipSelector
@@ -449,17 +386,3 @@ export function SessionDetailScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const inlineEditStyles = StyleSheet.create({
-  input: {
-    fontSize: FontSize.body,
-    lineHeight: 24,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    minHeight: 44,
-    maxHeight: 160,
-    textAlignVertical: 'top',
-  },
-});

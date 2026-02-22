@@ -8,14 +8,14 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  Platform,
   RefreshControl,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
-import { ConnectionBadge } from '../components/ConnectionBadge';
+import { ServerListItem } from '../components/home/ServerListItem';
+import { SessionListItem } from '../components/home/SessionListItem';
 import { ACPConnectionState, SessionSummary } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
@@ -95,85 +95,29 @@ export function HomeScreen() {
   );
 
   const renderServerItem = useCallback(
-    ({ item }: { item: typeof servers[0] }) => {
-      const isSelected = item.id === selectedServerId;
-      return (
-        <TouchableOpacity
-          style={[
-            {
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingHorizontal: Spacing.lg,
-              paddingVertical: Spacing.md,
-              marginHorizontal: Spacing.lg,
-              marginVertical: 2,
-              backgroundColor: colors.cardBackground,
-              borderRadius: Radius.md,
-              ...Platform.select({ android: { elevation: 1 } }),
-            },
-            isSelected && { backgroundColor: `${colors.primary}15`, borderWidth: 1, borderColor: colors.primary },
-          ]}
-          onPress={() => handleServerPress(item.id)}
-          activeOpacity={0.7}
-          accessibilityLabel={`Server: ${item.name || item.host}`}
-        >
-          <YStack flex={1} marginRight={Spacing.sm}>
-            <Text color={colors.text} fontSize={FontSize.body} fontWeight="500" numberOfLines={1}>
-              {item.name || item.host}
-            </Text>
-            <Text color={colors.textTertiary} fontSize={FontSize.caption} marginTop={2} numberOfLines={1}>
-              {item.scheme}://{item.host}
-            </Text>
-          </YStack>
-          {isSelected && (
-            <ConnectionBadge
-              state={connectionState}
-              isInitialized={isInitialized}
-            />
-          )}
-        </TouchableOpacity>
-      );
-    },
+    ({ item }: { item: typeof servers[0] }) => (
+      <ServerListItem
+        server={item}
+        isSelected={item.id === selectedServerId}
+        connectionState={connectionState}
+        isInitialized={isInitialized}
+        onPress={handleServerPress}
+        colors={colors}
+      />
+    ),
     [selectedServerId, connectionState, isInitialized, handleServerPress, colors],
   );
 
   const renderSessionItem = useCallback(
-    ({ item }: { item: SessionSummary }) => {
-      const isSelected = item.id === selectedSessionId;
-      return (
-        <TouchableOpacity
-          style={[
-            {
-              paddingHorizontal: Spacing.lg,
-              paddingVertical: Spacing.md,
-              marginHorizontal: Spacing.lg,
-              marginVertical: 2,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: colors.cardBackground,
-              borderRadius: Radius.md,
-              ...Platform.select({ android: { elevation: 1 } }),
-            },
-            isSelected && { backgroundColor: `${colors.primary}15` },
-          ]}
-          onPress={() => handleSessionPress(item)}
-          onLongPress={() => handleDeleteSession(item.id)}
-          activeOpacity={0.7}
-          accessibilityLabel={`Session: ${item.title || 'New Session'}`}
-        >
-          <Text color={colors.text} fontSize={FontSize.body} flex={1} numberOfLines={1}>
-            {item.title || 'New Session'}
-          </Text>
-          {item.updatedAt && (
-            <Text color={colors.textTertiary} fontSize={FontSize.caption} marginLeft={Spacing.sm}>
-              {new Date(item.updatedAt).toLocaleDateString()}
-            </Text>
-          )}
-        </TouchableOpacity>
-      );
-    },
+    ({ item }: { item: SessionSummary }) => (
+      <SessionListItem
+        session={item}
+        isSelected={item.id === selectedSessionId}
+        onPress={handleSessionPress}
+        onLongPress={handleDeleteSession}
+        colors={colors}
+      />
+    ),
     [selectedSessionId, handleSessionPress, handleDeleteSession, colors],
   );
 
