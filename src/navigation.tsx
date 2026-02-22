@@ -209,6 +209,7 @@ function AppContent() {
       <RootStack.Navigator
         screenOptions={{
           headerShown: false,
+          animation: 'slide_from_bottom',
         }}
       >
         <RootStack.Screen name="Main" component={DrawerNavigator} />

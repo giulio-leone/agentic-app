@@ -5,6 +5,7 @@
 
 import React, { useCallback, useRef, useEffect } from 'react';
 import { TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { XStack, Text } from 'tamagui';
 import { Search, ChevronUp, ChevronDown, X } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
@@ -49,6 +50,7 @@ export const ChatSearchBar = React.memo(function ChatSearchBar({
   if (!visible) return null;
 
   return (
+    <Animated.View entering={FadeInUp.duration(200)} exiting={FadeOutUp.duration(150)}>
     <XStack
       paddingHorizontal={Spacing.sm}
       paddingVertical={Spacing.xs}
@@ -85,6 +87,7 @@ export const ChatSearchBar = React.memo(function ChatSearchBar({
         <X size={18} color={colors.textTertiary} />
       </TouchableOpacity>
     </XStack>
+    </Animated.View>
   );
 });
 

@@ -7,7 +7,6 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import {
   TouchableOpacity,
   ActivityIndicator,
-  Animated,
   Image,
   Dimensions,
   Pressable,
@@ -15,6 +14,7 @@ import {
   View,
   Text as RNText,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { YStack, XStack, Text } from 'tamagui';
 import { Sparkles, Volume1, Volume2 } from 'lucide-react-native';
 import { ChatMessage, Attachment } from '../acp/models/types';
@@ -72,30 +72,14 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
   const isSystem = message.role === 'system';
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
 
-
-  // Entrance animation (runs once)
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(10)).current;
-  const animRan = useRef(false);
-
-  useEffect(() => {
-    if (animRan.current) return;
-    animRan.current = true;
-    Animated.parallel([
-      Animated.spring(fadeAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 12 }),
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
-    ]).start();
-  }, []);
-
   return (
     <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={400}>
       <Animated.View
+        entering={FadeInDown.duration(250).springify().damping(18)}
         style={[
           containerStyle,
           {
             justifyContent: isSystem ? 'center' : isUser ? 'flex-end' : 'flex-start',
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
             backgroundColor: highlighted ? colors.primaryMuted : undefined,
           }
         ]}
