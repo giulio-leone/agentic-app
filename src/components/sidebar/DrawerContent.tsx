@@ -341,7 +341,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => rootNav.navigate('AddServer')}
+                  onPress={() => rootNav.navigate('QuickSetup')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Text color={colors.sidebarTextSecondary} fontSize={20} fontWeight="300">+</Text>
@@ -360,7 +360,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                   ✓ Ready
                 </Text>
                 <TouchableOpacity
-                  onPress={() => rootNav.navigate('AddServer')}
+                  onPress={() => rootNav.navigate('QuickSetup')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Text color={colors.sidebarTextSecondary} fontSize={20} fontWeight="300">+</Text>
