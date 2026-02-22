@@ -5,7 +5,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text, YStack } from 'tamagui';
-import { Eye, Bot, Scale, PenLine, Menu, Search, Terminal as TerminalIcon } from 'lucide-react-native';
+import { Menu } from 'lucide-react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
 import { DrawerContent } from './components/sidebar/DrawerContent';
+import { HeaderActions } from './components/navigation/HeaderActions';
 
 // Lazy-loaded modal screens — not needed until user interaction
 const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').then(m => ({ default: m.AddServerScreen })));
@@ -138,64 +139,21 @@ function DrawerNavigator() {
               </TouchableOpacity>
             ),
             headerRight: () => (
-              <XStack alignItems="center" gap={Spacing.xs}>
-                <TouchableOpacity
-                  onPress={toggleChatSearch}
-                  style={{ paddingHorizontal: Spacing.sm }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel="Search messages"
-                  accessibilityRole="button"
-                >
-                  <Search size={18} color={colors.text} opacity={0.5} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setTerminalVisible(true)}
-                  style={{ paddingHorizontal: Spacing.sm }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel={terminalVisible ? 'Terminal open' : 'Open terminal'}
-                  accessibilityRole="button"
-                >
-                  <TerminalIcon size={18} color={terminalVisible ? colors.primary : colors.text} opacity={terminalVisible ? 1 : 0.5} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setScreenWatcherVisible(true)}
-                  style={{ paddingHorizontal: Spacing.sm }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel={isWatching ? 'Screen watcher active' : 'Open screen watcher'}
-                  accessibilityRole="button"
-                >
-                  <Eye size={18} color={isWatching ? colors.destructive : colors.text} opacity={isWatching ? 1 : 0.5} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={toggleAgentMode}
-                  style={{ paddingHorizontal: Spacing.sm }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel={agentModeEnabled ? 'Disable agent mode' : 'Enable agent mode'}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: agentModeEnabled }}
-                >
-                  <Bot size={18} color={agentModeEnabled ? colors.primary : colors.text} opacity={agentModeEnabled ? 1 : 0.5} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={toggleConsensusMode}
-                  onLongPress={() => setConsensusSheetVisible(true)}
-                  delayLongPress={400}
-                  style={{ paddingHorizontal: Spacing.sm }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel={consensusModeEnabled ? 'Disable consensus mode' : 'Enable consensus mode'}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: consensusModeEnabled }}
-                >
-                  <Scale size={18} color={consensusModeEnabled ? colors.primary : colors.text} opacity={consensusModeEnabled ? 1 : 0.5} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => { if (isInitialized) createSession(); }}
-                  style={{ paddingHorizontal: Spacing.md }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <PenLine size={20} color={colors.text} opacity={isInitialized ? 1 : 0.3} />
-                </TouchableOpacity>
-              </XStack>
+              <HeaderActions
+                colors={colors}
+                isInitialized={isInitialized}
+                agentModeEnabled={agentModeEnabled}
+                consensusModeEnabled={consensusModeEnabled}
+                isWatching={isWatching}
+                terminalVisible={terminalVisible}
+                toggleChatSearch={toggleChatSearch}
+                toggleAgentMode={toggleAgentMode}
+                toggleConsensusMode={toggleConsensusMode}
+                onConsensusLongPress={() => setConsensusSheetVisible(true)}
+                onCreateSession={() => { if (isInitialized) createSession(); }}
+                onOpenScreenWatcher={() => setScreenWatcherVisible(true)}
+                onOpenTerminal={() => setTerminalVisible(true)}
+              />
             ),
           })}
         />
@@ -238,6 +196,19 @@ function AppContent() {
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } };
 
+  const modalOptions = (title: string) => ({
+    headerShown: true,
+    title,
+    presentation: 'modal' as const,
+    headerTransparent: Platform.OS === 'ios',
+    headerBackground: Platform.OS === 'ios'
+      ? () => <BlurView intensity={80} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+      : undefined,
+    headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
+    headerTintColor: colors.text,
+    headerShadowVisible: false,
+  });
+
   return (
     <NavigationContainer
       ref={navigationRef}
@@ -256,72 +227,9 @@ function AppContent() {
         }}
       >
         <RootStack.Screen name="Main" component={DrawerNavigator} />
-        <RootStack.Screen
-          name="AddServer"
-          component={LazyAddServer}
-          options={{
-            headerShown: true,
-            title: 'Add Server',
-            presentation: 'modal',
-            headerTransparent: Platform.OS === 'ios',
-            headerBackground: Platform.OS === 'ios'
-              ? () => (
-                <BlurView
-                  intensity={80}
-                  tint={dark ? 'dark' : 'light'}
-                  style={StyleSheet.absoluteFill}
-                />
-              )
-              : undefined,
-            headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
-          }}
-        />
-        <RootStack.Screen
-          name="QuickSetup"
-          component={LazyQuickSetup}
-          options={{
-            headerShown: true,
-            title: 'Quick Setup',
-            presentation: 'modal',
-            headerTransparent: Platform.OS === 'ios',
-            headerBackground: Platform.OS === 'ios'
-              ? () => (
-                <BlurView
-                  intensity={80}
-                  tint={dark ? 'dark' : 'light'}
-                  style={StyleSheet.absoluteFill}
-                />
-              )
-              : undefined,
-            headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
-          }}
-        />
-        <RootStack.Screen
-          name="Settings"
-          component={LazySettings}
-          options={{
-            headerShown: true,
-            title: 'Settings',
-            presentation: 'modal',
-            headerTransparent: Platform.OS === 'ios',
-            headerBackground: Platform.OS === 'ios'
-              ? () => (
-                <BlurView
-                  intensity={80}
-                  tint={dark ? 'dark' : 'light'}
-                  style={StyleSheet.absoluteFill}
-                />
-              )
-              : undefined,
-            headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
-          }}
-        />
+        <RootStack.Screen name="AddServer" component={LazyAddServer} options={modalOptions('Add Server')} />
+        <RootStack.Screen name="QuickSetup" component={LazyQuickSetup} options={modalOptions('Quick Setup')} />
+        <RootStack.Screen name="Settings" component={LazySettings} options={modalOptions('Settings')} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
