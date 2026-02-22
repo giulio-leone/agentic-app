@@ -378,10 +378,10 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
             set({ isStreaming: false, streamingMessageId: null, stopReason: stopReason ?? null });
           }
         } else if (stopReason) {
-          // For ACP transports without immediate stream chunks, keep waiting when
-          // no explicit stop reason is returned by sendPrompt.
           set({ isStreaming: false, stopReason });
         }
+        // Persist final message state
+        _persistMessages();
       } catch (error) {
         const errorMsg = (error as Error).message;
         get().appendLog(`✗ Prompt failed: ${errorMsg}`);

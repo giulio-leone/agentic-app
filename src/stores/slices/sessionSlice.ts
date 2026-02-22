@@ -125,6 +125,12 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
       isStreaming: false,
     });
     get().loadSessionMessages(id);
+    // For ACP servers, inform the agent about the selected session
+    if (_service && id) {
+      _service.loadSession({ sessionId: id }).catch(() => {
+        // loadSession might not be supported — fall back silently
+      });
+    }
   },
 
   deleteSession: async (id) => {
