@@ -1,0 +1,19 @@
+{
+  "name": "agentic-terminal-server",
+  "version": "1.0.0",
+  "description": "WebSocket-to-PTY bridge for Agentic Terminal",
+  "type": "module",
+  "main": "server.ts",
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/ws": "^8.5.12"
+  }
+}
