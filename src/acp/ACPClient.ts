@@ -72,14 +72,24 @@ export class ACPClient {
       };
 
       this.ws.onerror = (event: any) => {
-        const error = new Error(event?.message || 'WebSocket error');
+        const detail = event?.message || event?.reason || '';
+        const error = new Error(
+          detail ? `WebSocket error: ${detail}` : `WebSocket error connecting to ${this.config.endpoint}`,
+        );
         this.setState(ACPConnectionState.Failed);
         this.listener.onError?.(error);
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event: any) => {
         this.stopHeartbeat();
-        this.setState(ACPConnectionState.Disconnected);
+        if (this._state === ACPConnectionState.Connecting) {
+          const reason = event?.reason || event?.message || 'Connection refused';
+          const error = new Error(`Connection failed (code ${event?.code ?? '?'}): ${reason}`);
+          this.setState(ACPConnectionState.Failed);
+          this.listener.onError?.(error);
+        } else {
+          this.setState(ACPConnectionState.Disconnected);
+        }
       };
     } catch (error) {
       this.setState(ACPConnectionState.Failed);
