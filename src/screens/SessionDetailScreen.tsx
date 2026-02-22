@@ -13,6 +13,8 @@ import {
   TextInput,
   StyleSheet,
   RefreshControl,
+  View,
+  Pressable,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +26,7 @@ import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { MessageActionMenu } from '../components/chat/MessageActionMenu';
 import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
+import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
@@ -156,13 +159,25 @@ export function SessionDetailScreen() {
     prevStreaming.current = isStreaming;
   }, [isStreaming, chatMessages.length]);
 
+  // ── Quote / Reply state ──
+  const [quotedMessage, setQuotedMessage] = useState<ChatMessage | null>(null);
+
+  const handleSwipeReply = useCallback((message: ChatMessage) => {
+    setQuotedMessage(message);
+  }, []);
+
   const handleSend = useCallback((attachments?: Attachment[]) => {
     const text = promptText.trim();
     if (!text && (!attachments || attachments.length === 0)) return;
     isNearBottom.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    sendPrompt(text, attachments);
-  }, [promptText, sendPrompt]);
+    // Prepend quote context if replying to a message
+    const prefix = quotedMessage
+      ? `> ${quotedMessage.content.slice(0, 200).replace(/\n/g, '\n> ')}\n\n`
+      : '';
+    sendPrompt(prefix + text, attachments);
+    setQuotedMessage(null);
+  }, [promptText, sendPrompt, quotedMessage]);
 
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -304,16 +319,22 @@ export function SessionDetailScreen() {
       }
 
       return (
-        <ChatBubble
-          message={item}
-          onSpeak={handleSpeak}
-          isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
-          onLongPress={handleLongPress}
-          onOpenArtifact={handleOpenArtifact}
-        />
+        <SwipeableMessage
+          onSwipeReply={() => handleSwipeReply(item)}
+          colors={colors}
+          enabled={!isStreaming && item.role !== 'system'}
+        >
+          <ChatBubble
+            message={item}
+            onSpeak={handleSpeak}
+            isSpeaking={speakingRef.current.isSpeaking && speakingRef.current.speakingMessageId === item.id}
+            onLongPress={handleLongPress}
+            onOpenArtifact={handleOpenArtifact}
+          />
+        </SwipeableMessage>
       );
     },
-    [handleSpeak, handleLongPress, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact],
+    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact],
   );
 
   // Pulsing animation for empty state — properly managed with start/stop
@@ -430,6 +451,32 @@ export function SessionDetailScreen() {
       {/* Model picker for AI providers */}
       {isAIProvider && selectedServer && (
         <ModelPickerBar server={selectedServer} />
+      )}
+
+      {/* Quote preview */}
+      {quotedMessage && (
+        <XStack
+          paddingHorizontal={Spacing.lg}
+          paddingVertical={Spacing.sm}
+          backgroundColor={colors.cardBackground}
+          borderTopWidth={StyleSheet.hairlineWidth}
+          borderTopColor={colors.separator}
+          alignItems="center"
+          gap={Spacing.sm}
+        >
+          <View style={{ width: 3, height: '100%', backgroundColor: colors.primary, borderRadius: 2, minHeight: 24 }} />
+          <YStack flex={1}>
+            <Text fontSize={FontSize.caption} fontWeight="600" color={colors.primary}>
+              {quotedMessage.role === 'user' ? 'You' : 'Assistant'}
+            </Text>
+            <Text fontSize={FontSize.caption} color={colors.textSecondary} numberOfLines={2}>
+              {quotedMessage.content.slice(0, 120)}
+            </Text>
+          </YStack>
+          <Pressable onPress={() => setQuotedMessage(null)} hitSlop={8}>
+            <Text fontSize={FontSize.body} color={colors.textTertiary}>✕</Text>
+          </Pressable>
+        </XStack>
       )}
 
       <MessageComposer
