@@ -248,29 +248,48 @@ export function HomeScreen() {
       )}
 
       {/* Session List */}
-      {selectedServer && sessions.length > 0 && (
+      {selectedServer && (
         <YStack flex={1} marginBottom={Spacing.sm}>
-          <Text
-            color="$color"
-            fontSize={FontSize.headline}
-            fontWeight="600"
+          <XStack
+            justifyContent="space-between"
+            alignItems="center"
             paddingHorizontal={Spacing.lg}
             paddingVertical={Spacing.sm}
           >
-            Sessions
-          </Text>
-          <FlatList
-            data={sessions}
-            keyExtractor={item => item.id}
-            renderItem={renderSessionItem}
-            refreshControl={
-              <RefreshControl
-                refreshing={false}
-                onRefresh={loadSessions}
-              />
-            }
-            style={{ flex: 1 }}
-          />
+            <Text color="$color" fontSize={FontSize.headline} fontWeight="600">
+              Sessions {sessions.length > 0 ? `(${sessions.length})` : ''}
+            </Text>
+            {isInitialized && sessions.length > 0 && (
+              <TouchableOpacity onPress={loadSessions}>
+                <Text color={colors.primary} fontSize={FontSize.caption} fontWeight="600">
+                  Refresh
+                </Text>
+              </TouchableOpacity>
+            )}
+          </XStack>
+
+          {sessions.length === 0 ? (
+            <YStack alignItems="center" paddingVertical={Spacing.xl} gap={Spacing.sm}>
+              <Text color="$textTertiary" fontSize={FontSize.body}>
+                {isInitialized
+                  ? 'No sessions yet — tap "New Session" to start'
+                  : 'Connect to see sessions'}
+              </Text>
+            </YStack>
+          ) : (
+            <FlatList
+              data={sessions}
+              keyExtractor={item => item.id}
+              renderItem={renderSessionItem}
+              refreshControl={
+                <RefreshControl
+                  refreshing={false}
+                  onRefresh={loadSessions}
+                />
+              }
+              style={{ flex: 1 }}
+            />
+          )}
         </YStack>
       )}
     </YStack>
