@@ -219,7 +219,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
     prevProps.message.segments?.length === nextProps.message.segments?.length &&
     prevProps.highlighted === nextProps.highlighted &&
-    prevProps.message.serverId === nextProps.message.serverId
+    prevProps.message.serverId === nextProps.message.serverId &&
+    prevProps.message.serverName === nextProps.message.serverName
   );
 });
 

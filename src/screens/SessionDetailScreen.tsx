@@ -207,6 +207,13 @@ export function SessionDetailScreen() {
     }
   }, [searchQuery]);
 
+  // Clamp match index when matches shrink (e.g. messages added/removed during search)
+  useEffect(() => {
+    if (searchMatches.length > 0 && currentMatchIdx >= searchMatches.length) {
+      setCurrentMatchIdx(searchMatches.length - 1);
+    }
+  }, [searchMatches.length, currentMatchIdx]);
+
   const handleSend = useCallback((attachments?: Attachment[]) => {
     const text = promptText.trim();
     if (!text && (!attachments || attachments.length === 0)) return;
