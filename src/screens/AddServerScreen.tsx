@@ -1,13 +1,13 @@
 /**
  * Add/Edit Server screen — iOS Settings-style grouped fields.
  * Supports ACP, Codex, and AI Provider server types.
+ * Logic extracted to useAddServerForm hook.
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React from 'react';
 import {
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -17,281 +17,17 @@ import { YStack, XStack, Text, Separator } from 'tamagui';
 import { Lock, Brain, Eye } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAppStore } from '../stores/appStore';
 import { ServerType } from '../acp/models/types';
-import { AIProviderType, AIProviderConfig, ReasoningEffort } from '../ai/types';
-import { ALL_PROVIDERS, getProviderInfo } from '../ai/providers';
-import { fetchModelsFromProvider, FetchedModel } from '../ai/ModelFetcher';
-import { getCachedModels, setCachedModels } from '../ai/ModelCache';
-import { saveApiKey } from '../storage/SecureStorage';
+import { ReasoningEffort } from '../ai/types';
+import { ALL_PROVIDERS } from '../ai/providers';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
-import type { RootStackParamList } from '../navigation';
-
-type NavProp = NativeStackNavigationProp<RootStackParamList, 'AddServer'>;
+import { useAddServerForm } from '../hooks/useAddServerForm';
 
 export function AddServerScreen() {
   const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NavProp>();
-  const route = useRoute<RouteProp<RootStackParamList, 'AddServer'>>();
-  const editingServer = route.params?.editingServer;
-  const { addServer, updateServer } = useAppStore();
-
-  // Shared state
-  const [name, setName] = useState(editingServer?.name ?? '');
-  const [serverType, setServerType] = useState<ServerType>(
-    editingServer?.serverType ?? ServerType.ACP,
-  );
-
-  // ACP / Codex fields
-  const [scheme, setScheme] = useState(editingServer?.scheme ?? 'ws');
-  const [host, setHost] = useState(editingServer?.host ?? '');
-  const [token, setToken] = useState(editingServer?.token ?? '');
-  const [workingDirectory, setWorkingDirectory] = useState(
-    editingServer?.workingDirectory ?? '',
-  );
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [cfAccessClientId, setCfAccessClientId] = useState(
-    editingServer?.cfAccessClientId ?? '',
-  );
-  const [cfAccessClientSecret, setCfAccessClientSecret] = useState(
-    editingServer?.cfAccessClientSecret ?? '',
-  );
-
-  // AI Provider fields
-  const editingAI = editingServer?.aiProviderConfig;
-  const [selectedProvider, setSelectedProvider] = useState<AIProviderType>(
-    editingAI?.providerType ?? AIProviderType.OpenAI,
-  );
-  const [apiKey, setApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState(
-    editingAI?.modelId ?? '',
-  );
-  const [systemPrompt, setSystemPrompt] = useState(
-    editingAI?.systemPrompt ?? '',
-  );
-  const [baseUrl, setBaseUrl] = useState(editingAI?.baseUrl ?? '');
-  const [showBaseUrl, setShowBaseUrl] = useState(
-    !!editingAI?.baseUrl || false,
-  );
-  const [temperature, setTemperature] = useState<number | undefined>(
-    editingAI?.temperature,
-  );
-  const [fetchedModels, setFetchedModels] = useState<FetchedModel[] | null>(null);
-  const [isFetchingModels, setIsFetchingModels] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [reasoningEnabled, setReasoningEnabled] = useState(
-    editingAI?.reasoningEnabled ?? false,
-  );
-  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(
-    editingAI?.reasoningEffort ?? 'medium',
-  );
-
-  const isEditing = !!editingServer;
-
-  const providerInfo = useMemo(
-    () => getProviderInfo(selectedProvider),
-    [selectedProvider],
-  );
-
-  // Auto-select first model when provider changes
-  const handleProviderChange = useCallback(
-    (type: AIProviderType) => {
-      Haptics.selectionAsync();
-      setSelectedProvider(type);
-      const info = getProviderInfo(type);
-      setSelectedModel(info.models[0]?.id ?? '');
-      setBaseUrl(info.defaultBaseUrl ?? '');
-      setShowBaseUrl(info.requiresBaseUrl);
-      setFetchedModels(null);
-      setFetchError(null);
-      setReasoningEnabled(false);
-    },
-    [],
-  );
-
-  // Load cached models on mount / provider change
-  useEffect(() => {
-    (async () => {
-      const cached = await getCachedModels(selectedProvider);
-      if (cached && cached.length > 0) {
-        setFetchedModels(cached);
-      }
-    })();
-  }, [selectedProvider]);
-
-  const handleFetchModels = useCallback(async () => {
-    if (!apiKey.trim()) {
-      Alert.alert('API Key Required', 'Enter your API key first to fetch available models.');
-      return;
-    }
-    setIsFetchingModels(true);
-    setFetchError(null);
-    try {
-      const info = getProviderInfo(selectedProvider);
-      const models = await fetchModelsFromProvider(
-        selectedProvider,
-        apiKey.trim(),
-        baseUrl.trim() || info.defaultBaseUrl,
-      );
-      setFetchedModels(models);
-      await setCachedModels(selectedProvider, models);
-      if (models.length > 0) setSelectedModel(models[0].id);
-    } catch (err) {
-      setFetchError((err as Error).message);
-    } finally {
-      setIsFetchingModels(false);
-    }
-  }, [apiKey, selectedProvider, baseUrl]);
-
-  // Models to display: fetched > static
-  const displayModels = useMemo(() => {
-    if (fetchedModels && fetchedModels.length > 0) return fetchedModels;
-    return providerInfo.models.map(m => ({
-      id: m.id,
-      name: m.name,
-      contextWindow: m.contextWindow,
-      supportsReasoning: m.supportsReasoning,
-      supportsTools: m.supportsTools,
-      supportsVision: m.supportsVision,
-      supportedParameters: m.supportedParameters,
-    }));
-  }, [fetchedModels, providerInfo]);
-
-  // Check if selected model supports reasoning
-  const selectedModelInfo = useMemo(
-    () => displayModels.find(m => m.id === selectedModel),
-    [displayModels, selectedModel],
-  );
-
-  // Auto-fill name from provider + model
-  const autoName = useMemo(() => {
-    const model = selectedModelInfo;
-    return model ? `${providerInfo.name} ${model.name}` : providerInfo.name;
-  }, [providerInfo, selectedModelInfo]);
-
-  // ── Save logic ──
-
-  const handleSave = useCallback(async () => {
-    // AI Provider path
-    if (serverType === ServerType.AIProvider) {
-      if (!apiKey.trim() && !isEditing) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Missing Field', 'Please enter your API key.');
-        return;
-      }
-      if (!selectedModel) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Missing Field', 'Please select a model.');
-        return;
-      }
-
-      const serverData = {
-        name: name.trim() || autoName,
-        scheme: '',
-        host: '',
-        token: '',
-        cfAccessClientId: '',
-        cfAccessClientSecret: '',
-        workingDirectory: '',
-        serverType: ServerType.AIProvider,
-        aiProviderConfig: {
-          providerType: selectedProvider,
-          modelId: selectedModel,
-          baseUrl: baseUrl.trim() || undefined,
-          systemPrompt: systemPrompt.trim() || undefined,
-          temperature,
-          reasoningEnabled: reasoningEnabled || undefined,
-          reasoningEffort: reasoningEnabled ? reasoningEffort : undefined,
-          // Persist key in config as fallback when SecureStore is unavailable
-          apiKey: apiKey.trim() || editingAI?.apiKey || undefined,
-        } as AIProviderConfig,
-      };
-
-      try {
-        if (isEditing && editingServer) {
-          await updateServer({ ...serverData, id: editingServer.id });
-          if (apiKey.trim()) {
-            await saveApiKey(`${editingServer.id}_${selectedProvider}`, apiKey.trim());
-          }
-        } else {
-          const serverId = await addServer(serverData);
-          if (apiKey.trim()) {
-            await saveApiKey(`${serverId}_${selectedProvider}`, apiKey.trim());
-          }
-        }
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.goBack();
-      } catch (error) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Error', `Failed to save server: ${(error as Error).message}`);
-      }
-      return;
-    }
-
-    // ACP / Codex path — sanitize host
-    const hostValue = host.trim()
-      .replace(/^wss?:\/\//i, '')
-      .replace(/^https?:\/\//i, '')
-      .replace(/\/+$/, '');
-    if (!hostValue) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Missing Field', 'Please enter a host address (e.g. localhost:8765)');
-      return;
-    }
-
-    const serverData = {
-      name: name.trim() || hostValue,
-      scheme,
-      host: hostValue,
-      token: token.trim(),
-      cfAccessClientId: cfAccessClientId.trim(),
-      cfAccessClientSecret: cfAccessClientSecret.trim(),
-      workingDirectory: workingDirectory.trim(),
-      serverType,
-    };
-
-    try {
-      if (isEditing && editingServer) {
-        await updateServer({ ...serverData, id: editingServer.id });
-      } else {
-        await addServer(serverData);
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.goBack();
-    } catch (error) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', `Failed to save server: ${(error as Error).message}`);
-    }
-  }, [
-    name,
-    scheme,
-    host,
-    token,
-    cfAccessClientId,
-    cfAccessClientSecret,
-    workingDirectory,
-    serverType,
-    selectedProvider,
-    selectedModel,
-    apiKey,
-    baseUrl,
-    systemPrompt,
-    temperature,
-    reasoningEnabled,
-    reasoningEffort,
-    autoName,
-    isEditing,
-    editingServer,
-    addServer,
-    updateServer,
-    navigation,
-  ]);
-
-  // ── Render ──
+  const w = useAddServerForm();
 
   return (
     <KeyboardAvoidingView
@@ -314,7 +50,7 @@ export function AddServerScreen() {
                 key={type}
                 style={[
                   { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: 6 },
-                  serverType === type && {
+                  w.serverType === type && {
                     backgroundColor: colors.cardBackground,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 1 },
@@ -325,13 +61,13 @@ export function AddServerScreen() {
                 ]}
                 onPress={() => {
                   Haptics.selectionAsync();
-                  setServerType(type);
+                  w.handleServerTypeChange(type);
                 }}
               >
                 <Text
                   fontSize={FontSize.footnote}
-                  fontWeight={serverType === type ? '600' : '500'}
-                  color={serverType === type ? '$color' : '$textTertiary'}
+                  fontWeight={w.serverType === type ? '600' : '500'}
+                  color={w.serverType === type ? '$color' : '$textTertiary'}
                 >
                   {type === ServerType.AIProvider ? 'AI Provider' : type === ServerType.Codex ? 'Codex' : type === ServerType.CopilotCLI ? 'Copilot' : 'ACP'}
                 </Text>
@@ -340,7 +76,7 @@ export function AddServerScreen() {
           </XStack>
         </YStack>
 
-        {serverType === ServerType.AIProvider ? (
+        {w.serverType === ServerType.AIProvider ? (
           <>
             {/* Provider Picker — horizontal scroll chips */}
             <YStack backgroundColor="$cardBackground" borderRadius={Radius.md} paddingHorizontal={Spacing.lg} overflow="hidden">
@@ -353,7 +89,7 @@ export function AddServerScreen() {
                 contentContainerStyle={{ paddingBottom: Spacing.md, gap: Spacing.sm }}
               >
                 {ALL_PROVIDERS.map(p => {
-                  const isSelected = p.type === selectedProvider;
+                  const isSelected = p.type === w.selectedProvider;
                   return (
                     <TouchableOpacity
                       key={p.type}
@@ -370,7 +106,7 @@ export function AddServerScreen() {
                         },
                         isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
                       ]}
-                      onPress={() => handleProviderChange(p.type)}
+                      onPress={() => w.handleProviderChange(p.type)}
                       activeOpacity={0.7}
                     >
                       <Text fontSize={14}>{p.icon}</Text>
@@ -394,9 +130,9 @@ export function AddServerScreen() {
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>API Key</Text>
                 <TextInput
                   style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                  value={apiKey}
-                  onChangeText={setApiKey}
-                  placeholder={isEditing ? '••••••••' : 'sk-...'}
+                  value={w.apiKey}
+                  onChangeText={w.setApiKey}
+                  placeholder={w.isEditing ? '••••••••' : 'sk-...'}
                   placeholderTextColor={colors.systemGray2}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -429,27 +165,27 @@ export function AddServerScreen() {
                     justifyContent: 'center',
                     backgroundColor: colors.primary,
                   }}
-                  onPress={handleFetchModels}
-                  disabled={isFetchingModels}
+                  onPress={w.handleFetchModels}
+                  disabled={w.isFetchingModels}
                   activeOpacity={0.7}
-                  accessibilityLabel={fetchedModels ? 'Refresh models list' : 'Fetch available models'}
+                  accessibilityLabel={w.fetchedModels ? 'Refresh models list' : 'Fetch available models'}
                 >
-                  {isFetchingModels ? (
+                  {w.isFetchingModels ? (
                     <ActivityIndicator size="small" color={colors.contrastText} />
                   ) : (
                     <Text color="$contrastText" fontSize={FontSize.caption} fontWeight="600">
-                      {fetchedModels ? '↻ Refresh' : '⬇ Fetch Models'}
+                      {w.fetchedModels ? '↻ Refresh' : '⬇ Fetch Models'}
                     </Text>
                   )}
                 </TouchableOpacity>
               </XStack>
-              {fetchError && (
+              {w.fetchError && (
                 <Text color={colors.destructive} fontSize={FontSize.caption} paddingBottom={Spacing.sm}>
-                  {fetchError}
+                  {w.fetchError}
                 </Text>
               )}
-              {displayModels.map((model, idx) => {
-                const isSelected = model.id === selectedModel;
+              {w.displayModels.map((model, idx) => {
+                const isSelected = model.id === w.selectedModel;
                 return (
                   <React.Fragment key={model.id}>
                     {idx > 0 && (
@@ -465,7 +201,7 @@ export function AddServerScreen() {
                       }}
                       onPress={() => {
                         Haptics.selectionAsync();
-                        setSelectedModel(model.id);
+                        w.setSelectedModel(model.id);
                       }}
                       activeOpacity={0.7}
                       accessibilityLabel={`Select model: ${model.name}`}
@@ -509,7 +245,7 @@ export function AddServerScreen() {
             </YStack>
 
             {/* Reasoning Controls — shown when selected model supports reasoning */}
-            {selectedModelInfo?.supportsReasoning && (
+            {w.selectedModelInfo?.supportsReasoning && (
               <YStack backgroundColor="$cardBackground" borderRadius={Radius.md} paddingHorizontal={Spacing.lg} overflow="hidden">
                 <Text color="$textTertiary" fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} paddingTop={Spacing.md} paddingBottom={Spacing.sm}>
                   Reasoning
@@ -524,7 +260,7 @@ export function AddServerScreen() {
                   }}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setReasoningEnabled(!reasoningEnabled);
+                    w.setReasoningEnabled(!w.reasoningEnabled);
                   }}
                   activeOpacity={0.7}
                 >
@@ -537,22 +273,22 @@ export function AddServerScreen() {
                     borderRadius={14}
                     padding={2}
                     justifyContent="center"
-                    backgroundColor={reasoningEnabled ? '$primary' : colors.systemGray4}
+                    backgroundColor={w.reasoningEnabled ? '$primary' : colors.systemGray4}
                   >
                     <YStack
                       width={24}
                       height={24}
                       borderRadius={12}
                       backgroundColor="$contrastText"
-                      alignSelf={reasoningEnabled ? 'flex-end' : undefined}
+                      alignSelf={w.reasoningEnabled ? 'flex-end' : undefined}
                     />
                   </YStack>
                 </TouchableOpacity>
-                {reasoningEnabled && (
+                {w.reasoningEnabled && (
                   <>
                     <Separator borderColor="$separator" />
                     <Text color="$textTertiary" fontSize={FontSize.caption} paddingBottom={Spacing.sm} paddingTop={Spacing.xs}>
-                      Effort: {reasoningEffort}
+                      Effort: {w.reasoningEffort}
                     </Text>
                     <ScrollView
                       horizontal
@@ -560,7 +296,7 @@ export function AddServerScreen() {
                       contentContainerStyle={{ paddingBottom: Spacing.md, gap: Spacing.sm }}
                     >
                       {(['none', 'minimal', 'low', 'medium', 'high', 'xhigh'] as ReasoningEffort[]).map(level => {
-                        const isSelected = reasoningEffort === level;
+                        const isSelected = w.reasoningEffort === level;
                         return (
                           <TouchableOpacity
                             key={level}
@@ -577,7 +313,7 @@ export function AddServerScreen() {
                             ]}
                             onPress={() => {
                               Haptics.selectionAsync();
-                              setReasoningEffort(level);
+                              w.setReasoningEffort(level);
                             }}
                           >
                             <Text
@@ -602,9 +338,9 @@ export function AddServerScreen() {
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Name</Text>
                 <TextInput
                   style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder={autoName}
+                  value={w.name}
+                  onChangeText={w.setName}
+                  placeholder={w.autoName}
                   placeholderTextColor={colors.systemGray2}
                   autoCapitalize="none"
                 />
@@ -618,8 +354,8 @@ export function AddServerScreen() {
               </Text>
               <TextInput
                 style={{ fontSize: FontSize.body, color: colors.text, paddingVertical: Spacing.sm, paddingBottom: Spacing.md, minHeight: 80 }}
-                value={systemPrompt}
-                onChangeText={setSystemPrompt}
+                value={w.systemPrompt}
+                onChangeText={w.setSystemPrompt}
                 placeholder="You are a helpful assistant..."
                 placeholderTextColor={colors.systemGray2}
                 multiline
@@ -631,7 +367,7 @@ export function AddServerScreen() {
             {/* Temperature */}
             <YStack backgroundColor="$cardBackground" borderRadius={Radius.md} paddingHorizontal={Spacing.lg} overflow="hidden">
               <Text color="$textTertiary" fontSize={FontSize.caption} fontWeight="600" textTransform="uppercase" letterSpacing={0.5} paddingTop={Spacing.md} paddingBottom={Spacing.sm}>
-                Temperature: {temperature !== undefined ? temperature.toFixed(1) : 'Default'}
+                Temperature: {w.temperature !== undefined ? w.temperature.toFixed(1) : 'Default'}
               </Text>
               <ScrollView
                 horizontal
@@ -639,7 +375,7 @@ export function AddServerScreen() {
                 contentContainerStyle={{ paddingBottom: Spacing.md, gap: Spacing.sm }}
               >
                 {[undefined, 0, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0].map((t, idx) => {
-                  const isSelected = temperature === t;
+                  const isSelected = w.temperature === t;
                   const label = t === undefined ? 'Auto' : t.toFixed(1);
                   return (
                     <TouchableOpacity
@@ -657,7 +393,7 @@ export function AddServerScreen() {
                       ]}
                       onPress={() => {
                         Haptics.selectionAsync();
-                        setTemperature(t);
+                        w.setTemperature(t);
                       }}
                     >
                       <Text
@@ -674,15 +410,15 @@ export function AddServerScreen() {
             </YStack>
 
             {/* Base URL — shown for Custom or on demand */}
-            {(providerInfo.requiresBaseUrl || showBaseUrl) && (
+            {(w.providerInfo.requiresBaseUrl || w.showBaseUrl) && (
               <YStack backgroundColor="$cardBackground" borderRadius={Radius.md} paddingHorizontal={Spacing.lg} overflow="hidden">
                 <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Base URL</Text>
                   <TextInput
                     style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                    value={baseUrl}
-                    onChangeText={setBaseUrl}
-                    placeholder={providerInfo.defaultBaseUrl ?? 'https://api.example.com/v1'}
+                    value={w.baseUrl}
+                    onChangeText={w.setBaseUrl}
+                    placeholder={w.providerInfo.defaultBaseUrl ?? 'https://api.example.com/v1'}
                     placeholderTextColor={colors.systemGray2}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -693,7 +429,7 @@ export function AddServerScreen() {
             )}
 
             {/* Toggle Base URL override for non-Custom providers */}
-            {!providerInfo.requiresBaseUrl && (
+            {!w.providerInfo.requiresBaseUrl && (
               <TouchableOpacity
                 style={{
                   backgroundColor: colors.cardBackground,
@@ -701,13 +437,13 @@ export function AddServerScreen() {
                   paddingHorizontal: Spacing.lg,
                   overflow: 'hidden',
                 }}
-                onPress={() => setShowBaseUrl(!showBaseUrl)}
+                onPress={() => w.setShowBaseUrl(!w.showBaseUrl)}
                 activeOpacity={0.7}
               >
                 <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Override Base URL</Text>
                   <Text color="$textTertiary" fontSize={14}>
-                    {showBaseUrl ? '▾' : '▸'}
+                    {w.showBaseUrl ? '▾' : '▸'}
                   </Text>
                 </XStack>
               </TouchableOpacity>
@@ -721,8 +457,8 @@ export function AddServerScreen() {
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Name</Text>
                 <TextInput
                   style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                  value={name}
-                  onChangeText={setName}
+                  value={w.name}
+                  onChangeText={w.setName}
                   placeholder="My Agent"
                   placeholderTextColor={colors.systemGray2}
                   autoCapitalize="none"
@@ -737,7 +473,7 @@ export function AddServerScreen() {
                       key={s}
                       style={[
                         { paddingHorizontal: Spacing.md, paddingVertical: 4, borderRadius: 5 },
-                        scheme === s && {
+                        w.scheme === s && {
                           backgroundColor: colors.cardBackground,
                           shadowColor: '#000',
                           shadowOffset: { width: 0, height: 1 },
@@ -746,12 +482,12 @@ export function AddServerScreen() {
                           elevation: 2,
                         },
                       ]}
-                      onPress={() => setScheme(s)}
+                      onPress={() => w.setScheme(s)}
                     >
                       <Text
                         fontSize={FontSize.footnote}
-                        fontWeight={scheme === s ? '600' : '500'}
-                        color={scheme === s ? '$color' : '$textTertiary'}
+                        fontWeight={w.scheme === s ? '600' : '500'}
+                        color={w.scheme === s ? '$color' : '$textTertiary'}
                       >
                         {s}
                       </Text>
@@ -764,8 +500,8 @@ export function AddServerScreen() {
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Host</Text>
                 <TextInput
                   style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                  value={host}
-                  onChangeText={setHost}
+                  value={w.host}
+                  onChangeText={w.setHost}
                   placeholder="localhost:8765"
                   placeholderTextColor={colors.systemGray2}
                   autoCapitalize="none"
@@ -781,9 +517,9 @@ export function AddServerScreen() {
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Token</Text>
                 <TextInput
                   style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                  value={token}
-                  onChangeText={setToken}
-                  placeholder="Bearer token"
+                  value={w.token}
+                  onChangeText={w.setToken}
+                  placeholder="Bearer w.token"
                   placeholderTextColor={colors.systemGray2}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -795,8 +531,8 @@ export function AddServerScreen() {
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Directory</Text>
                 <TextInput
                   style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                  value={workingDirectory}
-                  onChangeText={setWorkingDirectory}
+                  value={w.workingDirectory}
+                  onChangeText={w.setWorkingDirectory}
                   placeholder="/path/to/workspace"
                   placeholderTextColor={colors.systemGray2}
                   autoCapitalize="none"
@@ -813,25 +549,25 @@ export function AddServerScreen() {
                 paddingHorizontal: Spacing.lg,
                 overflow: 'hidden',
               }}
-              onPress={() => setShowAdvanced(!showAdvanced)}
+              onPress={() => w.setShowAdvanced(!w.showAdvanced)}
               activeOpacity={0.7}
             >
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Cloudflare Access</Text>
                 <Text color="$textTertiary" fontSize={14}>
-                  {showAdvanced ? '▾' : '▸'}
+                  {w.showAdvanced ? '▾' : '▸'}
                 </Text>
               </XStack>
             </TouchableOpacity>
 
-            {showAdvanced && (
+            {w.showAdvanced && (
               <YStack backgroundColor="$cardBackground" borderRadius={Radius.md} paddingHorizontal={Spacing.lg} overflow="hidden">
                 <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Client ID</Text>
                   <TextInput
                     style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                    value={cfAccessClientId}
-                    onChangeText={setCfAccessClientId}
+                    value={w.cfAccessClientId}
+                    onChangeText={w.setCfAccessClientId}
                     placeholder="Client ID"
                     placeholderTextColor={colors.systemGray2}
                     autoCapitalize="none"
@@ -843,8 +579,8 @@ export function AddServerScreen() {
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Secret</Text>
                   <TextInput
                     style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
-                    value={cfAccessClientSecret}
-                    onChangeText={setCfAccessClientSecret}
+                    value={w.cfAccessClientSecret}
+                    onChangeText={w.setCfAccessClientSecret}
                     placeholder="Client Secret"
                     placeholderTextColor={colors.systemGray2}
                     autoCapitalize="none"
@@ -866,11 +602,11 @@ export function AddServerScreen() {
             alignItems: 'center',
             marginTop: Spacing.sm,
           }}
-          onPress={handleSave}
-          accessibilityLabel={isEditing ? 'Update server' : 'Save new server'}
+          onPress={w.handleSave}
+          accessibilityLabel={w.isEditing ? 'Update server' : 'Save new server'}
         >
           <Text color="$contrastText" fontSize={FontSize.body} fontWeight="600">
-            {isEditing ? 'Update Server' : 'Add Server'}
+            {w.isEditing ? 'Update Server' : 'Add Server'}
           </Text>
         </TouchableOpacity>
       </ScrollView>

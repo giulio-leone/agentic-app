@@ -1,5 +1,4 @@
 import { StateCreator } from 'zustand';
-import { Alert } from 'react-native';
 import type { AppState, AppActions } from '../appStore';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -8,15 +7,13 @@ import {
 } from '../../acp/models/types';
 import { JSONValue } from '../../acp/models';
 import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
-import { streamChat, streamConsensusChat } from '../../ai/AIService';
 import { getApiKey } from '../../storage/SecureStorage';
-import { updateMessageById, detectArtifacts } from '../helpers';
-import { isAppInBackground, notifyResponseComplete } from '../../services/notifications';
 import {
   _service, _aiAbortController,
   setAiAbortController,
 } from '../storePrivate';
 import type { AIProviderConfig } from '../../ai/types';
+import { startAIStream, type StreamContext } from '../helpers/chatStreamHelper';
 
 export type ChatSlice = Pick<AppState, 'streamingMessageId' | 'stopReason' | 'isStreaming' | 'promptText'>
   & Pick<AppActions, 'sendPrompt' | 'cancelPrompt' | 'setPromptText' | 'editMessage' | 'deleteMessage' | 'regenerateMessage'>;
@@ -31,200 +28,10 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
     return server.serverType === ServerType.AIProvider ? AI_SHARED_SERVER_ID : server.id;
   }
 
-  // ── Shared AI streaming helper ──
-  function _streamAIResponse(config: AIProviderConfig, apiKey: string) {
-    const assistantId = uuidv4();
-    const forceAgentMode = get().agentModeEnabled;
-    const server = get().servers.find(s => s.id === get().selectedServerId);
-    set(s => ({
-      chatMessages: [...s.chatMessages, {
-        id: assistantId,
-        role: 'assistant' as const,
-        content: '',
-        isStreaming: true,
-        timestamp: new Date().toISOString(),
-        serverId: server?.id,
-        serverName: server?.name,
-      }],
-      streamingMessageId: assistantId,
-      isStreaming: true,
-    }));
+  /** Stream context for chatStreamHelper. */
+  const streamCtx: StreamContext = { set, get, chatStorageId };
 
-    const contextMessages = get().chatMessages.filter(m => m.id !== assistantId);
-
-    const isConsensusMode = get().consensusModeEnabled;
-
-    // Common callbacks
-    const onChunk = (chunk: string) => {
-      set(s => ({
-        chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-          ...m, content: m.content + chunk,
-        })),
-      }));
-    };
-
-    const onComplete = (stopReason: string) => {
-        setAiAbortController(null);
-
-        const finalMessage = get().chatMessages.find(m => m.id === assistantId);
-        const artifacts = finalMessage ? detectArtifacts(finalMessage.content) : [];
-        const normalizedStopReason =
-          typeof stopReason === 'string' && stopReason.trim().length > 0
-            ? stopReason
-            : 'unknown';
-        const finalContent = finalMessage?.content.trim() ?? '';
-
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-            ...m,
-            content:
-              finalContent.length === 0
-                ? `⚠️ Empty response from model (stop reason: ${normalizedStopReason}).`
-                : m.content,
-            isStreaming: false,
-            ...(artifacts.length > 0 ? { artifacts } : {}),
-          })),
-          isStreaming: false,
-          streamingMessageId: null,
-          stopReason: normalizedStopReason,
-        }));
-        if (finalContent.length === 0) {
-          get().appendLog(`✗ AI stream ended with empty response (stop reason: ${normalizedStopReason})`);
-        }
-        const finalState = get();
-        const sid = chatStorageId();
-        if (sid && finalState.selectedSessionId) {
-          SessionStorage.saveMessages(
-            finalState.chatMessages,
-            sid,
-            finalState.selectedSessionId,
-          );
-        }
-        // Notify when app is in background
-        if (isAppInBackground() && finalContent.length > 0) {
-          notifyResponseComplete(finalContent);
-        }
-      };
-
-    const onErrorCb = (error: Error) => {
-        setAiAbortController(null);
-        get().appendLog(`✗ AI stream error: ${error.message}`);
-        const errorMessage: ChatMessage = {
-          id: uuidv4(),
-          role: 'system',
-          content: `⚠️ Error: ${error.message}`,
-          timestamp: new Date().toISOString(),
-        };
-        set(s => ({
-          chatMessages: [
-            ...s.chatMessages.filter(m => m.id !== assistantId),
-            errorMessage,
-          ],
-          isStreaming: false,
-          streamingMessageId: null,
-        }));
-      };
-
-    const onReasoningCb = (reasoningChunk: string) => {
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-            ...m, reasoning: (m.reasoning ?? '') + reasoningChunk,
-          })),
-        }));
-      };
-
-    const onToolCallCb = (toolName: string, args: string) => {
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
-            const segs = m.segments ?? [];
-            const lastSeg = segs[segs.length - 1];
-            if (lastSeg && lastSeg.type === 'toolCall' && lastSeg.toolName === toolName && !lastSeg.isComplete) {
-              const updated = [...segs];
-              updated[segs.length - 1] = {
-                ...lastSeg,
-                callCount: (lastSeg.callCount ?? 1) + 1,
-                input: args,
-              };
-              return { ...m, segments: updated };
-            }
-            const segment: import('../../acp/models/types').MessageSegment = {
-              type: 'toolCall', toolName, input: args, isComplete: false, callCount: 1, completedCount: 0,
-            };
-            return { ...m, segments: [...segs, segment] };
-          }),
-        }));
-      };
-
-    const onToolResultCb = (toolName: string, result: string) => {
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => {
-            let matched = false;
-            const segments = (m.segments ?? []).map(seg => {
-              if (!matched && seg.type === 'toolCall' && seg.toolName === toolName && !seg.isComplete) {
-                matched = true;
-                const completed = (seg.completedCount ?? 0) + 1;
-                const total = seg.callCount ?? 1;
-                return { ...seg, result, completedCount: completed, isComplete: completed >= total };
-              }
-              return seg;
-            });
-            return { ...m, segments };
-          }),
-        }));
-      };
-
-    const onAgentEventCb = (event: { type: string; data: any }) => {
-        const label = agentEventLabel(event.type, event.data);
-        if (!label) return;
-        const segment: import('../../acp/models/types').MessageSegment = {
-          type: 'agentEvent', eventType: event.type, label,
-          detail: typeof event.data === 'object' ? JSON.stringify(event.data) : undefined,
-        };
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-            ...m, segments: [...(m.segments ?? []), segment],
-          })),
-        }));
-      };
-
-    const onConsensusUpdate = (details: import('../../ai/types').ConsensusDetails) => {
-        set(s => ({
-          chatMessages: updateMessageById(s.chatMessages, assistantId, m => ({
-            ...m, consensusDetails: details,
-          })),
-        }));
-      };
-
-    if (isConsensusMode) {
-      setAiAbortController(streamConsensusChat(
-        contextMessages, config, apiKey,
-        onChunk, onComplete, onErrorCb, onReasoningCb,
-        onToolCallCb, onToolResultCb, onAgentEventCb,
-        get().consensusConfig, onConsensusUpdate,
-      ));
-    } else {
-      setAiAbortController(streamChat(
-        contextMessages, config, apiKey,
-        onChunk, onComplete, onErrorCb, onReasoningCb,
-        onToolCallCb, onToolResultCb, onAgentEventCb,
-        forceAgentMode,
-        (req) => new Promise((resolve) => {
-          if (get().yoloModeEnabled) return resolve(true);
-          Alert.alert(
-            'Tool Execution Approval',
-            `The agent wants to run '${req.toolName}'.\n\nArguments:\n${JSON.stringify(req.args, null, 2)}`,
-            [
-              { text: 'Deny', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Approve', style: 'default', onPress: () => resolve(true) },
-            ],
-            { cancelable: false },
-          );
-        }),
-      ));
-    }
-  }
-
-  // Helper to persist current messages
+  /** Persist current messages to storage. */
   function _persistMessages() {
     const s = get();
     const sid = chatStorageId();
@@ -233,7 +40,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
     }
   }
 
-  // Helper to resolve AI provider config + API key
+  /** Resolve AI provider config + API key. */
   async function _resolveAIProvider(): Promise<{ config: AIProviderConfig; apiKey: string } | null> {
     const state = get();
     const server = state.servers.find(s => s.id === state.selectedServerId);
@@ -333,7 +140,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           if (!apiKey) {
             throw new Error('API key not found. Please configure your API key in server settings.');
           }
-          _streamAIResponse(config, apiKey);
+          startAIStream(config, apiKey, streamCtx);
           return;
         } catch (error) {
           const errorMsg = (error as Error).message;
@@ -453,7 +260,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         const provider = await _resolveAIProvider();
         if (provider) {
           set({ isStreaming: true, stopReason: null });
-          _streamAIResponse(provider.config, provider.apiKey);
+          startAIStream(provider.config, provider.apiKey, streamCtx);
         }
       } else if (message.role === 'assistant') {
         // Assistant edit: update content in-place, context is updated for future messages
@@ -492,30 +299,9 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       const provider = await _resolveAIProvider();
       if (provider) {
         set({ isStreaming: true, stopReason: null });
-        _streamAIResponse(provider.config, provider.apiKey);
+        startAIStream(provider.config, provider.apiKey, streamCtx);
       }
     },
   };
 };
 
-// Maps agent event types to user-visible labels
-function agentEventLabel(type: string, data: unknown): string | null {
-  switch (type) {
-    case 'planning:update':
-      return '📋 Planning updated';
-    case 'subagent:spawn':
-      return `🔀 Sub-agent started`;
-    case 'subagent:complete':
-      return `✅ Sub-agent completed`;
-    case 'step:start': {
-      const d = data as { stepIndex?: number } | undefined;
-      return `⚡ Step ${(d?.stepIndex ?? 0) + 1}`;
-    }
-    case 'context:summarize':
-      return '📝 Context summarized';
-    case 'checkpoint:save':
-      return '💾 Checkpoint saved';
-    default:
-      return null;
-  }
-}
