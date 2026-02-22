@@ -407,13 +407,11 @@ export function streamConsensusChat(
         instructions: `You are a ${agent.role}. ${agent.instructions}`,
       }));
 
-      // Build the Consensus Graph
+      // Build the Consensus Graph (analysts fork → final synthesizer, no input node)
       const graphBuilder = AgentGraph.create()
         .withFilesystem(fs)
-        .node('input', { model: defaultModel, instructions: 'Pass the prompt directly to the analysts.' })
         .fork('analysts', analystConfigs)
         .consensus('analysts', new LlmJudgeConsensus({ model: reviewerModel }))
-        .edge('input', 'analysts')
         .node('final', {
           model: defaultModel,
           instructions: 'You are the final synthesizer. Based on the consensus result, provide a coherent, unified response to the user. Do not explicitly mention the internal debate, just give the best answer.',
@@ -505,12 +503,26 @@ export function streamConsensusChat(
             }
             break;
 
-          case 'node:error':
-            throw new Error(`Graph error in node ${ev.nodeId}: ${ev.error}`);
+          case 'node:error': {
+            // Fork sub-node errors are handled by the coordinator; only throw on critical nodes
+            const failedNode = String(ev.nodeId ?? '');
+            const errMsg = String(ev.error ?? 'unknown error');
+            if (failedNode === 'final') {
+              throw new Error(`Synthesis failed: ${errMsg}`);
+            }
+            // For analyst fork errors, log to reasoning but don't crash
+            if (onReasoning) onReasoning(`⚠️ Node "${failedNode}" error: ${errMsg}\n`);
+            break;
+          }
 
           case 'graph:error':
-            throw new Error(`Graph execution error: ${ev.error}`);
+            throw new Error(`Consensus graph failed: ${ev.error}`);
         }
+      }
+
+      // If we exit the loop without getting a final node result, emit whatever we have
+      if (!controller.signal.aborted && details.status === 'complete' && details.reviewerVerdict) {
+        onChunk(details.reviewerVerdict);
       }
 
       onComplete('stop');
