@@ -116,7 +116,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     }
   },
 
-  selectSession: (id) => {
+  selectSession: async (id) => {
     set({
       selectedSessionId: id,
       chatMessages: [],
@@ -124,13 +124,21 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
       stopReason: null,
       isStreaming: false,
     });
-    get().loadSessionMessages(id);
-    // For ACP servers, inform the agent about the selected session
+
+    // For ACP servers, try server-side session replay first
     if (_service && id) {
-      _service.loadSession({ sessionId: id }).catch(() => {
-        // loadSession might not be supported — fall back silently
-      });
+      try {
+        await _service.loadSession({ sessionId: id });
+        // loadSession replays the full conversation via session/update notifications.
+        // Messages are populated by onNotification handler in serverSlice.
+        return;
+      } catch {
+        // loadSession not supported — fall back to local storage
+      }
     }
+
+    // AI providers or fallback: load from AsyncStorage
+    get().loadSessionMessages(id);
   },
 
   deleteSession: async (id) => {
