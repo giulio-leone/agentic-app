@@ -15,9 +15,10 @@ import {
   RefreshControl,
   View,
   Pressable,
+  TouchableOpacity,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { MessageSquare, Code, Lightbulb, Zap } from 'lucide-react-native';
+import { MessageSquare, Code, Lightbulb, Zap, PenLine } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { useAppStore } from '../stores/appStore';
@@ -31,12 +32,15 @@ import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
 import { ServerChipSelector } from '../components/chat/ServerChipSelector';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
+import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
+import { SlashCommandAutocomplete } from '../components/chat/SlashCommandAutocomplete';
 import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useSpeech } from '../hooks/useSpeech';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { chatToMarkdown, chatToJSON, shareExport } from '../utils/chatExport';
+import { BUILT_IN_TEMPLATES, matchTemplates, type PromptTemplate } from '../utils/promptTemplates';
 
 // Stable key extractor avoids re-creating function per render
 const keyExtractor = (item: ChatMessage) => item.id;
@@ -221,6 +225,19 @@ export function SessionDetailScreen() {
       setCurrentMatchIdx(searchMatches.length - 1);
     }
   }, [searchMatches.length, currentMatchIdx]);
+
+  // ── Template state ──
+  const [templateSheetVisible, setTemplateSheetVisible] = useState(false);
+
+  const slashMatches = useMemo(() =>
+    matchTemplates(promptText, BUILT_IN_TEMPLATES),
+    [promptText],
+  );
+
+  const handleSelectTemplate = useCallback((template: PromptTemplate) => {
+    setPromptText(template.prompt);
+    setTemplateSheetVisible(false);
+  }, [setPromptText]);
 
   const handleSend = useCallback((attachments?: Attachment[]) => {
     const text = promptText.trim();
@@ -626,16 +643,40 @@ export function SessionDetailScreen() {
         colors={colors}
       />
 
-      <MessageComposer
-        value={promptText}
-        onChangeText={setPromptText}
-        onSend={handleSend}
-        onCancel={cancelPrompt}
-        isStreaming={isStreaming}
-        isDisabled={!isConnected}
-        isListening={isListening}
-        onToggleVoice={voiceAvailable ? toggleVoice : undefined}
-      />
+      {/* Slash command autocomplete */}
+      <View style={{ position: 'relative' }}>
+        <SlashCommandAutocomplete
+          visible={promptText.startsWith('/')}
+          matches={slashMatches}
+          onSelect={handleSelectTemplate}
+          colors={colors}
+        />
+      </View>
+
+      {/* Template icon + composer row */}
+      <XStack alignItems="flex-end">
+        <TouchableOpacity
+          onPress={() => setTemplateSheetVisible(true)}
+          style={{ paddingLeft: Spacing.md, paddingBottom: Spacing.lg }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Open prompt templates"
+          accessibilityRole="button"
+        >
+          <PenLine size={18} color={colors.textTertiary} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <MessageComposer
+            value={promptText}
+            onChangeText={setPromptText}
+            onSend={handleSend}
+            onCancel={cancelPrompt}
+            isStreaming={isStreaming}
+            isDisabled={!isConnected}
+            isListening={isListening}
+            onToggleVoice={voiceAvailable ? toggleVoice : undefined}
+          />
+        </View>
+      </XStack>
 
       <MessageActionMenu
         visible={!!actionMenuMessage}
@@ -654,6 +695,14 @@ export function SessionDetailScreen() {
         visible={!!canvasArtifact}
         artifact={canvasArtifact}
         onClose={() => setCanvasArtifact(null)}
+      />
+
+      <TemplatePickerSheet
+        visible={templateSheetVisible}
+        templates={BUILT_IN_TEMPLATES}
+        onSelect={handleSelectTemplate}
+        onClose={() => setTemplateSheetVisible(false)}
+        colors={colors}
       />
     </KeyboardAvoidingView>
   );
