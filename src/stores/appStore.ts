@@ -56,6 +56,7 @@ export interface AppState {
   consensusConfig: import('../ai/types').ConsensusConfig;
   yoloModeEnabled: boolean;
   autoStartVisionDetect: boolean;
+  themeMode: 'system' | 'light' | 'dark';
 
   // Screen Watcher
   isWatching: boolean;
@@ -118,6 +119,7 @@ export interface AppActions {
   updateConsensusConfig: (config: Partial<import('../ai/types').ConsensusConfig>) => void;
   toggleYoloMode: () => void;
   toggleAutoStartVisionDetect: () => void;
+  setThemeMode: (mode: 'system' | 'light' | 'dark') => void;
   appendLog: (log: string) => void;
   clearLogs: () => void;
 

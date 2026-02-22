@@ -4,9 +4,10 @@ import type { AppState, AppActions } from '../appStore';
 import { DEFAULT_CONSENSUS_CONFIG, type ConsensusConfig } from '../../ai/types';
 
 const CONSENSUS_CONFIG_KEY = '@agentic/consensusConfig';
+const THEME_MODE_KEY = '@agentic/themeMode';
 
-export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect'>
-  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect'>;
+export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect' | 'themeMode'>
+  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect' | 'setThemeMode'>;
 
 export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], SettingsSlice> = (set, get) => {
   // Hydrate consensus config from AsyncStorage on slice creation
@@ -19,6 +20,11 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
     }
   });
 
+  // Hydrate theme mode
+  AsyncStorage.getItem(THEME_MODE_KEY).then(raw => {
+    if (raw === 'light' || raw === 'dark' || raw === 'system') set({ themeMode: raw });
+  });
+
   return {
   // State
   devModeEnabled: false,
@@ -28,6 +34,7 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   consensusConfig: DEFAULT_CONSENSUS_CONFIG,
   yoloModeEnabled: true,
   autoStartVisionDetect: false,
+  themeMode: 'system' as 'system' | 'light' | 'dark',
 
   // Actions
 
@@ -57,6 +64,11 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
 
   toggleAutoStartVisionDetect: () => {
     set(s => ({ autoStartVisionDetect: !s.autoStartVisionDetect }));
+  },
+
+  setThemeMode: (mode) => {
+    set({ themeMode: mode });
+    AsyncStorage.setItem(THEME_MODE_KEY, mode).catch(() => {});
   },
 
   appendLog: (log) => {

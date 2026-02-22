@@ -170,7 +170,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
 
             {/* TTS action bar */}
             {!isUser && !isSystem && !message.isStreaming && message.content && (
-              <XStack gap={Spacing.sm} marginTop={Spacing.xs}>
+              <XStack gap={Spacing.sm} marginTop={Spacing.xs} alignItems="center">
                 <TouchableOpacity
                   style={{ padding: 4 }}
                   onPress={() => onSpeak?.(message.content, message.id)}
@@ -180,6 +180,14 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                     {isSpeaking ? <Volume2 size={16} color={colors.primary} /> : <Volume1 size={16} color={colors.textTertiary} />}
                   </Text>
                 </TouchableOpacity>
+                <MessageTimestamp timestamp={message.timestamp} colors={colors} />
+              </XStack>
+            )}
+
+            {/* Timestamp for user messages */}
+            {isUser && !message.isStreaming && (
+              <XStack justifyContent="flex-end" marginTop={Spacing.xs}>
+                <MessageTimestamp timestamp={message.timestamp} colors={colors} />
               </XStack>
             )}
           </View>
@@ -244,5 +252,34 @@ const AttachmentPreview = React.memo(function AttachmentPreview({
       })}
       <ImageModal visible={!!previewUri} uri={previewUri ?? ''} onClose={() => setPreviewUri(null)} />
     </XStack>
+  );
+});
+
+// ── Message timestamp ────────────────────────────────────────────────────────
+
+function formatTimestamp(ts: string): string {
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return isToday ? time : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+  } catch { return ''; }
+}
+
+const MessageTimestamp = React.memo(function MessageTimestamp({
+  timestamp,
+  colors,
+}: {
+  timestamp: string;
+  colors: ThemeColors;
+}) {
+  const text = useMemo(() => formatTimestamp(timestamp), [timestamp]);
+  if (!text) return null;
+  return (
+    <Text fontSize={10} color={colors.textTertiary} letterSpacing={0.2}>
+      {text}
+    </Text>
   );
 });

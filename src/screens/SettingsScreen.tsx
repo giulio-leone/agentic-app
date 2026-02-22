@@ -26,6 +26,7 @@ export function SettingsScreen() {
     devModeEnabled, toggleDevMode, developerLogs, clearLogs,
     yoloModeEnabled, toggleYoloMode,
     autoStartVisionDetect, toggleAutoStartVisionDetect,
+    themeMode, setThemeMode,
     mcpServers, mcpStatuses,
     loadMCPServers, addMCPServer, removeMCPServer,
     connectMCPServer, disconnectMCPServer,
@@ -89,6 +90,35 @@ export function SettingsScreen() {
             />
           );
         })}
+      </YStack>
+
+      {/* Appearance */}
+      <YStack marginTop={16} marginHorizontal={16} borderRadius={12} padding={16} gap={12} backgroundColor="$cardBackground">
+        <Text fontSize={17} fontWeight="600" color="$color">🎨 Appearance</Text>
+        <Text fontSize={12} marginTop={2} color="$textTertiary">
+          Override system theme or follow device settings
+        </Text>
+        <XStack gap={4}>
+          {(['system', 'light', 'dark'] as const).map(mode => (
+            <TouchableOpacity
+              key={mode}
+              style={{
+                flex: 1,
+                borderRadius: 10,
+                borderWidth: StyleSheet.hairlineWidth,
+                paddingVertical: 8,
+                alignItems: 'center',
+                backgroundColor: themeMode === mode ? colors.primary : colors.systemGray5,
+                borderColor: themeMode === mode ? colors.primary : colors.separator,
+              }}
+              onPress={() => setThemeMode(mode)}
+            >
+              <Text fontSize={13} fontWeight={themeMode === mode ? '600' : '400'} color={themeMode === mode ? '$contrastText' : '$color'}>
+                {mode === 'system' ? '📱 System' : mode === 'light' ? '☀️ Light' : '🌙 Dark'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </XStack>
       </YStack>
 
       {/* Dev Mode */}

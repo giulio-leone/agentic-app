@@ -22,6 +22,7 @@ import { MessageComposer } from '../components/MessageComposer';
 import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { MessageActionMenu } from '../components/chat/MessageActionMenu';
+import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { ChatMessage, ACPConnectionState, Attachment, Artifact, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
@@ -94,20 +95,38 @@ export function SessionDetailScreen() {
   const prevMessageCount = useRef(chatMessages.length);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // FAB state: visible when scrolled up, tracks unread messages
+  const [showFab, setShowFab] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const fabOpacity = useRef(new Animated.Value(0)).current;
+
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-      isNearBottom.current =
-        contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+      const nearBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+      isNearBottom.current = nearBottom;
+      if (nearBottom) {
+        setShowFab(false);
+        setUnreadCount(0);
+        Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+      } else if (!showFab && chatMessages.length > 0) {
+        setShowFab(true);
+        Animated.timing(fabOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      }
     },
-    [],
+    [showFab, chatMessages.length, fabOpacity],
   );
 
   useEffect(() => {
-    if (chatMessages.length > prevMessageCount.current && isNearBottom.current) {
-      scrollTimerRef.current = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 80);
+    if (chatMessages.length > prevMessageCount.current) {
+      if (isNearBottom.current) {
+        scrollTimerRef.current = setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 80);
+      } else {
+        // User is scrolled up — track unread messages
+        setUnreadCount(c => c + (chatMessages.length - prevMessageCount.current));
+      }
     }
     prevMessageCount.current = chatMessages.length;
     return () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); };
@@ -138,8 +157,17 @@ export function SessionDetailScreen() {
     const text = promptText.trim();
     if (!text && (!attachments || attachments.length === 0)) return;
     isNearBottom.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     sendPrompt(text, attachments);
   }, [promptText, sendPrompt]);
+
+  const scrollToBottom = useCallback(() => {
+    flatListRef.current?.scrollToEnd({ animated: true });
+    isNearBottom.current = true;
+    setShowFab(false);
+    setUnreadCount(0);
+    Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+  }, [fabOpacity]);
 
   // ── Message CRUD state ──
   const [actionMenuMessage, setActionMenuMessage] = useState<ChatMessage | null>(null);
@@ -348,6 +376,14 @@ export function SessionDetailScreen() {
         windowSize={11}
         removeClippedSubviews={false}
         initialNumToRender={10}
+      />
+
+      <ScrollToBottomFab
+        visible={showFab}
+        unreadCount={unreadCount}
+        onPress={scrollToBottom}
+        colors={colors}
+        opacity={fabOpacity}
       />
 
       {stopReason && !isStreaming && (

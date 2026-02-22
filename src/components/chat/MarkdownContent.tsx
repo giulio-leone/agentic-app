@@ -2,8 +2,8 @@
  * MarkdownContent — Renders markdown with inline images, artifacts, and syntax highlighting.
  */
 
-import React, { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { StyleSheet, Linking } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { Artifact } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
@@ -26,6 +26,11 @@ interface Props {
 
 export const MarkdownContent = React.memo(function MarkdownContent({ content, colors, artifacts, onOpenArtifact }: Props) {
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]) as any;
+
+  const handleLinkPress = useCallback((url: string) => {
+    Linking.openURL(url).catch(() => {});
+    return false; // prevent default
+  }, []);
 
   // Extract image URLs from markdown ![alt](url) patterns
   const parts = useMemo(() => {
@@ -52,7 +57,7 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
   if (!hasImages) {
     return (
       <>
-        <Markdown style={mdStyles} rules={codeBlockRules}>{content}</Markdown>
+        <Markdown style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{content}</Markdown>
         {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} onOpenArtifact={onOpenArtifact} />}
       </>
     );
@@ -62,7 +67,7 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
     <>
       {parts.map((part, i) => {
         if (part.type === 'text' && part.text.trim()) {
-          return <Markdown key={i} style={mdStyles} rules={codeBlockRules}>{part.text}</Markdown>;
+          return <Markdown key={i} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
         }
         if (part.type === 'image') {
           return <InlineImage key={i} url={part.url} alt={part.alt} colors={colors} />;

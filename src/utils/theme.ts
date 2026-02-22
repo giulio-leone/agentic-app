@@ -190,8 +190,18 @@ export interface Theme {
 
 export function useTheme(): Theme {
   const colorScheme = useColorScheme();
-  return useMemo(() => ({
-    colors: colorScheme === 'dark' ? DarkPalette : LightPalette,
-    dark: colorScheme === 'dark',
-  }), [colorScheme]);
+  // Theme mode from store (if available) — uses lazy require to avoid circular imports
+  let themeMode: 'system' | 'light' | 'dark' = 'system';
+  try {
+    const { useAppStore } = require('../stores/appStore');
+    themeMode = useAppStore((s: any) => s.themeMode) ?? 'system';
+  } catch { /* store not ready yet */ }
+
+  return useMemo(() => {
+    const effective = themeMode === 'system' ? colorScheme : themeMode;
+    return {
+      colors: effective === 'dark' ? DarkPalette : LightPalette,
+      dark: effective === 'dark',
+    };
+  }, [colorScheme, themeMode]);
 }
