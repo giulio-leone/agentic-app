@@ -71,6 +71,9 @@ export function SessionDetailScreen() {
     chatSearchVisible,
     toggleChatSearch,
     selectServer,
+    toggleBookmark,
+    bookmarkedMessageIds,
+    loadBookmarks,
   } = useAppStore();
 
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -101,6 +104,9 @@ export function SessionDetailScreen() {
     onTranscript,
     onFinalTranscript: onTranscript,
   });
+
+  // Load bookmarks on mount
+  useEffect(() => { loadBookmarks(); }, []);
 
   // Smart auto-scroll: only scroll when user is near the bottom
   const isNearBottom = useRef(true);
@@ -288,6 +294,12 @@ export function SessionDetailScreen() {
     }
   }, [actionMenuMessage, regenerateMessage]);
 
+  const handleBookmark = useCallback(() => {
+    if (actionMenuMessage) {
+      toggleBookmark(actionMenuMessage.id);
+    }
+  }, [actionMenuMessage, toggleBookmark]);
+
   const handleEditStart = useCallback(() => {
     if (actionMenuMessage) {
       setEditingMessageId(actionMenuMessage.id);
@@ -380,11 +392,12 @@ export function SessionDetailScreen() {
             onLongPress={handleLongPress}
             onOpenArtifact={handleOpenArtifact}
             highlighted={searchMatchSet.has(index)}
+            bookmarked={bookmarkedMessageIds.has(item.id)}
           />
         </SwipeableMessage>
       );
     },
-    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet],
+    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds],
   );
 
   // Pulsing animation for empty state — properly managed with start/stop
@@ -606,6 +619,8 @@ export function SessionDetailScreen() {
         onCopy={handleCopy}
         onDelete={handleDelete}
         onRegenerate={handleRegenerate}
+        onBookmark={handleBookmark}
+        isBookmarked={actionMenuMessage ? bookmarkedMessageIds.has(actionMenuMessage.id) : false}
       />
 
       <CanvasPanel

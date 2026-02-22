@@ -12,7 +12,7 @@ import {
   Pressable,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Pencil, Copy, RefreshCw, Trash2 } from 'lucide-react-native';
+import { Pencil, Copy, RefreshCw, Trash2, Bookmark } from 'lucide-react-native';
 import type { ChatMessage } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
@@ -33,6 +33,8 @@ interface Props {
   onCopy?: () => void;
   onDelete?: () => void;
   onRegenerate?: () => void;
+  onBookmark?: () => void;
+  isBookmarked?: boolean;
 }
 
 export function MessageActionMenu({
@@ -43,6 +45,8 @@ export function MessageActionMenu({
   onCopy,
   onDelete,
   onRegenerate,
+  onBookmark,
+  isBookmarked,
 }: Props) {
   const { colors } = useDesignSystem();
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -73,6 +77,14 @@ export function MessageActionMenu({
   }
   if (onCopy) {
     actions.push({ key: 'copy', icon: <Copy size={20} color={colors.text} />, label: 'Copy', onPress: onCopy });
+  }
+  if (onBookmark) {
+    actions.push({
+      key: 'bookmark',
+      icon: <Bookmark size={20} color={isBookmarked ? colors.primary : colors.text} fill={isBookmarked ? colors.primary : 'none'} />,
+      label: isBookmarked ? 'Remove Bookmark' : 'Bookmark',
+      onPress: onBookmark,
+    });
   }
   if (message.role === 'assistant' && onRegenerate) {
     actions.push({ key: 'regenerate', icon: <RefreshCw size={20} color={colors.text} />, label: 'Regenerate', onPress: onRegenerate });

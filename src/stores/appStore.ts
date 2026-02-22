@@ -73,6 +73,7 @@ export interface AppState {
   chatSearchVisible: boolean;
   motionThreshold: number;
   stableThreshold: number;
+  bookmarkedMessageIds: Set<string>;
 }
 
 // ─── Store Actions ───
@@ -138,6 +139,8 @@ export interface AppActions {
   toggleChatSearch: () => void;
   setMotionThreshold: (v: number) => void;
   setStableThreshold: (v: number) => void;
+  toggleBookmark: (messageId: string) => void;
+  loadBookmarks: () => Promise<void>;
 
   // Internal
   _getService: () => ACPService | null;

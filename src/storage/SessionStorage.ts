@@ -10,6 +10,7 @@ import type { MCPServerConfig } from '../mcp/types';
 const SERVERS_KEY = '@agentic/servers';
 const ACTIVE_SERVER_KEY = '@agentic/activeServerId';
 const MCP_SERVERS_KEY = '@agentic/mcp-servers';
+const BOOKMARKS_KEY = '@agentic/bookmarks';
 
 /** Shared virtual serverId for all AI provider sessions (unified chat history). */
 export const AI_SHARED_SERVER_ID = '__ai__';
@@ -193,5 +194,21 @@ export const SessionStorage = {
     }
     await AsyncStorage.setItem(sessionsKey(AI_SHARED_SERVER_ID), JSON.stringify(shared));
     await AsyncStorage.setItem(MIGRATED_KEY, '1');
+  },
+
+  // --- Bookmark Operations ---
+
+  async fetchBookmarks(): Promise<string[]> {
+    try {
+      const raw = await AsyncStorage.getItem(BOOKMARKS_KEY);
+      if (!raw) return [];
+      return JSON.parse(raw) as string[];
+    } catch {
+      return [];
+    }
+  },
+
+  async saveBookmarks(ids: string[]): Promise<void> {
+    await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(ids));
   },
 };
