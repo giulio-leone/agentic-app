@@ -72,6 +72,18 @@ export function parseSessionUpdate(
       return actions;
     }
 
+    // Unified Bridge: agent_event for terminal commands, file edits, reasoning
+    if (sessionUpdate === 'agent_event' && content) {
+      const event = content.event as Record<string, JSONValue> | undefined;
+      const kind = (event?.kind as string) ?? (content.type as string) ?? 'unknown';
+      actions.push({
+        type: 'agentEvent',
+        eventType: kind,
+        data: event ?? content,
+      });
+      return actions;
+    }
+
     if (sessionUpdate === 'tool_call_start' && content) {
       actions.push({
         type: 'toolCall',
@@ -142,6 +154,7 @@ export type SessionUpdateAction =
   | { type: 'toolCall'; toolName: string; input: string }
   | { type: 'toolResult'; result: string }
   | { type: 'thought'; content: string }
+  | { type: 'agentEvent'; eventType: string; data: Record<string, JSONValue> }
   | { type: 'stop'; reason: string };
 
 /**
@@ -274,6 +287,39 @@ export function applySessionUpdate(
         break;
       }
 
+      case 'agentEvent': {
+        if (!currentStreamId) {
+          const newId = uuidv4();
+          currentStreamId = newId;
+          result.push({
+            id: newId,
+            role: 'assistant',
+            content: '',
+            segments: [],
+            isStreaming: true,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        const aeIdx = result.findIndex(m => m.id === currentStreamId);
+        if (aeIdx !== -1) {
+          const existing = result[aeIdx];
+          const label = agentEventLabelFromData(action.eventType, action.data);
+          if (label) {
+            const seg: MessageSegment = {
+              type: 'agentEvent',
+              eventType: action.eventType,
+              label,
+              detail: JSON.stringify(action.data),
+            };
+            result[aeIdx] = {
+              ...existing,
+              segments: [...(existing.segments ?? []), seg],
+            };
+          }
+        }
+        break;
+      }
+
       case 'stop': {
         stopReason = action.reason;
         if (currentStreamId) {
@@ -305,4 +351,51 @@ function appendTextToSegments(
   }
   segs.push({ type: 'text', content: text });
   return segs;
+}
+
+/** Maps agent event types from Unified Bridge to user-visible labels. */
+function agentEventLabelFromData(eventType: string, data: Record<string, JSONValue>): string | null {
+  switch (eventType) {
+    case 'terminal_command': {
+      const cmd = (data.name as string) || (data.command as string) || 'command';
+      return `🖥️ ${cmd}`;
+    }
+    case 'terminal_output': {
+      const name = (data.name as string) || 'command';
+      const exitCode = (data.data as Record<string, JSONValue> | undefined)?.exitCode;
+      return exitCode === 0 || exitCode === undefined
+        ? `📤 ${name} completed`
+        : `❌ ${name} failed (exit ${exitCode})`;
+    }
+    case 'file_edit': {
+      const file = (data.name as string) || 'file';
+      return `✏️ ${file}`;
+    }
+    case 'file_read': {
+      const file = (data.name as string) || 'file';
+      return `📄 ${file}`;
+    }
+    case 'reasoning':
+      return '💭 Reasoning';
+    case 'tool_call': {
+      const tool = (data.name as string) || 'tool';
+      return `🔧 ${tool}`;
+    }
+    case 'tool_result':
+      return '✅ Tool completed';
+    case 'planning:update':
+      return '📋 Planning updated';
+    case 'subagent:spawn':
+      return '🔀 Sub-agent started';
+    case 'subagent:complete':
+      return '✅ Sub-agent completed';
+    case 'step:start':
+      return `⚡ Step ${((data.stepIndex as number) ?? 0) + 1}`;
+    case 'context:summarize':
+      return '📝 Context summarized';
+    case 'checkpoint:save':
+      return '💾 Checkpoint saved';
+    default:
+      return eventType ? `📎 ${eventType}` : null;
+  }
 }
