@@ -1,0 +1,17 @@
+{
+  "name": "copilot-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ACP-compatible bridge for GitHub Copilot SDK — exposes Copilot as a TCP ACP server",
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "latest"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/node": "^22.0.0"
+  }
+}

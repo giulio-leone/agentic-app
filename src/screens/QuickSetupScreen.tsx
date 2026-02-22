@@ -111,6 +111,14 @@ const ACP_PRESETS: ACPPreset[] = [
   },
   {
     serverType: ServerType.ACP,
+    label: 'Copilot SDK',
+    description: 'copilot-bridge (SDK completo)',
+    defaultScheme: 'tcp',
+    defaultHost: 'localhost:3020',
+    icon: Github,
+  },
+  {
+    serverType: ServerType.ACP,
     label: 'Gemini CLI',
     description: 'gemini --acp (stdio→bridge)',
     defaultScheme: 'tcp',
