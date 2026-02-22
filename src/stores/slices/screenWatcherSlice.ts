@@ -5,6 +5,7 @@
 import { StateCreator } from 'zustand';
 import type { AppState, AppActions } from '../appStore';
 import type { WatcherStatus } from '../../services/ScreenWatcherService';
+import { SessionStorage } from '../../storage/SessionStorage';
 
 export interface ScreenWatcherState {
     isWatching: boolean;
@@ -21,6 +22,7 @@ export interface ScreenWatcherState {
     chatSearchVisible: boolean;
     motionThreshold: number;
     stableThreshold: number;
+    bookmarkedMessageIds: Set<string>;
 }
 
 export interface ScreenWatcherActions {
@@ -37,6 +39,8 @@ export interface ScreenWatcherActions {
     toggleChatSearch: () => void;
     setMotionThreshold: (v: number) => void;
     setStableThreshold: (v: number) => void;
+    toggleBookmark: (messageId: string) => void;
+    loadBookmarks: () => Promise<void>;
 }
 
 export type ScreenWatcherSlice = ScreenWatcherState & ScreenWatcherActions;
@@ -46,7 +50,7 @@ export const createScreenWatcherSlice: StateCreator<
     [],
     [],
     ScreenWatcherSlice
-> = (set) => ({
+> = (set, get) => ({
     // State
     isWatching: false,
     watcherStatus: 'idle' as WatcherStatus,
@@ -62,6 +66,7 @@ export const createScreenWatcherSlice: StateCreator<
     chatSearchVisible: false,
     motionThreshold: 0.8,
     stableThreshold: 0.4,
+    bookmarkedMessageIds: new Set<string>(),
 
     // Actions
     setWatching: (on) => set({ isWatching: on, captureCount: on ? 0 : 0 }),
@@ -81,4 +86,19 @@ export const createScreenWatcherSlice: StateCreator<
     toggleChatSearch: () => set((s) => ({ chatSearchVisible: !s.chatSearchVisible })),
     setMotionThreshold: (v) => set({ motionThreshold: v }),
     setStableThreshold: (v) => set({ stableThreshold: v }),
+    toggleBookmark: (messageId) => {
+      const current = get().bookmarkedMessageIds;
+      const next = new Set(current);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      set({ bookmarkedMessageIds: next });
+      SessionStorage.saveBookmarks([...next]);
+    },
+    loadBookmarks: async () => {
+      const ids = await SessionStorage.fetchBookmarks();
+      set({ bookmarkedMessageIds: new Set(ids) });
+    },
 });

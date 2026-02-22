@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { YStack, XStack, Text } from 'tamagui';
-import { Sparkles, Volume1, Volume2 } from 'lucide-react-native';
+import { Sparkles, Volume1, Volume2, Bookmark } from 'lucide-react-native';
 import { ChatMessage, Attachment } from '../acp/models/types';
 import { useDesignSystem, layout } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../utils/theme';
@@ -35,6 +35,7 @@ interface Props {
   onLongPress?: (message: ChatMessage) => void;
   onOpenArtifact?: (artifact: import('../acp/models/types').Artifact) => void;
   highlighted?: boolean;
+  bookmarked?: boolean;
 }
 
 const containerStyle = {
@@ -66,7 +67,7 @@ const systemContainerStyle = {
   alignSelf: 'center',
 } as const;
 
-export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact, highlighted }: Props) {
+export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact, highlighted, bookmarked }: Props) {
   const { ds, colors } = useDesignSystem();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -183,6 +184,9 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                     {isSpeaking ? <Volume2 size={16} color={colors.primary} /> : <Volume1 size={16} color={colors.textTertiary} />}
                   </Text>
                 </TouchableOpacity>
+                {bookmarked && (
+                  <Bookmark size={14} color={colors.primary} fill={colors.primary} />
+                )}
                 <MessageTimestamp timestamp={message.timestamp} colors={colors} />
               </XStack>
             )}
@@ -208,6 +212,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
     prevProps.message.segments?.length === nextProps.message.segments?.length &&
     prevProps.highlighted === nextProps.highlighted &&
+    prevProps.bookmarked === nextProps.bookmarked &&
     prevProps.message.serverId === nextProps.message.serverId &&
     prevProps.message.serverName === nextProps.message.serverName
   );
