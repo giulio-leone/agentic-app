@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { SessionDetailScreen } from './screens/SessionDetailScreen';
 import { AddServerScreen } from './screens/AddServerScreen';
+import { QuickSetupScreen } from './screens/QuickSetupScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DrawerContent } from './components/sidebar/DrawerContent';
 import { ConsensusConfigSheet } from './components/ConsensusConfigSheet';
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   Home: undefined;
   Session: undefined;
   AddServer: { editingServer?: ACPServerConfiguration } | undefined;
+  QuickSetup: undefined;
   Settings: undefined;
 };
 
@@ -162,18 +164,41 @@ function AppContent() {
   const { colors, dark } = useDesignSystem();
   const loadServers = useAppStore(s => s.loadServers);
   const loadMCPServers = useAppStore(s => s.loadMCPServers);
+  const servers = useAppStore(s => s.servers);
+  const navigationRef = React.useRef<any>(null);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
   useEffect(() => {
     loadServers();
     loadMCPServers();
   }, [loadServers, loadMCPServers]);
 
+  // Auto-show QuickSetup on first launch when no servers configured
+  useEffect(() => {
+    if (hasCheckedOnboarding) return;
+    if (servers.length === 0 && navigationRef.current?.isReady()) {
+      setHasCheckedOnboarding(true);
+      navigationRef.current.navigate('QuickSetup');
+    } else if (servers.length > 0) {
+      setHasCheckedOnboarding(true);
+    }
+  }, [servers, hasCheckedOnboarding]);
+
   const navTheme = dark
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navTheme}
+      onReady={() => {
+        if (!hasCheckedOnboarding && servers.length === 0) {
+          setHasCheckedOnboarding(true);
+          navigationRef.current?.navigate('QuickSetup');
+        }
+      }}
+    >
       <RootStack.Navigator
         screenOptions={{
           headerShown: false,
@@ -186,6 +211,28 @@ function AppContent() {
           options={{
             headerShown: true,
             title: 'Add Server',
+            presentation: 'modal',
+            headerTransparent: Platform.OS === 'ios',
+            headerBackground: Platform.OS === 'ios'
+              ? () => (
+                <BlurView
+                  intensity={80}
+                  tint={dark ? 'dark' : 'light'}
+                  style={StyleSheet.absoluteFill}
+                />
+              )
+              : undefined,
+            headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+        <RootStack.Screen
+          name="QuickSetup"
+          component={QuickSetupScreen}
+          options={{
+            headerShown: true,
+            title: 'Quick Setup',
             presentation: 'modal',
             headerTransparent: Platform.OS === 'ios',
             headerBackground: Platform.OS === 'ios'
