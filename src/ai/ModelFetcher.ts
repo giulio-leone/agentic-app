@@ -70,7 +70,8 @@ async function fetchOpenAIModels(apiKey: string): Promise<FetchedModel[]> {
 
 async function fetchGoogleModels(apiKey: string): Promise<FetchedModel[]> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+    'https://generativelanguage.googleapis.com/v1beta/models',
+    { headers: { 'x-goog-api-key': apiKey } },
   );
   if (!res.ok) throw new Error(`Google API error: ${res.status}`);
   const json = await res.json();

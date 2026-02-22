@@ -5,10 +5,20 @@
 | Campo | Valore |
 |-------|--------|
 | **Keystore file** | `android/app/release.keystore` |
-| **Store password** | `sMsInBCB4g-CHE0WbH9OiwDNBsyeauT2` |
+| **Store password** | *(stored in `android/gradle.properties`, NOT tracked by git)* |
 | **Key alias** | `agmente-release` |
-| **Key password** | `sMsInBCB4g-CHE0WbH9OiwDNBsyeauT2` |
+| **Key password** | *(stored in `android/gradle.properties`, NOT tracked by git)* |
 | **CN** | Giulio Leone |
 | **O** | Gauss |
 | **Validity** | 10.000 giorni (~27 anni) |
-| **SHA-256** | `39f811d9e53b8a40f667b7bad454916694acaa7d361051ed50494bf2a1f59c6b` |
+
+## Setup per nuova macchina
+
+1. Copia `android/app/release.keystore` dalla posizione sicura
+2. Crea `android/gradle.properties` con:
+   ```properties
+   RELEASE_STORE_PASSWORD=<password>
+   RELEASE_KEY_ALIAS=agmente-release
+   RELEASE_KEY_PASSWORD=<password>
+   ```
+3. **MAI committare** `gradle.properties` o il keystore nel repository
