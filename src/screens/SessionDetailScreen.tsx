@@ -211,6 +211,7 @@ export function SessionDetailScreen() {
 
   // ── Pull-to-refresh ──
   const [refreshing, setRefreshing] = useState(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -221,9 +222,13 @@ export function SessionDetailScreen() {
         await loadSessionMessages(selectedSessionId);
       }
     } finally {
-      setTimeout(() => setRefreshing(false), 400);
+      refreshTimerRef.current = setTimeout(() => setRefreshing(false), 400);
     }
   }, [isAIProvider, connectionState, connect, loadSessionMessages, selectedSessionId]);
+
+  useEffect(() => {
+    return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
+  }, []);
 
   // ── Render message ──
   const renderMessage = useCallback(
