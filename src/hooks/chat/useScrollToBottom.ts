@@ -63,16 +63,19 @@ export function useScrollToBottom({ chatMessages, isStreaming }: UseScrollToBott
   }, [chatMessages.length]);
 
   // Scroll during streaming
-  const streamScrollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastContent = chatMessages[chatMessages.length - 1]?.content;
+  const streamScrollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (isStreaming && isNearBottom.current) {
-      streamScrollRef.current = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 50);
+    if (!isStreaming || !isNearBottom.current) {
+      if (streamScrollRef.current) { clearInterval(streamScrollRef.current); streamScrollRef.current = null; }
+      return;
     }
-    return () => { if (streamScrollRef.current) clearTimeout(streamScrollRef.current); };
-  }, [lastContent, isStreaming]);
+    streamScrollRef.current = setInterval(() => {
+      if (isNearBottom.current) {
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }
+    }, 100);
+    return () => { if (streamScrollRef.current) { clearInterval(streamScrollRef.current); streamScrollRef.current = null; } };
+  }, [isStreaming]);
 
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });

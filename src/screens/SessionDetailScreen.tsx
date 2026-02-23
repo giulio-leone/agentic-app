@@ -127,7 +127,7 @@ export function SessionDetailScreen() {
     handleSearchNext,
     handleSearchPrev,
     resetSearch,
-  } = useChatSearch({ chatMessages, flatListRef });
+  } = useChatSearch({ chatMessages, flatListRef, isStreaming });
 
   const {
     actionMenuMessage,

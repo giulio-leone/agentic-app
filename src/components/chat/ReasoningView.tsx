@@ -2,7 +2,7 @@
  * ReasoningView — Collapsible reasoning/thinking display.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Brain } from 'lucide-react-native';
@@ -19,8 +19,10 @@ interface Props {
 export const ReasoningView = React.memo(function ReasoningView({ reasoning, colors, isStreaming }: Props) {
   const [expanded, setExpanded] = useState(isStreaming);
   const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
-  const lines = reasoning.split('\n').length;
-  const preview = reasoning.length > 120 ? reasoning.substring(0, 120) + '…' : reasoning;
+  const { lines, preview } = useMemo(() => ({
+    lines: reasoning.split('\n').length,
+    preview: reasoning.length > 120 ? reasoning.substring(0, 120) + '…' : reasoning,
+  }), [reasoning]);
 
   return (
     <TouchableOpacity
