@@ -11,11 +11,9 @@ import {
   StyleSheet,
   RefreshControl,
   View,
-  TouchableOpacity,
   Modal,
 } from 'react-native';
-import { YStack, XStack, Text } from 'tamagui';
-import { PenLine, GitCompareArrows } from 'lucide-react-native';
+import { YStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
@@ -26,7 +24,7 @@ import { MessageActionMenu } from '../components/chat/MessageActionMenu';
 import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
-import { ServerChipSelector } from '../components/chat/ServerChipSelector';
+import { ChatToolbar } from '../components/chat/ChatToolbar';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { ABModelPicker } from '../components/chat/ABModelPicker';
@@ -36,6 +34,7 @@ import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
 import { InlineEditView } from '../components/chat/InlineEditView';
 import { QuotedMessageBar } from '../components/chat/QuotedMessageBar';
+import { ConsensusConfigSheet } from '../components/ConsensusConfigSheet';
 import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing } from '../utils/theme';
@@ -51,6 +50,7 @@ import {
   useBookmarkedMessageIds,
   useSessionActions, useChatActions, useServerActions,
 } from '../stores/selectors';
+import { useAppStore } from '../stores/appStore';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -75,6 +75,17 @@ export function SessionDetailScreen() {
   const { sendPrompt, cancelPrompt, setPromptText, loadSessionMessages } = useSessionActions();
   const { editMessage, deleteMessage, regenerateMessage, toggleBookmark, loadBookmarks, toggleChatSearch } = useChatActions();
   const { selectServer, connect } = useServerActions();
+
+  // Feature toggles (moved from header to toolbar)
+  const agentModeEnabled = useAppStore(s => s.agentModeEnabled);
+  const toggleAgentMode = useAppStore(s => s.toggleAgentMode);
+  const consensusModeEnabled = useAppStore(s => s.consensusModeEnabled);
+  const toggleConsensusMode = useAppStore(s => s.toggleConsensusMode);
+  const isWatching = useAppStore(s => s.isWatching);
+  const setScreenWatcherVisible = useAppStore(s => s.setScreenWatcherVisible);
+  const terminalVisible = useAppStore(s => s.terminalVisible);
+  const setTerminalVisible = useAppStore(s => s.setTerminalVisible);
+  const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
@@ -344,11 +355,32 @@ export function SessionDetailScreen() {
         <QuotedMessageBar message={quotedMessage} onClear={clearQuote} colors={colors} />
       )}
 
-      <ServerChipSelector
-        servers={servers}
-        selectedId={selectedServerId}
-        onSelect={selectServer}
+      <ChatToolbar
         colors={colors}
+        servers={servers}
+        selectedServerId={selectedServerId}
+        onSelectServer={selectServer}
+        onOpenTemplates={openTemplates}
+        onToggleAB={() => {
+          if (abState.active) { clearTest(); }
+          else { setAbPickerVisible(true); }
+        }}
+        abActive={abState.active}
+        onToggleVoice={voiceAvailable ? toggleVoice : undefined}
+        isListening={isListening}
+        onToggleSearch={toggleChatSearch}
+        searchActive={chatSearchVisible}
+        onExport={handleExportChat}
+        hasMessages={chatMessages.length > 0}
+        onOpenTerminal={() => setTerminalVisible(true)}
+        terminalActive={terminalVisible}
+        onOpenScreenWatcher={() => setScreenWatcherVisible(true)}
+        screenWatcherActive={isWatching}
+        onToggleAgent={toggleAgentMode}
+        agentActive={agentModeEnabled}
+        onToggleConsensus={toggleConsensusMode}
+        onConsensusLongPress={() => setConsensusSheetVisible(true)}
+        consensusActive={consensusModeEnabled}
       />
 
       <View style={{ position: 'relative' }}>
@@ -360,41 +392,16 @@ export function SessionDetailScreen() {
         />
       </View>
 
-      <XStack alignItems="flex-end">
-        <TouchableOpacity
-          onPress={openTemplates}
-          style={{ paddingLeft: Spacing.md, paddingBottom: Spacing.lg }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="Open prompt templates"
-          accessibilityRole="button"
-        >
-          <PenLine size={18} color={colors.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            if (abState.active) { clearTest(); }
-            else { setAbPickerVisible(true); }
-          }}
-          style={{ paddingLeft: Spacing.xs, paddingBottom: Spacing.lg }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="A/B model comparison"
-          accessibilityRole="button"
-        >
-          <GitCompareArrows size={18} color={abState.active ? colors.primary : colors.textTertiary} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <MessageComposer
-            value={promptText}
-            onChangeText={setPromptText}
-            onSend={handleSend}
-            onCancel={cancelPrompt}
-            isStreaming={isStreaming}
-            isDisabled={!isConnected}
-            isListening={isListening}
-            onToggleVoice={voiceAvailable ? toggleVoice : undefined}
-          />
-        </View>
-      </XStack>
+      <MessageComposer
+        value={promptText}
+        onChangeText={setPromptText}
+        onSend={handleSend}
+        onCancel={cancelPrompt}
+        isStreaming={isStreaming}
+        isDisabled={!isConnected}
+        isListening={isListening}
+        onToggleVoice={voiceAvailable ? toggleVoice : undefined}
+      />
 
       <MessageActionMenu
         visible={!!actionMenuMessage}
@@ -441,6 +448,11 @@ export function SessionDetailScreen() {
           />
         </Modal>
       )}
+
+      <ConsensusConfigSheet
+        visible={consensusSheetVisible}
+        onClose={() => setConsensusSheetVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
