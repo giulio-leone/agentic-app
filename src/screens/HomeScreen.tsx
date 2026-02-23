@@ -2,7 +2,7 @@
  * HomeScreen – Server list + session sidebar with native-feeling UI.
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import {
   FlatList,
   TouchableOpacity,
@@ -25,6 +25,8 @@ import { ACPConnectionState, SessionSummary } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
+import { ITEM_LAYOUT_60, keyExtractorById } from '../utils/listUtils';
+import { sharedStyles } from '../utils/sharedStyles';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -45,10 +47,16 @@ export function HomeScreen() {
 
   useEffect(() => {
     loadServers();
-  }, []);
+  }, [loadServers]);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isConnected = connectionState === ACPConnectionState.Connected;
+
+  const serverListStyle = useMemo(
+    () => servers.length > 3 ? styles.serverListConstrained : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [servers.length > 3],
+  );
 
   const handleServerPress = useCallback(
     (id: string) => {
@@ -143,11 +151,11 @@ export function HomeScreen() {
         ) : (
           <FlatList
             data={servers}
-            keyExtractor={item => item.id}
+            keyExtractor={keyExtractorById}
             renderItem={renderServerItem}
             scrollEnabled={servers.length > 3}
-            style={servers.length > 3 ? { maxHeight: 240 } : undefined}
-            getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+            style={serverListStyle}
+            getItemLayout={ITEM_LAYOUT_60}
           />
         )}
       </YStack>
@@ -234,13 +242,13 @@ export function HomeScreen() {
           ) : (
             <FlatList
               data={sessions}
-              keyExtractor={item => item.id}
+              keyExtractor={keyExtractorById}
               renderItem={renderSessionItem}
               refreshControl={
                 <RefreshControl refreshing={false} onRefresh={loadSessions} />
               }
-              style={{ flex: 1 }}
-              getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+              style={sharedStyles.flex1}
+              getItemLayout={ITEM_LAYOUT_60}
               removeClippedSubviews
             />
           )}
@@ -335,4 +343,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     marginTop: Spacing.xs,
   },
+  serverListConstrained: { maxHeight: 240 },
 });

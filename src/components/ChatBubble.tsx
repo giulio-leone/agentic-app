@@ -3,20 +3,22 @@
  * Sub-components extracted to src/components/chat/.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   TouchableOpacity,
   Pressable,
   Platform,
   View,
   Text as RNText,
+  StyleSheet,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { YStack, XStack, Text } from 'tamagui';
 import { Sparkles, Volume1, Volume2, Bookmark } from 'lucide-react-native';
-import { ChatMessage } from '../acp/models/types';
+import { ChatMessage, MessageSegment } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
+import { HIT_SLOP_8 } from '../utils/sharedStyles';
 import { getServerColor } from '../utils/serverColors';
 import { MarkdownContent, createMarkdownStyles } from './chat/MarkdownContent';
 import { ReasoningView } from './chat/ReasoningView';
@@ -65,15 +67,36 @@ const systemContainerStyle = {
   alignSelf: 'center',
 } as const;
 
+const styles = StyleSheet.create({
+  contentWrapper: { flexShrink: 1 },
+  ttsButton: { padding: 4 },
+  systemBubble: { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
+});
+
+/** Check isComplete on last segment (only toolCall segments have it) */
+function getLastSegmentComplete(segments: MessageSegment[] | undefined): boolean | undefined {
+  if (!segments || segments.length === 0) return undefined;
+  const last = segments[segments.length - 1];
+  return last.type === 'toolCall' ? last.isComplete : undefined;
+}
+
 export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact, highlighted, bookmarked }: Props) {
   const { ds, colors } = useDesignSystem();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
+  const handleLongPress = useCallback(() => onLongPress?.(message), [onLongPress, message]);
+  const handleSpeak = useCallback(() => onSpeak?.(message.content, message.id), [onSpeak, message.content, message.id]);
+  const containerDynStyle = useMemo(() => ({
+    justifyContent: isSystem ? 'center' as const : isUser ? 'flex-end' as const : 'flex-start' as const,
+    backgroundColor: highlighted ? colors.primaryMuted : undefined,
+  }), [isSystem, isUser, highlighted, colors.primaryMuted]);
+  const userTextStyle = useMemo(() => ({ fontSize: FontSize.body, lineHeight: 24, color: colors.userBubbleText }), [colors.userBubbleText]);
+  const systemTextStyle = useMemo(() => ({ fontSize: FontSize.footnote, fontStyle: 'italic' as const, textAlign: 'center' as const, color: colors.textTertiary }), [colors.textTertiary]);
 
   return (
     <Pressable
-      onLongPress={() => onLongPress?.(message)}
+      onLongPress={handleLongPress}
       delayLongPress={400}
       accessibilityRole="text"
       accessibilityLabel={`${isUser ? 'You' : message.serverName || 'Assistant'}: ${message.content.slice(0, 100)}`}
@@ -82,17 +105,14 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         entering={FadeInDown.duration(250).springify().damping(18)}
         style={[
           containerStyle,
-          {
-            justifyContent: isSystem ? 'center' : isUser ? 'flex-end' : 'flex-start',
-            backgroundColor: highlighted ? colors.primaryMuted : undefined,
-          }
+          containerDynStyle,
         ]}
       >
         <View
           style={[
             bubbleStyle,
             isUser ? ds.bgUserMessage : ds.bgAssistantMessage,
-            isSystem && { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
+            isSystem && styles.systemBubble,
           ]}
         >
           {/* Avatar */}
@@ -104,7 +124,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             </YStack>
           )}
 
-          <View style={{ flexShrink: 1 }}>
+          <View style={styles.contentWrapper}>
             {/* Server name badge for multi-agent */}
             {!isUser && !isSystem && message.serverName && (
               <Text
@@ -150,11 +170,11 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                 ) : null}
               </>
             ) : isUser ? (
-              <RNText style={{ fontSize: FontSize.body, lineHeight: 24, color: colors.userBubbleText }} selectable>
+              <RNText style={userTextStyle} selectable>
                 {message.content || ''}
               </RNText>
             ) : isSystem ? (
-              <RNText style={{ fontSize: FontSize.footnote, fontStyle: 'italic', textAlign: 'center', color: colors.textTertiary }} selectable>
+              <RNText style={systemTextStyle} selectable>
                 {message.content}
               </RNText>
             ) : (
@@ -170,9 +190,9 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             {!isUser && !isSystem && !message.isStreaming && message.content && (
               <XStack gap={Spacing.sm} marginTop={Spacing.xs} alignItems="center">
                 <TouchableOpacity
-                  style={{ padding: 4 }}
-                  onPress={() => onSpeak?.(message.content, message.id)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.ttsButton}
+                  onPress={handleSpeak}
+                  hitSlop={HIT_SLOP_8}
                   accessibilityLabel={isSpeaking ? 'Stop reading aloud' : 'Read aloud'}
                   accessibilityRole="button"
                 >
@@ -203,10 +223,12 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.reasoning === nextProps.message.reasoning &&
     prevProps.message.isStreaming === nextProps.message.isStreaming &&
     prevProps.isSpeaking === nextProps.isSpeaking &&
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
     prevProps.message.segments?.length === nextProps.message.segments?.length &&
+    getLastSegmentComplete(prevProps.message.segments) === getLastSegmentComplete(nextProps.message.segments) &&
     prevProps.highlighted === nextProps.highlighted &&
     prevProps.bookmarked === nextProps.bookmarked &&
     prevProps.message.serverId === nextProps.message.serverId &&

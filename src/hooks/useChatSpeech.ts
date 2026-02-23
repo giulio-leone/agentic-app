@@ -27,5 +27,5 @@ export function useChatSpeech() {
     [],
   );
 
-  return { handleSpeak, isSpeakingMessage, speakingRef };
+  return { handleSpeak, isSpeakingMessage, speakingRef, speakingMessageId };
 }

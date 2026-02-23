@@ -94,7 +94,7 @@ export function streamConsensusChat(
 
       for await (const event of stream) {
         if (controller.signal.aborted) break;
-        const ev = event as Record<string, any>;
+        const ev = event as Record<string, unknown>;
 
         switch (ev.type) {
           case 'graph:start':
@@ -189,11 +189,13 @@ export function streamConsensusChat(
             break;
           }
 
-          case 'node:complete':
-            if (ev.nodeId === 'final' && ev.result?.output) {
-              onChunk(ev.result.output);
+          case 'node:complete': {
+            const result = (ev.result as { output?: unknown } | undefined);
+            if (ev.nodeId === 'final' && result?.output) {
+              onChunk(String(result.output));
             }
             break;
+          }
 
           case 'node:error': {
             const failedNode = String(ev.nodeId ?? '');

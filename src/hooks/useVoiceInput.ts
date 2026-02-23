@@ -23,44 +23,40 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const lastTranscriptRef = useRef('');
 
   useEffect(() => {
-    checkAvailability();
+    let cancelled = false;
+    checkAvailability().then(result => { if (!cancelled) setIsAvailable(result); });
+    return () => { cancelled = true; };
   }, []);
 
-  const checkAvailability = async () => {
+  const checkAvailability = async (): Promise<boolean> => {
     try {
-      const result = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
-      setIsAvailable(result);
-    } catch { /* speech recognition not available on device */
-      setIsAvailable(false);
+      return await ExpoSpeechRecognitionModule.isRecognitionAvailable();
+    } catch {
+      return false;
     }
   };
 
-  useSpeechRecognitionEvent('start', () => {
-    setIsListening(true);
-  });
-
-  useSpeechRecognitionEvent('end', () => {
+  const onStart = useCallback(() => setIsListening(true), []);
+  const onEnd = useCallback(() => {
     setIsListening(false);
-    if (lastTranscriptRef.current) {
-      onFinalTranscript?.(lastTranscriptRef.current);
-    }
-  });
-
-  useSpeechRecognitionEvent('result', (event) => {
+    if (lastTranscriptRef.current) onFinalTranscript?.(lastTranscriptRef.current);
+  }, [onFinalTranscript]);
+  const onResult = useCallback((event: { results?: { transcript: string }[]; isFinal?: boolean }) => {
     const text = event.results?.[0]?.transcript || '';
     setTranscript(text);
     lastTranscriptRef.current = text;
     onTranscript?.(text);
-
-    if (event.isFinal && text) {
-      onFinalTranscript?.(text);
-    }
-  });
-
-  useSpeechRecognitionEvent('error', (event) => {
+    if (event.isFinal && text) onFinalTranscript?.(text);
+  }, [onTranscript, onFinalTranscript]);
+  const onError = useCallback((event: { error?: string }) => {
     console.warn('Speech recognition error:', event.error);
     setIsListening(false);
-  });
+  }, []);
+
+  useSpeechRecognitionEvent('start', onStart);
+  useSpeechRecognitionEvent('end', onEnd);
+  useSpeechRecognitionEvent('result', onResult);
+  useSpeechRecognitionEvent('error', onError);
 
   const startListening = useCallback(async () => {
     try {

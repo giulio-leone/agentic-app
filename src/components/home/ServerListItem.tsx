@@ -1,7 +1,7 @@
 /**
  * ServerListItem — Single server row in the HomeScreen list.
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { TouchableOpacity, Platform } from 'react-native';
 import { YStack, Text } from 'tamagui';
 import { ConnectionBadge } from '../ConnectionBadge';
@@ -20,6 +20,7 @@ interface Props {
 export const ServerListItem = React.memo(function ServerListItem({
   server, isSelected, connectionState, isInitialized, onPress, colors,
 }: Props) {
+  const handlePress = useCallback(() => onPress(server.id), [onPress, server.id]);
   return (
     <TouchableOpacity
       style={[
@@ -37,7 +38,7 @@ export const ServerListItem = React.memo(function ServerListItem({
         },
         isSelected && { backgroundColor: `${colors.primary}15`, borderWidth: 1, borderColor: colors.primary },
       ]}
-      onPress={() => onPress(server.id)}
+      onPress={handlePress}
       activeOpacity={0.7}
       accessibilityLabel={`Server: ${server.name || server.host}`}
     >

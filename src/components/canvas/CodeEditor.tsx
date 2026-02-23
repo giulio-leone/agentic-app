@@ -12,6 +12,8 @@ import * as Haptics from 'expo-haptics';
 import { CodeBlock } from '../CodeBlock';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { useCopyFeedback } from '../../hooks/useCopyFeedback';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   content: string;
@@ -20,10 +22,10 @@ interface Props {
   onContentChange?: (content: string) => void;
 }
 
-export function CodeEditor({ content, language, colors, onContentChange }: Props) {
+export const CodeEditor = React.memo(function CodeEditor({ content, language, colors, onContentChange }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(content);
-  const [copied, setCopied] = useState(false);
+  const { copied, triggerCopy } = useCopyFeedback();
   const inputRef = useRef<TextInput>(null);
 
   const toggleEdit = useCallback(() => {
@@ -36,10 +38,9 @@ export function CodeEditor({ content, language, colors, onContentChange }: Props
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(isEditing ? editText : content);
-    setCopied(true);
+    triggerCopy();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setCopied(false), 2000);
-  }, [isEditing, editText, content]);
+  }, [isEditing, editText, content, triggerCopy]);
 
   return (
     <YStack flex={1}>
@@ -75,7 +76,7 @@ export function CodeEditor({ content, language, colors, onContentChange }: Props
 
       {/* Content */}
       {isEditing ? (
-        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView style={sharedStyles.flex1} keyboardShouldPersistTaps="handled">
           <TextInput
             ref={inputRef}
             value={editText}
@@ -96,13 +97,13 @@ export function CodeEditor({ content, language, colors, onContentChange }: Props
           />
         </ScrollView>
       ) : (
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={sharedStyles.flex1}>
           <CodeBlock code={content} language={language} />
         </ScrollView>
       )}
     </YStack>
   );
-}
+});
 
 const styles = StyleSheet.create({
   toolBtn: {

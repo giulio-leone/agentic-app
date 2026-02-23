@@ -2,7 +2,7 @@
  * Empty state for the chat — pulsing icon, staggered chip entrance, fade-in.
  */
 
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Animated, Pressable } from 'react-native';
 import { YStack, Text } from 'tamagui';
 import { MessageSquare, Code, Lightbulb, Zap, Wifi, WifiOff } from 'lucide-react-native';
@@ -58,8 +58,9 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
     const anims = chipAnims.map((anim, i) =>
       Animated.timing(anim, { toValue: 1, duration: 300, delay: 200 + i * 80, useNativeDriver: true }),
     );
-    Animated.parallel(anims).start();
-    return () => chipAnims.forEach(a => a.setValue(0));
+    const parallel = Animated.parallel(anims);
+    parallel.start();
+    return () => { parallel.stop(); chipAnims.forEach(a => a.setValue(0)); };
   }, [isConnected, chipAnims]);
 
   const iconStyle = useMemo(
@@ -67,7 +68,18 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
     [colors.primary, pulseAnim],
   );
 
-  const handlePress = useCallback((prompt: string) => () => onSuggestion(prompt), [onSuggestion]);
+  const pressHandlers = useMemo(
+    () => SUGGESTION_CHIPS.map(chip => () => onSuggestion(chip.prompt)),
+    [onSuggestion],
+  );
+
+  const chipStyles = useMemo(
+    () => chipAnims.map(anim => ({
+      opacity: anim,
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+    })),
+    [], // chipAnims is from useRef, stable
+  );
 
   return (
     <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
@@ -91,9 +103,9 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
         {isConnected && (
           <YStack gap={Spacing.xs} marginTop={Spacing.md} width="100%" maxWidth={320}>
             {SUGGESTION_CHIPS.map((chip, i) => (
-              <Animated.View key={chip.text} style={{ opacity: chipAnims[i], transform: [{ translateY: chipAnims[i].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+              <Animated.View key={chip.text} style={chipStyles[i]}>
                 <Pressable
-                  onPress={handlePress(chip.prompt)}
+                  onPress={pressHandlers[i]}
                   style={({ pressed }) => ({
                     opacity: pressed ? 0.7 : 1,
                     flexDirection: 'row',

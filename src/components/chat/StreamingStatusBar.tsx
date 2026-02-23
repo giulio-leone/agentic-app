@@ -3,7 +3,7 @@
  * during AI streaming responses.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 import { XStack, Text } from 'tamagui';
 import { Loader2 } from 'lucide-react-native';
@@ -57,12 +57,12 @@ export const StreamingStatusBar = React.memo(function StreamingStatusBar({
     return () => spin.stop();
   }, [visible, spinAnim]);
 
-  if (!visible) return null;
+  const rotate = useMemo(
+    () => spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
+    [spinAnim],
+  );
 
-  const rotate = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  if (!visible) return null;
 
   return (
     <Animated.View style={{ opacity: fadeAnim }}>

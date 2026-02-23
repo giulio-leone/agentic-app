@@ -5,6 +5,7 @@
 
 import { useColorScheme } from 'react-native';
 import { useMemo } from 'react';
+import { useAppStore } from '../stores/appStore';
 
 // ─── Color Palettes ───
 
@@ -232,15 +233,9 @@ export interface Theme {
 
 export function useTheme(): Theme {
   const colorScheme = useColorScheme();
-  let themeMode: 'system' | 'light' | 'dark' | 'amoled' = 'system';
-  let accentColor: AccentColorKey = 'green';
-  let fontScale = 1.0;
-  try {
-    const { useAppStore } = require('../stores/appStore');
-    themeMode = useAppStore((s: { themeMode: typeof themeMode }) => s.themeMode) ?? 'system';
-    accentColor = useAppStore((s: { accentColor: AccentColorKey }) => s.accentColor) ?? 'green';
-    fontScale = useAppStore((s: { fontScale: number }) => s.fontScale) ?? 1.0;
-  } catch { /* store not ready yet */ }
+  const themeMode = useAppStore((s) => s.themeMode) ?? 'system';
+  const accentColor = useAppStore((s) => s.accentColor) ?? 'green';
+  const fontScale = useAppStore((s) => s.fontScale) ?? 1.0;
 
   return useMemo(() => {
     let palette: ThemeColors;

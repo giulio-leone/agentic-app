@@ -23,11 +23,15 @@ import { ALL_PROVIDERS } from '../ai/providers';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useAddServerForm } from '../hooks/useAddServerForm';
+import { sharedStyles } from '../utils/sharedStyles';
 
 export const AddServerScreen = React.memo(function AddServerScreen() {
   const { colors } = useDesignSystem();
   const insets = useSafeAreaInsets();
   const w = useAddServerForm();
+  const inputStyle = React.useMemo(() => ({
+    flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right' as const, paddingVertical: 0,
+  }), [colors.text]);
 
   return (
     <KeyboardAvoidingView
@@ -35,7 +39,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        style={{ flex: 1 }}
+        style={sharedStyles.flex1}
         contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Math.max(insets.bottom, Spacing.lg) + Spacing.lg }}
         keyboardShouldPersistTaps="handled"
       >
@@ -129,7 +133,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>API Key</Text>
                 <TextInput
-                  style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                  style={inputStyle}
                   value={w.apiKey}
                   onChangeText={w.setApiKey}
                   placeholder={w.isEditing ? '••••••••' : 'sk-...'}
@@ -337,7 +341,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Name</Text>
                 <TextInput
-                  style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                  style={inputStyle}
                   value={w.name}
                   onChangeText={w.setName}
                   placeholder={w.autoName}
@@ -415,7 +419,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
                 <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Base URL</Text>
                   <TextInput
-                    style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                    style={inputStyle}
                     value={w.baseUrl}
                     onChangeText={w.setBaseUrl}
                     placeholder={w.providerInfo.defaultBaseUrl ?? 'https://api.example.com/v1'}
@@ -456,7 +460,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Name</Text>
                 <TextInput
-                  style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                  style={inputStyle}
                   value={w.name}
                   onChangeText={w.setName}
                   placeholder="My Agent"
@@ -499,7 +503,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Host</Text>
                 <TextInput
-                  style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                  style={inputStyle}
                   value={w.host}
                   onChangeText={w.setHost}
                   placeholder="localhost:8765"
@@ -516,7 +520,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Token</Text>
                 <TextInput
-                  style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                  style={inputStyle}
                   value={w.token}
                   onChangeText={w.setToken}
                   placeholder="Bearer w.token"
@@ -530,7 +534,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
               <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                 <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Directory</Text>
                 <TextInput
-                  style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                  style={inputStyle}
                   value={w.workingDirectory}
                   onChangeText={w.setWorkingDirectory}
                   placeholder="/path/to/workspace"
@@ -565,7 +569,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
                 <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Client ID</Text>
                   <TextInput
-                    style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                    style={inputStyle}
                     value={w.cfAccessClientId}
                     onChangeText={w.setCfAccessClientId}
                     placeholder="Client ID"
@@ -578,7 +582,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
                 <XStack alignItems="center" justifyContent="space-between" paddingVertical={Spacing.md} minHeight={44}>
                   <Text color="$color" fontSize={FontSize.body} fontWeight="400" width={90}>Secret</Text>
                   <TextInput
-                    style={{ flex: 1, fontSize: FontSize.body, color: colors.text, textAlign: 'right', paddingVertical: 0 }}
+                    style={inputStyle}
                     value={w.cfAccessClientSecret}
                     onChangeText={w.setCfAccessClientSecret}
                     placeholder="Client Secret"

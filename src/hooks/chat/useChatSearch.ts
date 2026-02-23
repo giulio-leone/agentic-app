@@ -9,14 +9,17 @@ import { ChatMessage } from '../../acp/models/types';
 interface UseChatSearchOptions {
   chatMessages: ChatMessage[];
   flatListRef: RefObject<FlatList<ChatMessage> | null>;
+  isStreaming?: boolean;
 }
 
-export function useChatSearch({ chatMessages, flatListRef }: UseChatSearchOptions) {
+const EMPTY_MATCHES: number[] = [];
+
+export function useChatSearch({ chatMessages, flatListRef, isStreaming }: UseChatSearchOptions) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
 
   const searchMatches = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!searchQuery.trim() || isStreaming) return EMPTY_MATCHES;
     const q = searchQuery.toLowerCase();
     return chatMessages
       .map((m, i) => (m.content.toLowerCase().includes(q) ? i : -1))

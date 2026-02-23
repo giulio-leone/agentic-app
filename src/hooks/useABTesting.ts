@@ -3,7 +3,7 @@
  * Sends the same prompt to 2+ models in parallel and tracks results.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { streamChat } from '../ai/AIService';
 import type { AIProviderConfig } from '../ai/types';
@@ -31,6 +31,14 @@ const INITIAL_STATE: ABTestState = { active: false, prompt: '', results: [] };
 export function useABTesting() {
   const [state, setState] = useState<ABTestState>(INITIAL_STATE);
   const controllersRef = useRef<AbortController[]>([]);
+
+  // Abort all in-flight streams on unmount
+  useEffect(() => {
+    return () => {
+      controllersRef.current.forEach(c => c.abort());
+      controllersRef.current = [];
+    };
+  }, []);
 
   const startTest = useCallback((
     prompt: string,

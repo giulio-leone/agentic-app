@@ -9,6 +9,7 @@ import { XStack, YStack, Text } from 'tamagui';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { PromptTemplate } from '../../utils/promptTemplates';
+import { keyExtractorById } from '../../utils/listUtils';
 
 interface Props {
   visible: boolean;
@@ -23,6 +24,21 @@ export const SlashCommandAutocomplete = React.memo(function SlashCommandAutocomp
   onSelect,
   colors,
 }: Props) {
+  const renderItem = useCallback(({ item }: { item: PromptTemplate }) => (
+    <TouchableOpacity
+      onPress={() => onSelect(item)}
+      activeOpacity={0.7}
+      accessibilityLabel={`Use template: ${item.title}`}
+    >
+      <XStack paddingHorizontal={Spacing.md} paddingVertical={Spacing.sm} gap={Spacing.sm} alignItems="center">
+        <Text fontSize={16}>{item.icon}</Text>
+        <YStack flex={1}>
+          <Text fontSize={FontSize.footnote} fontWeight="500" color={colors.text}>{item.title}</Text>
+        </YStack>
+      </XStack>
+    </TouchableOpacity>
+  ), [onSelect, colors.text]);
+
   if (!visible || matches.length === 0) return null;
 
   return (
@@ -33,21 +49,8 @@ export const SlashCommandAutocomplete = React.memo(function SlashCommandAutocomp
     >
       <FlatList
         data={matches.slice(0, 5)}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => onSelect(item)}
-            activeOpacity={0.7}
-            accessibilityLabel={`Use template: ${item.title}`}
-          >
-            <XStack paddingHorizontal={Spacing.md} paddingVertical={Spacing.sm} gap={Spacing.sm} alignItems="center">
-              <Text fontSize={16}>{item.icon}</Text>
-              <YStack flex={1}>
-                <Text fontSize={FontSize.footnote} fontWeight="500" color={colors.text}>{item.title}</Text>
-              </YStack>
-            </XStack>
-          </TouchableOpacity>
-        )}
+        keyExtractor={keyExtractorById}
+        renderItem={renderItem}
         scrollEnabled={false}
         keyboardShouldPersistTaps="handled"
       />

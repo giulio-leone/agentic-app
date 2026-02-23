@@ -29,7 +29,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function ConsensusConfigSheet({ visible, onClose }: Props) {
+export const ConsensusConfigSheet = React.memo(function ConsensusConfigSheet({ visible, onClose }: Props) {
   const { colors } = useTheme();
   const consensusConfig = useAppStore(s => s.consensusConfig);
   const updateConsensusConfig = useAppStore(s => s.updateConsensusConfig);
@@ -259,7 +259,7 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
       />
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   keyboardView: {

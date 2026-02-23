@@ -2,11 +2,11 @@
  * Navigation — Drawer + Stack layout, ChatGPT-style header with glass effects.
  */
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState, useMemo } from 'react';
 import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text, YStack } from 'tamagui';
 import { Menu } from 'lucide-react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions, type NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,10 +19,11 @@ import { HeaderActions } from './components/navigation/HeaderActions';
 const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').then(m => ({ default: m.AddServerScreen })));
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
-import { TerminalPanel } from './components/TerminalPanel';
+const LazyTerminalPanel = React.lazy(() => import('./components/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
+import { HIT_SLOP_8 } from './utils/sharedStyles';
 import { useAppStore } from './stores/appStore';
 import { useAgentInfo, useConnectionState, useIsInitialized, useSessionActions } from './stores/selectors';
 import { ConnectionBadge } from './components/ConnectionBadge';
@@ -132,7 +133,7 @@ function DrawerNavigator() {
               <TouchableOpacity
                 onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
                 style={{ paddingHorizontal: Spacing.md }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={HIT_SLOP_8}
                 accessibilityLabel="Open menu"
                 accessibilityRole="button"
               >
@@ -150,7 +151,7 @@ function DrawerNavigator() {
         />
       </Drawer.Navigator>
       <ScreenWatcherPanel />
-      <TerminalPanel />
+      <Suspense fallback={null}><LazyTerminalPanel /></Suspense>
     </>
   );
 }
@@ -160,7 +161,7 @@ function AppContent() {
   const loadServers = useAppStore(s => s.loadServers);
   const loadMCPServers = useAppStore(s => s.loadMCPServers);
   const servers = useAppStore(s => s.servers);
-  const navigationRef = React.useRef<any>(null);
+  const navigationRef = React.useRef<NavigationContainerRef<RootStackParamList> | null>(null);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
   useEffect(() => {
@@ -179,11 +180,14 @@ function AppContent() {
     }
   }, [servers, hasCheckedOnboarding]);
 
-  const navTheme = dark
-    ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
-    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } };
+  const navTheme = useMemo(
+    () => dark
+      ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
+      : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } },
+    [dark, colors.background, colors.surface, colors.primary, colors.text, colors.separator],
+  );
 
-  const modalOptions = (title: string) => ({
+  const modalOptions = useCallback((title: string) => ({
     headerShown: true,
     title,
     presentation: 'modal' as const,
@@ -194,7 +198,7 @@ function AppContent() {
     headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
     headerTintColor: colors.text,
     headerShadowVisible: false,
-  });
+  }), [dark, colors]);
 
   return (
     <NavigationContainer
@@ -237,8 +241,12 @@ function AppContent() {
 
 export function AppNavigator() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={navStyles.rootView}>
       <AppContent />
     </GestureHandlerRootView>
   );
 }
+
+const navStyles = StyleSheet.create({
+  rootView: { flex: 1 },
+});

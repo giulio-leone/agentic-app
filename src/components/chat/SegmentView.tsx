@@ -2,7 +2,7 @@
  * SegmentView — Renders a single message segment (text, tool call, thought).
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Wrench, Loader, Check, ChevronDown, ChevronRight, Terminal, FileEdit } from 'lucide-react-native';
@@ -11,7 +11,13 @@ import { StyleSheet } from 'react-native';
 import type { MessageSegment } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { sharedStyles } from '../../utils/sharedStyles';
 import { codeBlockRules } from './codeBlockRules';
+
+const segStyles = StyleSheet.create({
+  thoughtBtn: { marginVertical: 4, padding: Spacing.sm },
+  agentEventBtn: { marginVertical: 2, paddingVertical: 3, paddingHorizontal: Spacing.xs },
+});
 
 interface Props {
   segment: MessageSegment;
@@ -22,6 +28,7 @@ interface Props {
 
 export const SegmentView = React.memo(function SegmentView({ segment, colors, isUser, mdStyles }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
 
   switch (segment.type) {
     case 'text':
@@ -39,8 +46,8 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
       const showCount = total > 1;
       return (
         <TouchableOpacity
-          style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, marginVertical: 4, borderColor: colors.separator }}
-          onPress={() => setExpanded(!expanded)}
+          style={[sharedStyles.separatorCard, { marginVertical: 4, borderColor: colors.separator }]}
+          onPress={toggleExpanded}
           activeOpacity={0.7}
         >
           <XStack alignItems="center" gap={8}>
@@ -90,8 +97,8 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
     case 'thought':
       return (
         <TouchableOpacity
-          style={{ marginVertical: 4, padding: Spacing.sm }}
-          onPress={() => setExpanded(!expanded)}
+          style={segStyles.thoughtBtn}
+          onPress={toggleExpanded}
           activeOpacity={0.7}
         >
           <Text fontSize={FontSize.footnote} fontWeight="500" color={colors.textTertiary}>
@@ -124,8 +131,8 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
 
       return (
         <TouchableOpacity
-          style={{ marginVertical: 2, paddingVertical: 3, paddingHorizontal: Spacing.xs }}
-          onPress={() => setExpanded(!expanded)}
+          style={segStyles.agentEventBtn}
+          onPress={toggleExpanded}
           activeOpacity={0.7}
         >
           <XStack alignItems="center" gap={6}>

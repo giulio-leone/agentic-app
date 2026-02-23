@@ -4,7 +4,7 @@
  * zoom slider, and wires everything to the useScreenWatcher hook.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
     Modal,
     StyleSheet,
@@ -20,6 +20,7 @@ import { ZoomControls } from './screenwatcher/ZoomControls';
 import { WatcherSettings } from './screenwatcher/WatcherSettings';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing } from '../utils/theme';
+import { HIT_SLOP_8, sharedStyles } from '../utils/sharedStyles';
 import { Settings, X, Square, Play, Eye, Brain } from 'lucide-react-native';
 import { useScreenWatcher } from '../hooks/useScreenWatcher';
 import type { WatcherStatus } from '../services/ScreenWatcherService';
@@ -37,6 +38,11 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
     const { colors, dark } = useDesignSystem();
     const { width, height } = useWindowDimensions();
     const w = useScreenWatcher();
+
+    const handleToggleSettings = useCallback(
+        () => w.setShowSettings((v: boolean) => !v),
+        [w.setShowSettings],
+    );
 
     const statusInfo = STATUS_LABELS[w.watcherStatus];
     const cameraH = Math.round(height * 0.45);
@@ -59,7 +65,7 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                     justifyContent="space-between"
                     backgroundColor={dark ? '#1A1A1A' : '#FFFFFF'}
                 >
-                    <TouchableOpacity onPress={w.handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <TouchableOpacity onPress={w.handleClose} hitSlop={HIT_SLOP_8}>
                         <XStack alignItems="center" gap={4}>
                             <X size={16} color={colors.primary} />
                             <Text fontSize={FontSize.body} color={colors.primary} fontWeight="600">
@@ -71,14 +77,14 @@ export const ScreenWatcherPanel = React.memo(function ScreenWatcherPanel() {
                         Screen Watcher
                     </Text>
                     <TouchableOpacity
-                        onPress={() => w.setShowSettings(!w.showSettings)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        onPress={handleToggleSettings}
+                        hitSlop={HIT_SLOP_8}
                     >
                         <Settings size={20} color={colors.text} />
                     </TouchableOpacity>
                 </XStack>
 
-                <ScrollView flex={1} contentContainerStyle={{ paddingBottom: 40 }}>
+                <ScrollView flex={1} contentContainerStyle={sharedStyles.listContentPadBottom40}>
                     {/* Camera Preview */}
                     <YStack paddingHorizontal={Spacing.lg} paddingTop={Spacing.md}>
                         <YStack borderRadius={20} overflow="hidden" elevation={8}>

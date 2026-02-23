@@ -4,7 +4,7 @@
  * Row 2: Icon-only action buttons in a horizontal scroll.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ScrollView, TouchableOpacity, StyleSheet, View, Alert } from 'react-native';
 import { XStack, YStack, Text } from 'tamagui';
 import {
@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { getServerColor } from '../../utils/serverColors';
 import type { ACPServerConfiguration } from '../../acp/models/types';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface ToolbarAction {
   id: string;
@@ -93,7 +94,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const serverAccent = selectedServerId ? getServerColor(selectedServerId) : colors.primary;
 
-  const actions: ToolbarAction[] = [
+  const actions: ToolbarAction[] = useMemo(() => [
     {
       id: 'templates',
       icon: (c) => <PenLine size={ICON} color={c} />,
@@ -159,7 +160,12 @@ export const ChatToolbar = React.memo(function ChatToolbar({
       onPress: onToggleConsensus,
       onLongPress: onConsensusLongPress,
     },
-  ];
+  ], [
+    onOpenTemplates, abActive, onToggleAB, onToggleVoice, isListening,
+    searchActive, onToggleSearch, hasMessages, onExport,
+    terminalActive, onOpenTerminal, screenWatcherActive, onOpenScreenWatcher,
+    agentActive, onToggleAgent, consensusActive, onToggleConsensus, onConsensusLongPress,
+  ]);
 
   return (
     <YStack
@@ -181,7 +187,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
           style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30`, flex: 1 }]}
         >
           {providerIcon ?? null}
-          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
+          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={sharedStyles.flex1}>
             {currentModelLabel || 'Select model'}
           </Text>
           <Text fontSize={10} color={colors.primary} style={{ opacity: 0.6 }}>▾</Text>

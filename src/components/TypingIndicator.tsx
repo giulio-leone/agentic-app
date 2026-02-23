@@ -17,16 +17,21 @@ function useBounceDot(delay: number) {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let loop: Animated.CompositeAnimation | undefined;
     const timeout = setTimeout(() => {
-      Animated.loop(
+      loop = Animated.loop(
         Animated.sequence([
           Animated.timing(anim, { toValue: 1, duration: 300, easing: Easing.out(Easing.quad), useNativeDriver: true }),
           Animated.timing(anim, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
           Animated.delay(200),
         ]),
-      ).start();
+      );
+      loop.start();
     }, delay);
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      loop?.stop();
+    };
   }, [anim, delay]);
 
   const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });

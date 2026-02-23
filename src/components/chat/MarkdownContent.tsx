@@ -34,6 +34,10 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
 
   // Extract image URLs from markdown ![alt](url) patterns
   const parts = useMemo(() => {
+    // Short-circuit: skip regex if no image syntax present
+    if (!content.includes('![')) {
+      return [{ type: 'text' as const, text: content }];
+    }
     const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     const result: Array<{ type: 'text'; text: string } | { type: 'image'; url: string; alt: string }> = [];
     let lastIndex = 0;
@@ -67,7 +71,7 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
     <>
       {parts.map((part, i) => {
         if (part.type === 'text' && part.text.trim()) {
-          return <Markdown key={`t-${i}-${part.text.length}`} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
+          return <Markdown key={`t-${i}`} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
         }
         if (part.type === 'image') {
           return <InlineImage key={`i-${i}-${part.url}`} url={part.url} alt={part.alt} colors={colors} />;

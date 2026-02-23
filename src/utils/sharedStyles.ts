@@ -3,10 +3,14 @@
  * Import these instead of duplicating inline style objects.
  */
 
+/** Shared hitSlop constants for TouchableOpacity/Pressable */
+export const HIT_SLOP_8 = { top: 8, bottom: 8, left: 8, right: 8 } as const;
+
 import { StyleSheet } from 'react-native';
 import { Spacing, Radius } from './theme';
 
 export const sharedStyles = StyleSheet.create({
+  flex1: { flex: 1 },
   formInput: {
     borderRadius: Radius.md,
     borderWidth: StyleSheet.hairlineWidth,
@@ -31,5 +35,13 @@ export const sharedStyles = StyleSheet.create({
     borderRadius: Radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.md,
+  },
+  separatorCard: {
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+  },
+  listContentPadBottom40: {
+    paddingBottom: 40,
   },
 });

@@ -6,22 +6,29 @@
 
 import React, { useRef, useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { Reply } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { ThemeColors } from '../../utils/theme';
+import type { ChatMessage } from '../../acp/models/types';
 
 interface Props {
   children: React.ReactNode;
-  onSwipeReply: () => void;
+  message: ChatMessage;
+  onSwipeReply: (msg: ChatMessage) => void;
   colors: ThemeColors;
   enabled?: boolean;
 }
 
 const TRIGGER_THRESHOLD = 60;
 
-function LeftAction(_progress: SharedValue<number>, drag: SharedValue<number>, colors: ThemeColors) {
+interface LeftActionProps {
+  drag: SharedValue<number>;
+  colors: ThemeColors;
+}
+
+const LeftAction = React.memo(function LeftAction({ drag, colors }: LeftActionProps) {
   const animStyle = useAnimatedStyle(() => ({
     opacity: Math.min(drag.value / TRIGGER_THRESHOLD, 1),
     transform: [{ scale: Math.min(drag.value / TRIGGER_THRESHOLD, 1) }],
@@ -34,30 +41,36 @@ function LeftAction(_progress: SharedValue<number>, drag: SharedValue<number>, c
       </Animated.View>
     </View>
   );
-}
+});
 
 export const SwipeableMessage = React.memo(function SwipeableMessage({
   children,
+  message,
   onSwipeReply,
   colors,
   enabled = true,
 }: Props) {
-  const swipeRef = useRef<any>(null);
+  const swipeRef = useRef<SwipeableMethods | null>(null);
   const didTrigger = useRef(false);
 
   const handleOpen = useCallback(() => {
     if (!didTrigger.current) {
       didTrigger.current = true;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onSwipeReply();
+      onSwipeReply(message);
     }
     // Auto-close after triggering
     swipeRef.current?.close();
-  }, [onSwipeReply]);
+  }, [onSwipeReply, message]);
 
   const handleClose = useCallback(() => {
     didTrigger.current = false;
   }, []);
+
+  const renderLeft = useCallback(
+    (_progress: SharedValue<number>, drag: SharedValue<number>) => <LeftAction drag={drag} colors={colors} />,
+    [colors],
+  );
 
   if (!enabled) return <>{children}</>;
 
@@ -66,7 +79,7 @@ export const SwipeableMessage = React.memo(function SwipeableMessage({
       ref={swipeRef}
       friction={2}
       leftThreshold={TRIGGER_THRESHOLD}
-      renderLeftActions={(progress, drag) => LeftAction(progress, drag, colors)}
+      renderLeftActions={renderLeft}
       onSwipeableOpen={handleOpen}
       onSwipeableClose={handleClose}
       overshootLeft={false}

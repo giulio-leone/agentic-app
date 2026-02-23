@@ -1,11 +1,15 @@
 /**
  * Global error handler — catches unhandled JS errors and promise rejections.
- * Logs to developer console and optionally shows toast feedback.
+ * Logs to developer console, shows toast feedback, and auto-restarts on fatal crashes.
  */
 
 import { showErrorToast } from './toast';
+import RNRestart from 'react-native-restart';
 
 let initialized = false;
+
+/** Delay before auto-restart on fatal crash (ms) */
+const FATAL_RESTART_DELAY = 1500;
 
 export function setupGlobalErrorHandler(): void {
   if (initialized) return;
@@ -29,13 +33,16 @@ export function setupGlobalErrorHandler(): void {
     originalHandler?.(event);
   };
 
-  // React Native global error handler (non-fatal)
+  // React Native global error handler
   const ErrorUtils = g.ErrorUtils;
   if (ErrorUtils) {
     const prevHandler = ErrorUtils.getGlobalHandler();
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
       console.error(`[GlobalError] ${isFatal ? 'FATAL' : 'non-fatal'}:`, error.message);
-      if (!isFatal) {
+      if (isFatal) {
+        // Auto-restart on fatal crash after brief delay
+        setTimeout(() => RNRestart.restart(), FATAL_RESTART_DELAY);
+      } else {
         showErrorToast('Error', error.message);
       }
       prevHandler?.(error, isFatal);

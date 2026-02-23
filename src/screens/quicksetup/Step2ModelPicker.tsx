@@ -14,6 +14,7 @@ import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ThemeColors } from '../../utils/theme';
 import type { useQuickSetupWizard } from './useQuickSetupWizard';
 import { AdvancedModelSettings } from './AdvancedModelSettings';
+import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
 
 const separatorStyle = { height: Spacing.xs } as const;
 const ItemSeparator = () => <View style={separatorStyle} />;
@@ -24,8 +25,6 @@ interface Step2ModelPickerProps {
   w: WizardState;
   colors: ThemeColors;
 }
-
-const ITEM_HEIGHT = 60;
 
 export function Step2ModelPicker({ w, colors }: Step2ModelPickerProps) {
   const renderModelItem = useCallback(({ item }: { item: { id: string; name: string; contextWindow?: number } }) => {
@@ -100,11 +99,11 @@ export function Step2ModelPicker({ w, colors }: Step2ModelPickerProps) {
       {/* Model list */}
       <FlatList
         data={w.displayModels}
-        keyExtractor={item => item.id}
+        keyExtractor={keyExtractorById}
         style={{ maxHeight: 260 }}
         keyboardShouldPersistTaps="handled"
         renderItem={renderModelItem}
-        getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+        getItemLayout={ITEM_LAYOUT_60}
         removeClippedSubviews
         ItemSeparatorComponent={ItemSeparator}
       />

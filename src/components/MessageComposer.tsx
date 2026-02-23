@@ -70,6 +70,20 @@ export const MessageComposer = React.memo(function MessageComposer({
     setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
 
+  const handleSheetClose = useCallback(() => setSheetVisible(false), []);
+
+  const inputStyle = useMemo(() => ({
+    flex: 1,
+    fontSize: FontSize.body,
+    maxHeight: 120,
+    paddingTop: 0,
+    paddingBottom: 0,
+    lineHeight: 22,
+    textAlignVertical: 'center' as const,
+    marginLeft: Spacing.xs,
+    color: colors.text,
+  }), [colors.text]);
+
   const handleAttach = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSheetVisible(true);
@@ -165,17 +179,7 @@ export const MessageComposer = React.memo(function MessageComposer({
         </TouchableOpacity>
 
         <TextInput
-          style={{
-            flex: 1,
-            fontSize: FontSize.body,
-            maxHeight: 120,
-            paddingTop: 0,
-            paddingBottom: 0,
-            lineHeight: 22,
-            textAlignVertical: 'center',
-            marginLeft: Spacing.xs,
-            color: colors.text,
-          }}
+          style={inputStyle}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -213,7 +217,7 @@ export const MessageComposer = React.memo(function MessageComposer({
         </BlurView>
         <AttachmentSheet
           visible={sheetVisible}
-          onClose={() => setSheetVisible(false)}
+          onClose={handleSheetClose}
           options={attachmentOptions}
         />
       </>
@@ -230,7 +234,7 @@ export const MessageComposer = React.memo(function MessageComposer({
       </YStack>
       <AttachmentSheet
         visible={sheetVisible}
-        onClose={() => setSheetVisible(false)}
+        onClose={handleSheetClose}
         options={attachmentOptions}
       />
     </>

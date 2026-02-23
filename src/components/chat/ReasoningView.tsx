@@ -2,12 +2,13 @@
  * ReasoningView — Collapsible reasoning/thinking display.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Brain } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   reasoning: string;
@@ -17,13 +18,16 @@ interface Props {
 
 export const ReasoningView = React.memo(function ReasoningView({ reasoning, colors, isStreaming }: Props) {
   const [expanded, setExpanded] = useState(isStreaming);
-  const lines = reasoning.split('\n').length;
-  const preview = reasoning.length > 120 ? reasoning.substring(0, 120) + '…' : reasoning;
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
+  const { lines, preview } = useMemo(() => ({
+    lines: reasoning.split('\n').length,
+    preview: reasoning.length > 120 ? reasoning.substring(0, 120) + '…' : reasoning,
+  }), [reasoning]);
 
   return (
     <TouchableOpacity
-      style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, marginBottom: Spacing.xs, borderColor: colors.separator, backgroundColor: colors.codeBackground }}
-      onPress={() => setExpanded(!expanded)}
+      style={[sharedStyles.separatorCard, { marginBottom: Spacing.xs, borderColor: colors.separator, backgroundColor: colors.codeBackground }]}
+      onPress={toggleExpanded}
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={6}>

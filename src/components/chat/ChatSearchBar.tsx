@@ -37,9 +37,9 @@ export const ChatSearchBar = React.memo(function ChatSearchBar({
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (visible) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    if (!visible) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 100);
+    return () => clearTimeout(t);
   }, [visible]);
 
   const handleClose = useCallback(() => {

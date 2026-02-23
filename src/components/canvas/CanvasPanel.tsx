@@ -22,12 +22,14 @@ import * as Haptics from 'expo-haptics';
 import type { Artifact, ArtifactType } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { useCopyFeedback } from '../../hooks/useCopyFeedback';
 import { HtmlRenderer } from './HtmlRenderer';
 import { SvgRenderer } from './SvgRenderer';
 import { MermaidRenderer } from './MermaidRenderer';
 import { CodeEditor } from './CodeEditor';
 import { ImageRenderer } from './ImageRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   visible: boolean;
@@ -37,6 +39,8 @@ interface Props {
 }
 
 type ViewMode = 'preview' | 'source';
+
+const PREVENT_CLOSE = () => { /* prevent close */ };
 
 const TYPE_LABELS: Record<ArtifactType, string> = {
   code: 'Code',
@@ -48,19 +52,18 @@ const TYPE_LABELS: Record<ArtifactType, string> = {
   image: 'Image',
 };
 
-export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Props) {
+export const CanvasPanel = React.memo(function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Props) {
   const { colors } = useDesignSystem();
   const { height } = useWindowDimensions();
-  const [copied, setCopied] = useState(false);
+  const { copied, triggerCopy } = useCopyFeedback();
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
 
   const handleCopy = useCallback(async () => {
     if (!artifact) return;
     await Clipboard.setStringAsync(artifact.content);
-    setCopied(true);
+    triggerCopy();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setCopied(false), 2000);
-  }, [artifact]);
+  }, [artifact, triggerCopy]);
 
   const handleShare = useCallback(async () => {
     if (!artifact) return;
@@ -99,7 +102,7 @@ export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Pro
               maxHeight: height * 0.9,
             },
           ]}
-          onPress={() => {/* prevent close */}}
+          onPress={PREVENT_CLOSE}
         >
           {/* Header */}
           <XStack
@@ -157,7 +160,7 @@ export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Pro
                 onContentChange={onUpdateContent ? handleContentChange : undefined}
               />
             ) : artifact.type === 'csv' ? (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.md }}>
+              <ScrollView style={sharedStyles.flex1} contentContainerStyle={{ padding: Spacing.md }}>
                 <CsvTable content={artifact.content} colors={colors} />
               </ScrollView>
             ) : (
@@ -174,7 +177,7 @@ export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Pro
       </Pressable>
     </Modal>
   );
-}
+});
 
 // ── Preview router ─────────────────────────────────────────────────────────────
 

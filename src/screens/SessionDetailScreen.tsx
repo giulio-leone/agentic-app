@@ -127,7 +127,7 @@ export function SessionDetailScreen() {
     handleSearchNext,
     handleSearchPrev,
     resetSearch,
-  } = useChatSearch({ chatMessages, flatListRef });
+  } = useChatSearch({ chatMessages, flatListRef, isStreaming });
 
   const {
     actionMenuMessage,
@@ -188,8 +188,29 @@ export function SessionDetailScreen() {
     setPromptText('');
   }, [servers, promptText, chatMessages, startTest, setPromptText]);
 
-  // ── TTS ──
-  const { handleSpeak, isSpeakingMessage } = useChatSpeech();
+  const handleCloseSearch = useCallback(
+    () => { toggleChatSearch(); resetSearch(); },
+    [toggleChatSearch, resetSearch],
+  );
+
+  const handleOpenModelPicker = useCallback(() => setModelPickerVisible(true), []);
+
+  const handleToggleAB = useCallback(() => {
+    if (abState.active) { clearTest(); }
+    else { setAbPickerVisible(true); }
+  }, [abState.active, clearTest]);
+
+  const handleOpenTerminal = useCallback(() => setTerminalVisible(true), [setTerminalVisible]);
+
+  const handleOpenScreenWatcher = useCallback(() => setScreenWatcherVisible(true), [setScreenWatcherVisible]);
+
+  const handleConsensusLongPress = useCallback(() => setConsensusSheetVisible(true), []);
+
+  const handleCloseAbPicker = useCallback(() => setAbPickerVisible(false), []);
+  const handleCloseConsensusSheet = useCallback(() => setConsensusSheetVisible(false), []);
+  const handleCloseModelPicker = useCallback(() => setModelPickerVisible(false), []);
+
+  const { handleSpeak, isSpeakingMessage, speakingMessageId } = useChatSpeech();
 
   // ── STT ──
   const onTranscript = useCallback((text: string) => setPromptText(text), [setPromptText]);
@@ -199,7 +220,7 @@ export function SessionDetailScreen() {
   });
 
   // ── Load bookmarks + haptic on response complete + clear badge ──
-  useEffect(() => { loadBookmarks(); clearNotifications(); }, [loadBookmarks]);
+  useEffect(() => { loadBookmarks(); clearNotifications(); }, [loadBookmarks, clearNotifications]);
 
   const prevStreaming = useRef(isStreaming);
   useEffect(() => {
@@ -210,6 +231,7 @@ export function SessionDetailScreen() {
   }, [isStreaming, chatMessages.length]);
 
   // ── Pull-to-refresh ──
+  const refreshColors = useMemo(() => [colors.primary], [colors.primary]);
   const [refreshing, setRefreshing] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRefresh = useCallback(async () => {
@@ -249,7 +271,8 @@ export function SessionDetailScreen() {
 
       return (
         <SwipeableMessage
-          onSwipeReply={() => handleSwipeReply(item)}
+          message={item}
+          onSwipeReply={handleSwipeReply}
           colors={colors}
           enabled={!isStreaming && item.role !== 'system'}
         >
@@ -265,13 +288,13 @@ export function SessionDetailScreen() {
         </SwipeableMessage>
       );
     },
-    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds, setEditText],
+    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds, setEditText, isSpeakingMessage],
   );
 
   // Stable extraData to minimize full FlatList re-renders
   const extraData = useMemo(
-    () => ({ isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds }),
-    [isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds],
+    () => ({ isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds, speakingMessageId }),
+    [isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds, speakingMessageId],
   );
 
   const renderEmpty = useCallback(
@@ -291,13 +314,18 @@ export function SessionDetailScreen() {
     if (!isStreaming) return 0;
     const last = chatMessages[chatMessages.length - 1];
     if (!last?.isStreaming || !last.content) return 0;
-    return Math.ceil(last.content.split(/\s+/).length * 1.33);
+    // O(1) estimate: ~5 chars per word, ~1.33 tokens per word
+    return Math.ceil((last.content.length / 5) * 1.33);
   }, [isStreaming, chatMessages]);
 
   const containerStyle = useMemo(
     () => ({ flex: 1, backgroundColor: colors.background } as const),
     [colors.background],
   );
+
+  const handleScrollToIndexFailed = useCallback((info: { averageItemLength: number; index: number }) => {
+    flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -309,7 +337,7 @@ export function SessionDetailScreen() {
         visible={chatSearchVisible}
         query={searchQuery}
         onChangeQuery={setSearchQuery}
-        onClose={() => { toggleChatSearch(); resetSearch(); }}
+        onClose={handleCloseSearch}
         matchCount={searchMatches.length}
         currentMatch={currentMatchIdx}
         onPrev={handleSearchPrev}
@@ -324,12 +352,7 @@ export function SessionDetailScreen() {
         extraData={extraData}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={showSkeleton ? <SkeletonMessage /> : showTyping ? <TypingIndicator /> : null}
-        onScrollToIndexFailed={(info) => {
-          flatListRef.current?.scrollToOffset({
-            offset: info.averageItemLength * info.index,
-            animated: true,
-          });
-        }}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         contentContainerStyle={
           chatMessages.length === 0 ? emptyListStyle : messageListStyle
         }
@@ -347,7 +370,7 @@ export function SessionDetailScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
-            colors={[colors.primary]}
+            colors={refreshColors}
           />
         }
       />
@@ -386,13 +409,10 @@ export function SessionDetailScreen() {
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}
         onOpenTemplates={openTemplates}
-        onOpenModelPicker={() => setModelPickerVisible(true)}
+        onOpenModelPicker={handleOpenModelPicker}
         currentModelLabel={currentModelLabel}
         providerIcon={providerIcon}
-        onToggleAB={() => {
-          if (abState.active) { clearTest(); }
-          else { setAbPickerVisible(true); }
-        }}
+        onToggleAB={handleToggleAB}
         abActive={abState.active}
         onToggleVoice={voiceAvailable ? toggleVoice : undefined}
         isListening={isListening}
@@ -400,18 +420,18 @@ export function SessionDetailScreen() {
         searchActive={chatSearchVisible}
         onExport={handleExportChat}
         hasMessages={chatMessages.length > 0}
-        onOpenTerminal={() => setTerminalVisible(true)}
+        onOpenTerminal={handleOpenTerminal}
         terminalActive={terminalVisible}
-        onOpenScreenWatcher={() => setScreenWatcherVisible(true)}
+        onOpenScreenWatcher={handleOpenScreenWatcher}
         screenWatcherActive={isWatching}
         onToggleAgent={toggleAgentMode}
         agentActive={agentModeEnabled}
         onToggleConsensus={toggleConsensusMode}
-        onConsensusLongPress={() => setConsensusSheetVisible(true)}
+        onConsensusLongPress={handleConsensusLongPress}
         consensusActive={consensusModeEnabled}
       />
 
-      <View style={{ position: 'relative' }}>
+      <View style={styles.relativeContainer}>
         <SlashCommandAutocomplete
           visible={promptText.startsWith('/')}
           matches={slashMatches}
@@ -463,7 +483,7 @@ export function SessionDetailScreen() {
         visible={abPickerVisible}
         servers={servers}
         onStart={handleABStart}
-        onClose={() => setAbPickerVisible(false)}
+        onClose={handleCloseAbPicker}
         colors={colors}
       />
 
@@ -479,12 +499,12 @@ export function SessionDetailScreen() {
 
       <ConsensusConfigSheet
         visible={consensusSheetVisible}
-        onClose={() => setConsensusSheetVisible(false)}
+        onClose={handleCloseConsensusSheet}
       />
 
       <ProviderModelPicker
         visible={modelPickerVisible}
-        onClose={() => setModelPickerVisible(false)}
+        onClose={handleCloseModelPicker}
         servers={servers}
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}
@@ -494,3 +514,7 @@ export function SessionDetailScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  relativeContainer: { position: 'relative' },
+});

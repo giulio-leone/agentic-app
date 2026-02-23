@@ -5,12 +5,19 @@
 
 import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
-import { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, cancelAnimation } from 'react-native-reanimated';
 import { v4 as uuidv4 } from 'uuid';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import { ScreenWatcherService } from '../services/ScreenWatcherService';
 import { useAppStore } from '../stores/appStore';
+import {
+  useChatMessages, useIsStreaming, useAutoStartVisionDetect,
+  useScreenWatcherVisible, useIsWatching, useWatcherStatus,
+  useCaptureCount, useIsAutoMode, useZoomLevel, useCustomPrompt,
+  useIsRemoteLLMEnabled, useMotionThreshold, useStableThreshold,
+  useScreenWatcherActions, useSessionActions,
+} from '../stores/selectors';
 import type { SmartCameraViewHandle } from '../components/camera/SmartCameraView';
 import type { Attachment } from '../acp/models/types';
 
@@ -55,28 +62,35 @@ export function useScreenWatcher() {
   const lastCaptureTime = useRef<number>(0);
   const hasAutoStarted = useRef(false);
 
+  // Granular state selectors — each only re-renders when its own value changes
+  const screenWatcherVisible = useScreenWatcherVisible();
+  const isWatching = useIsWatching();
+  const watcherStatus = useWatcherStatus();
+  const captureCount = useCaptureCount();
+  const isAutoMode = useIsAutoMode();
+  const zoomLevel = useZoomLevel();
+  const customPrompt = useCustomPrompt();
+  const isRemoteLLMEnabled = useIsRemoteLLMEnabled();
+  const motionThreshold = useMotionThreshold();
+  const stableThreshold = useStableThreshold();
+  const isStreaming = useIsStreaming();
+  const chatMessages = useChatMessages();
+  const autoStartVisionDetect = useAutoStartVisionDetect();
+
   const {
-    screenWatcherVisible, setScreenWatcherVisible,
-    isWatching, setWatching,
-    watcherStatus, setWatcherStatus,
-    captureCount, incrementCapture,
-    isAutoMode, setAutoMode,
-    zoomLevel, setZoomLevel,
-    customPrompt, setCustomPrompt,
-    isRemoteLLMEnabled, setRemoteLLMEnabled,
-    setWatcherProcessing,
-    sendPrompt,
-    isStreaming,
-    chatMessages,
-    motionThreshold, stableThreshold,
-    setMotionThreshold, setStableThreshold,
-    autoStartVisionDetect,
-  } = useAppStore();
+    setScreenWatcherVisible, setWatching, setWatcherStatus,
+    incrementCapture, setAutoMode, setZoomLevel, setCustomPrompt,
+    setRemoteLLMEnabled, setWatcherProcessing, setMotionThreshold, setStableThreshold,
+  } = useScreenWatcherActions();
+
+  const { sendPrompt } = useSessionActions();
 
   // Latest assistant message
   const latestAssistantMessage = useMemo(() => {
-    const reversed = [...chatMessages].reverse();
-    return reversed.find((m) => m.role === 'assistant');
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      if (chatMessages[i].role === 'assistant') return chatMessages[i];
+    }
+    return undefined;
   }, [chatMessages]);
 
   // ── Animations ──
@@ -88,8 +102,10 @@ export function useScreenWatcher() {
         -1, true,
       );
     } else {
+      cancelAnimation(pulse);
       pulse.value = 1;
     }
+    return () => cancelAnimation(pulse);
   }, [isWatching, pulse]);
 
   const pulseStyle = useAnimatedStyle(() => ({

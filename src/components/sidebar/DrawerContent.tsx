@@ -3,7 +3,7 @@
  * Logic extracted to useDrawerState hook.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   TouchableOpacity,
   FlatList,
@@ -20,11 +20,80 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { ConnectionBadge } from '../ConnectionBadge';
-import { SessionSummary, ServerType } from '../../acp/models/types';
+import { SessionSummary, ServerType, ACPServerConfiguration, ACPConnectionState } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
+import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { HIT_SLOP_8, sharedStyles } from '../../utils/sharedStyles';
 import { getProviderInfo } from '../../ai/providers';
 import { useDrawerState } from '../../hooks/useDrawerState';
+import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
+
+interface ServerChipProps {
+  server: ACPServerConfiguration;
+  isSelected: boolean;
+  onPressServer: (id: string) => void;
+  onLongPressServer: (server: ACPServerConfiguration) => void;
+  colors: ThemeColors;
+  connectionState: ACPConnectionState;
+  isInitialized: boolean;
+}
+
+const ServerChip = React.memo(function ServerChip({
+  server,
+  isSelected,
+  onPressServer,
+  onLongPressServer,
+  colors,
+  connectionState,
+  isInitialized,
+}: ServerChipProps) {
+  const handlePress = useCallback(() => onPressServer(server.id), [onPressServer, server.id]);
+  const handleLongPress = useCallback(() => onLongPressServer(server), [onLongPressServer, server]);
+  const isAIProvider = server.serverType === ServerType.AIProvider;
+  let ProviderIcon: React.ComponentType<{ size?: number; color?: string; style?: object }> | null = null;
+  if (isAIProvider && server.aiProviderConfig?.providerType) {
+    try { ProviderIcon = getProviderInfo(server.aiProviderConfig.providerType).icon; } catch { /* unknown provider */ }
+  } else if (server.serverType === ServerType.CopilotCLI) {
+    ProviderIcon = Github;
+  } else if (server.serverType === ServerType.Codex) {
+    ProviderIcon = Terminal;
+  } else if (server.serverType === ServerType.ACP) {
+    ProviderIcon = Server;
+  }
+  const chipStyle = useMemo(
+    () => [drawerStyles.serverChip, isSelected ? { backgroundColor: colors.sidebarSelectedItem } : null],
+    [isSelected, colors.sidebarSelectedItem],
+  );
+  return (
+    <TouchableOpacity
+      style={chipStyle}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
+      activeOpacity={0.7}
+      accessibilityLabel={`Server: ${server.name || server.host}`}
+      accessibilityRole="button"
+      accessibilityHint="Tap to select, long press to edit or delete"
+    >
+      {ProviderIcon && (
+        <ProviderIcon size={14} color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary} style={{ marginRight: 4 }} />
+      )}
+      <Text
+        color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary}
+        fontSize={FontSize.footnote}
+        fontWeight="500"
+        flex={1}
+        marginRight={Spacing.sm}
+        numberOfLines={1}
+      >
+        {server.name || server.host}
+      </Text>
+      {isSelected && !isAIProvider && (
+        <ConnectionBadge state={connectionState} isInitialized={isInitialized} />
+      )}
+    </TouchableOpacity>
+  );
+});
 
 export function DrawerContent(props: DrawerContentComponentProps) {
   const { colors } = useDesignSystem();
@@ -53,12 +122,15 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         </XStack>
       );
     },
-    [],
+    [colors.destructive, colors.contrastText],
   );
 
   const renderSessionItem = useCallback(
     ({ item }: { item: SessionSummary }) => {
       const isActive = item.id === w.selectedSessionId;
+      const rowStyle = isActive
+        ? [sessionItemStyles.row, { backgroundColor: colors.sidebarActiveItem }]
+        : sessionItemStyles.row;
       return (
         <Swipeable
           renderRightActions={renderDeleteAction}
@@ -70,30 +142,14 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           friction={2}
         >
           <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: Spacing.md,
-              paddingVertical: Spacing.sm + 2,
-              borderRadius: Radius.sm,
-              marginBottom: 1,
-              ...(isActive && { backgroundColor: colors.sidebarActiveItem }),
-            }}
+            style={rowStyle}
             onPress={() => w.handleSessionPress(item)}
             activeOpacity={0.6}
             accessibilityLabel={`Chat: ${item.title || 'New chat'}`}
             accessibilityHint="Swipe left to delete"
           >
             {isActive && (
-              <View
-                style={{
-                  width: 3,
-                  alignSelf: 'stretch',
-                  backgroundColor: colors.primary,
-                  borderRadius: 1.5,
-                  marginRight: Spacing.sm,
-                }}
-              />
+              <View style={[sessionItemStyles.activeBar, { backgroundColor: colors.primary }]} />
             )}
             <Text
               color={colors.sidebarText}
@@ -189,57 +245,18 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           </TouchableOpacity>
         ) : (
           <>
-            {w.servers.map(server => {
-              const isSelected = server.id === w.selectedServerId;
-              const isAIProvider = server.serverType === ServerType.AIProvider;
-              let ProviderIcon: React.ComponentType<any> | null = null;
-              if (isAIProvider && server.aiProviderConfig?.providerType) {
-                try { ProviderIcon = getProviderInfo(server.aiProviderConfig.providerType).icon; } catch { /* unknown provider */ }
-              } else if (server.serverType === ServerType.CopilotCLI) {
-                ProviderIcon = Github;
-              } else if (server.serverType === ServerType.Codex) {
-                ProviderIcon = Terminal;
-              } else if (server.serverType === ServerType.ACP) {
-                ProviderIcon = Server;
-              }
-              return (
-                <TouchableOpacity
-                  key={server.id}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingHorizontal: Spacing.md,
-                    paddingVertical: Spacing.sm,
-                    borderRadius: Radius.sm,
-                    ...(isSelected && { backgroundColor: colors.sidebarSelectedItem }),
-                  }}
-                  onPress={() => w.handleServerPress(server.id)}
-                  onLongPress={() => w.handleServerLongPress(server)}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`Server: ${server.name || server.host}`}
-                  accessibilityRole="button"
-                  accessibilityHint="Tap to select, long press to edit or delete"
-                >
-                  {ProviderIcon && (
-                    <ProviderIcon size={14} color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary} style={{ marginRight: 4 }} />
-                  )}
-                  <Text
-                    color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary}
-                    fontSize={FontSize.footnote}
-                    fontWeight="500"
-                    flex={1}
-                    marginRight={Spacing.sm}
-                    numberOfLines={1}
-                  >
-                    {server.name || server.host}
-                  </Text>
-                  {isSelected && !isAIProvider && (
-                    <ConnectionBadge state={w.connectionState} isInitialized={w.isInitialized} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            {w.servers.map(server => (
+              <ServerChip
+                key={server.id}
+                server={server}
+                isSelected={server.id === w.selectedServerId}
+                onPressServer={w.handleServerPress}
+                onLongPressServer={w.handleServerLongPress}
+                colors={colors}
+                connectionState={w.connectionState}
+                isInitialized={w.isInitialized}
+              />
+            ))}
 
             {w.selectedServer && w.selectedServer.serverType !== ServerType.AIProvider && (
               <XStack
@@ -263,7 +280,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => w.navigateToQuickSetup()}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  hitSlop={HIT_SLOP_8}
                   accessibilityLabel="Add server"
                   accessibilityRole="button"
                 >
@@ -287,7 +304,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 </XStack>
                 <TouchableOpacity
                   onPress={() => w.navigateToQuickSetup()}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  hitSlop={HIT_SLOP_8}
                   accessibilityLabel="Add server"
                   accessibilityRole="button"
                 >
@@ -395,12 +412,12 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       {/* Sessions list */}
       <FlatList
         data={w.filteredSessions}
-        keyExtractor={item => item.id}
+        keyExtractor={keyExtractorById}
         renderItem={renderSessionItem}
         contentContainerStyle={
           w.filteredSessions.length === 0
-            ? { flex: 1, justifyContent: 'center', alignItems: 'center' }
-            : { paddingHorizontal: Spacing.md }
+            ? drawerStyles.emptyList
+            : drawerStyles.sessionList
         }
         ListEmptyComponent={
           <Text
@@ -416,10 +433,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           <RefreshControl refreshing={false} onRefresh={w.loadSessions} tintColor={colors.sidebarText} />
         }
         showsVerticalScrollIndicator={false}
-        style={{ flex: 1 }}
+        style={sharedStyles.flex1}
         maxToRenderPerBatch={15}
         updateCellsBatchingPeriod={50}
-        getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+        getItemLayout={ITEM_LAYOUT_60}
         removeClippedSubviews
       />
 
@@ -441,3 +458,33 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     </YStack>
   );
 }
+
+const drawerStyles = StyleSheet.create({
+  emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  sessionList: { paddingHorizontal: Spacing.md },
+  serverChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.sm,
+  },
+});
+
+const sessionItemStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.sm,
+    marginBottom: 1,
+  },
+  activeBar: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 1.5,
+    marginRight: Spacing.sm,
+  },
+});

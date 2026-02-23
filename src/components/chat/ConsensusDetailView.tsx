@@ -3,8 +3,8 @@
  * Shows collapsible cards for each analyst and a reviewer card.
  */
 
-import React, { useState, useMemo } from 'react';
-import { TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Sparkles, ShieldAlert, Wrench, CheckCircle } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
@@ -32,26 +32,23 @@ interface Props {
 
 type ConsensusAgentResult = ConsensusDetails['agentResults'][number];
 
-function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: ThemeColors }) {
+const AgentCard = React.memo(function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: ThemeColors }) {
   const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
   const Icon = ROLE_ICONS[agent.agentId] ?? Sparkles;
   const accentColor = ROLE_COLORS[agent.agentId] ?? colors.primary;
   const isComplete = agent.status === 'complete';
   const preview = agent.output.length > 150 ? agent.output.substring(0, 150) + '…' : agent.output;
 
+  const cardStyle = useMemo(
+    () => [cardStyles.base, { borderColor: colors.separator, borderLeftColor: accentColor, backgroundColor: colors.codeBackground }],
+    [colors.separator, accentColor, colors.codeBackground],
+  );
+
   return (
     <TouchableOpacity
-      style={{
-        borderWidth: 1,
-        borderLeftWidth: 3,
-        borderColor: colors.separator,
-        borderLeftColor: accentColor,
-        borderRadius: Radius.sm,
-        padding: Spacing.sm,
-        marginBottom: Spacing.xs,
-        backgroundColor: colors.codeBackground,
-      }}
-      onPress={() => setExpanded(!expanded)}
+      style={cardStyle}
+      onPress={toggleExpanded}
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={6}>
@@ -85,31 +82,29 @@ function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: The
       ) : null}
     </TouchableOpacity>
   );
-}
+});
 
-function ReviewerCard({ verdict, modelId, isRunning, colors }: {
+const ReviewerCard = React.memo(function ReviewerCard({ verdict, modelId, isRunning, colors }: {
   verdict?: string;
   modelId?: string;
   isRunning: boolean;
   colors: ThemeColors;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
   if (!verdict && !isRunning) return null;
 
   const preview = verdict && verdict.length > 150 ? verdict.substring(0, 150) + '…' : verdict;
 
+  const reviewerCardStyle = useMemo(
+    () => [cardStyles.base, { borderColor: colors.separator, borderLeftColor: '#F59E0B', backgroundColor: colors.codeBackground }],
+    [colors.separator, colors.codeBackground],
+  );
+
   return (
     <TouchableOpacity
-      style={{
-        borderWidth: 1,
-        borderLeftWidth: 3,
-        borderColor: colors.separator,
-        borderLeftColor: '#F59E0B',
-        borderRadius: Radius.sm,
-        padding: Spacing.sm,
-        backgroundColor: colors.codeBackground,
-      }}
-      onPress={() => setExpanded(!expanded)}
+      style={reviewerCardStyle}
+      onPress={toggleExpanded}
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={6}>
@@ -143,7 +138,7 @@ function ReviewerCard({ verdict, modelId, isRunning, colors }: {
       ) : null}
     </TouchableOpacity>
   );
-}
+});
 
 export const ConsensusDetailView = React.memo(function ConsensusDetailView({ details, colors, isStreaming }: Props) {
   const completedCount = details.agentResults.filter(a => a.status === 'complete').length;
@@ -177,4 +172,14 @@ export const ConsensusDetailView = React.memo(function ConsensusDetailView({ det
       />
     </YStack>
   );
+});
+
+const cardStyles = StyleSheet.create({
+  base: {
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
 });
