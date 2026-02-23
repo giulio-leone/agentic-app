@@ -39,7 +39,8 @@ export async function saveApiKey(id: string, key: string): Promise<boolean> {
       localStorage.setItem(storageKey(id), key);
       return true;
     }
-  } catch {
+  } catch (e) {
+    console.warn('[SecureStorage] saveApiKey failed:', e);
   }
   return false;
 }
@@ -54,7 +55,8 @@ export async function getApiKey(id: string): Promise<string | null> {
     if (typeof localStorage !== 'undefined') {
       return localStorage.getItem(storageKey(id));
     }
-  } catch {
+  } catch (e) {
+    console.warn('[SecureStorage] getApiKey failed:', e);
   }
   return null;
 }
@@ -69,7 +71,8 @@ export async function deleteApiKey(id: string): Promise<void> {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(storageKey(id));
     }
-  } catch {
+  } catch (e) {
+    console.warn('[SecureStorage] deleteApiKey failed:', e);
   }
 }
 
