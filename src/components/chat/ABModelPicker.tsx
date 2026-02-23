@@ -122,6 +122,8 @@ export function ABModelPicker({ visible, servers, onStart, onClose, colors }: Pr
               renderItem={renderItem}
               style={{ maxHeight: 400 }}
               showsVerticalScrollIndicator={false}
+              getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+              removeClippedSubviews
             />
           )}
         </Animated.View>

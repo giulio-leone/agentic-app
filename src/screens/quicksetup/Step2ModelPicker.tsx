@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   TouchableOpacity,
   TextInput,
@@ -25,7 +25,41 @@ interface Step2ModelPickerProps {
   colors: ThemeColors;
 }
 
+const ITEM_HEIGHT = 60;
+
 export function Step2ModelPicker({ w, colors }: Step2ModelPickerProps) {
+  const renderModelItem = useCallback(({ item }: { item: { id: string; name: string; contextWindow?: number } }) => {
+    const isSelected = item.id === w.selectedModelId;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.modelRow,
+          {
+            backgroundColor: isSelected ? colors.primaryMuted : 'transparent',
+            borderColor: isSelected ? colors.primary : colors.separator,
+            borderWidth: isSelected ? 1.5 : StyleSheet.hairlineWidth,
+          },
+        ]}
+        onPress={() => {
+          Haptics.selectionAsync();
+          w.setSelectedModelId(item.id);
+        }}
+        activeOpacity={0.7}
+      >
+        <YStack flex={1}>
+          <Text fontSize={FontSize.body} fontWeight={isSelected ? '600' : '400'} color={colors.text} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text fontSize={FontSize.caption} color={colors.textTertiary} numberOfLines={1}>
+            {item.id}
+            {item.contextWindow ? ` · ${Math.round(item.contextWindow / 1000)}K ctx` : ''}
+          </Text>
+        </YStack>
+        {isSelected && <Check size={18} color={colors.primary} />}
+      </TouchableOpacity>
+    );
+  }, [w.selectedModelId, w.setSelectedModelId, colors]);
+
   return (
     <YStack gap={Spacing.md} flex={1}>
       <TouchableOpacity onPress={w.goBack} style={styles.backButton}>
@@ -69,37 +103,9 @@ export function Step2ModelPicker({ w, colors }: Step2ModelPickerProps) {
         keyExtractor={item => item.id}
         style={{ maxHeight: 260 }}
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => {
-          const isSelected = item.id === w.selectedModelId;
-          return (
-            <TouchableOpacity
-              style={[
-                styles.modelRow,
-                {
-                  backgroundColor: isSelected ? colors.primaryMuted : 'transparent',
-                  borderColor: isSelected ? colors.primary : colors.separator,
-                  borderWidth: isSelected ? 1.5 : StyleSheet.hairlineWidth,
-                },
-              ]}
-              onPress={() => {
-                Haptics.selectionAsync();
-                w.setSelectedModelId(item.id);
-              }}
-              activeOpacity={0.7}
-            >
-              <YStack flex={1}>
-                <Text fontSize={FontSize.body} fontWeight={isSelected ? '600' : '400'} color={colors.text} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text fontSize={FontSize.caption} color={colors.textTertiary} numberOfLines={1}>
-                  {item.id}
-                  {item.contextWindow ? ` · ${Math.round(item.contextWindow / 1000)}K ctx` : ''}
-                </Text>
-              </YStack>
-              {isSelected && <Check size={18} color={colors.primary} />}
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderModelItem}
+        getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+        removeClippedSubviews
         ItemSeparatorComponent={ItemSeparator}
       />
 

@@ -419,6 +419,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         style={{ flex: 1 }}
         maxToRenderPerBatch={15}
         updateCellsBatchingPeriod={50}
+        getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+        removeClippedSubviews
       />
 
       {/* Footer — settings only */}

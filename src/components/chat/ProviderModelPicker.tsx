@@ -319,6 +319,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
             showsVerticalScrollIndicator
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: 40 }}
+            removeClippedSubviews
           />
         )}
       </SafeAreaView>

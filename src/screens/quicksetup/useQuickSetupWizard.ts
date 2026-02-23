@@ -7,7 +7,7 @@ import { Alert, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAppStore } from '../../stores/appStore';
+import { useServers, useServerActions } from '../../stores/selectors';
 import { ServerType } from '../../acp/models/types';
 import { AIProviderType } from '../../ai/types';
 import { getProviderInfo } from '../../ai/providers';
@@ -24,7 +24,8 @@ export function useQuickSetupWizard() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'QuickSetup'>>();
   const editingServer = route.params?.editingServer;
-  const { addServer, updateServer, servers } = useAppStore();
+  const { addServer, updateServer } = useServerActions();
+  const servers = useServers();
   const isEditing = !!editingServer;
   const editingAI = editingServer?.aiProviderConfig;
 

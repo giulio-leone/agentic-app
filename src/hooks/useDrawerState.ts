@@ -8,7 +8,7 @@ import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAppStore } from '../stores/appStore';
+import { useServers, useSelectedServerId, useConnectionState, useIsInitialized, useAgentInfo, useSessions, useSelectedSessionId, useConnectionError, useMCPStatuses, useServerActions, useSessionActions } from '../stores/selectors';
 import { ACPConnectionState, SessionSummary, ServerType, ACPServerConfiguration } from '../acp/models/types';
 import { getProviderInfo } from '../ai/providers';
 import { groupSessionsByDate } from '../utils/sessionUtils';
@@ -19,26 +19,17 @@ type RootNavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
   const rootNav = useNavigation<RootNavProp>();
-  const {
-    servers,
-    selectedServerId,
-    connectionState,
-    isInitialized,
-    agentInfo,
-    sessions,
-    selectedSessionId,
-    connectionError,
-    loadServers,
-    selectServer,
-    connect,
-    disconnect,
-    createSession,
-    selectSession,
-    deleteSession,
-    deleteServer,
-    loadSessions,
-    mcpStatuses,
-  } = useAppStore();
+  const servers = useServers();
+  const selectedServerId = useSelectedServerId();
+  const connectionState = useConnectionState();
+  const isInitialized = useIsInitialized();
+  const agentInfo = useAgentInfo();
+  const sessions = useSessions();
+  const selectedSessionId = useSelectedSessionId();
+  const connectionError = useConnectionError();
+  const mcpStatuses = useMCPStatuses();
+  const { loadServers, selectServer, connect, disconnect, deleteServer } = useServerActions();
+  const { createSession, selectSession, deleteSession, loadSessions } = useSessionActions();
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isConnected = connectionState === ACPConnectionState.Connected;

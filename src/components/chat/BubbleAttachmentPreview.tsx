@@ -27,7 +27,7 @@ export const BubbleAttachmentPreview = React.memo(function BubbleAttachmentPrevi
           return (
             <TouchableOpacity key={att.id} onPress={() => setPreviewUri(att.uri)} activeOpacity={0.8}>
               <Image
-                source={{ uri: att.uri }}
+                source={{ uri: att.uri, cache: 'force-cache' }}
                 style={{ width: IMAGE_SIZE, height: IMAGE_SIZE, borderRadius: Radius.md }}
                 resizeMode="cover"
               />

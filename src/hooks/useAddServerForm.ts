@@ -8,7 +8,7 @@ import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAppStore } from '../stores/appStore';
+import { useServerActions } from '../stores/selectors';
 import { ServerType } from '../acp/models/types';
 import { AIProviderType, AIProviderConfig, ReasoningEffort } from '../ai/types';
 import { getProviderInfo } from '../ai/providers';
@@ -23,7 +23,7 @@ export function useAddServerForm() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddServer'>>();
   const editingServer = route.params?.editingServer;
-  const { addServer, updateServer } = useAppStore();
+  const { addServer, updateServer } = useServerActions();
 
   const editingAI = editingServer?.aiProviderConfig;
   const isEditing = !!editingServer;

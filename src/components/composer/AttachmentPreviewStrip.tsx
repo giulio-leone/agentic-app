@@ -47,7 +47,7 @@ export const AttachmentPreviewStrip = React.memo(function AttachmentPreviewStrip
         >
           {att.mediaType.startsWith('image/') ? (
             <Image
-              source={{ uri: att.uri }}
+              source={{ uri: att.uri, cache: 'force-cache' }}
               style={{ width: 52, height: 52, borderTopLeftRadius: 11, borderBottomLeftRadius: 11 }}
             />
           ) : (
