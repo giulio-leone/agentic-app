@@ -73,7 +73,7 @@ export function useScrollToBottom({ chatMessages, isStreaming }: UseScrollToBott
       if (isNearBottom.current) {
         flatListRef.current?.scrollToEnd({ animated: false });
       }
-    }, 100);
+    }, 150);
     return () => { if (streamScrollRef.current) { clearInterval(streamScrollRef.current); streamScrollRef.current = null; } };
   }, [isStreaming]);
 

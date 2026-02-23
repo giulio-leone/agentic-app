@@ -220,7 +220,7 @@ export function SessionDetailScreen() {
   });
 
   // ── Load bookmarks + haptic on response complete + clear badge ──
-  useEffect(() => { loadBookmarks(); clearNotifications(); }, [loadBookmarks]);
+  useEffect(() => { loadBookmarks(); clearNotifications(); }, [loadBookmarks, clearNotifications]);
 
   const prevStreaming = useRef(isStreaming);
   useEffect(() => {

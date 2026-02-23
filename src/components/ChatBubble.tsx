@@ -223,6 +223,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.reasoning === nextProps.message.reasoning &&
     prevProps.message.isStreaming === nextProps.message.isStreaming &&
     prevProps.isSpeaking === nextProps.isSpeaking &&
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
