@@ -164,7 +164,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
         isInitialized: true,
         connectionError: null,
         agentInfo: {
-          name: providerInfo ? `${providerInfo.icon} ${providerInfo.name}` : 'AI Provider',
+          name: providerInfo?.name ?? 'AI Provider',
           version: server.aiProviderConfig?.modelId ?? '',
           capabilities: { promptCapabilities: { image: false } },
           modes: [],
