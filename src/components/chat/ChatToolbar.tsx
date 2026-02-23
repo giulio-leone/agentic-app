@@ -174,22 +174,20 @@ export const ChatToolbar = React.memo(function ChatToolbar({
         paddingBottom={4}
         gap={Spacing.sm}
       >
-        {/* Model chip — hero element */}
+        {/* Model chip — hero element, flex takes remaining space */}
         <TouchableOpacity
           onPress={onOpenModelPicker}
           activeOpacity={0.7}
-          style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}
+          style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30`, flex: 1 }]}
         >
           {providerIcon ?? null}
-          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} style={{ flexShrink: 1 }}>
+          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
             {currentModelLabel || 'Select model'}
           </Text>
           <Text fontSize={10} color={colors.primary} style={{ opacity: 0.6 }}>▾</Text>
         </TouchableOpacity>
 
-        <View style={{ flex: 1 }} />
-
-        {/* Server chip — right side */}
+        {/* Server chip — right side, does not shrink */}
         {servers.length >= 2 && (
           <ServerChip
             servers={servers}
@@ -333,7 +331,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    maxWidth: 220,
     gap: 5,
     borderWidth: 1,
   },
