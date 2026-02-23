@@ -82,7 +82,7 @@ export function Step1ACP({ w, colors }: Step1ACPProps) {
           <Text fontSize={FontSize.caption} fontWeight="500" color={colors.textSecondary}>Host</Text>
           <TextInput
             style={[styles.input, { color: colors.text, backgroundColor: colors.cardBackground, borderColor: colors.separator }]}
-            placeholder="localhost:8765"
+            placeholder="192.168.1.10:8765"
             placeholderTextColor={colors.textTertiary}
             value={w.acpHost}
             onChangeText={w.setAcpHost}
@@ -91,6 +91,9 @@ export function Step1ACP({ w, colors }: Step1ACPProps) {
             keyboardType="url"
             autoFocus
           />
+          <Text fontSize={11} color={colors.textTertiary}>
+            IP locale, Tailscale, MeshNet o hostname — es. 100.64.x.x:8765
+          </Text>
         </YStack>
 
         {/* Token (optional) */}
