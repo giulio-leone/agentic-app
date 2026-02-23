@@ -426,7 +426,7 @@ export function SessionDetailScreen() {
         consensusActive={consensusModeEnabled}
       />
 
-      <View style={{ position: 'relative' }}>
+      <View style={styles.relativeContainer}>
         <SlashCommandAutocomplete
           visible={promptText.startsWith('/')}
           matches={slashMatches}
@@ -509,3 +509,7 @@ export function SessionDetailScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  relativeContainer: { position: 'relative' },
+});

@@ -56,20 +56,11 @@ export function MessageActionMenu({
   const slideAnim = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
-    if (visible) {
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 200,
-      }).start();
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: 300,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
+    const anim = visible
+      ? Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200 })
+      : Animated.timing(slideAnim, { toValue: 300, duration: 200, useNativeDriver: true });
+    anim.start();
+    return () => anim.stop();
   }, [visible, slideAnim]);
 
   if (!message) return null;

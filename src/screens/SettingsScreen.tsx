@@ -422,7 +422,7 @@ export function SettingsScreen() {
           {TEST_ARTIFACTS.map(art => (
             <TouchableOpacity
               key={art.id}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 }}
+              style={styles.testArtifactRow}
               onPress={() => setTestArtifact(art)}
             >
               <Text fontSize={14} color="$primary">{art.type === 'html' ? '🌐' : art.type === 'svg' ? '🎨' : art.type === 'mermaid' ? '📊' : '💻'}</Text>
@@ -479,3 +479,7 @@ export function SettingsScreen() {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  testArtifactRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 },
+});
