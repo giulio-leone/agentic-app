@@ -39,7 +39,7 @@ interface Props {
   onSaveAsTemplate?: () => void;
 }
 
-export function MessageActionMenu({
+export const MessageActionMenu = React.memo(function MessageActionMenu({
   visible,
   message,
   onClose,
@@ -158,7 +158,7 @@ export function MessageActionMenu({
       </Pressable>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   backdrop: {

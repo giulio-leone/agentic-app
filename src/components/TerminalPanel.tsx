@@ -244,7 +244,7 @@ export const TerminalPanel = React.memo(function TerminalPanel() {
           <WebView
             ref={webViewRef}
             source={{ html: terminalEngine === 'ghostty' ? GHOSTTY_HTML : XTERM_HTML }}
-            style={{ flex: 1, backgroundColor: '#1a1a2e' }}
+            style={styles.webview}
             javaScriptEnabled
             onMessage={handleWebViewMessage}
             scrollEnabled={false}
@@ -265,6 +265,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     borderRadius: Radius.sm,
     marginVertical: 2,
+    backgroundColor: '#1a1a2e',
+  },
+  webview: {
+    flex: 1,
     backgroundColor: '#1a1a2e',
   },
 });

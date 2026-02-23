@@ -3,7 +3,7 @@
  * Shows collapsible cards for each analyst and a reviewer card.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Sparkles, ShieldAlert, Wrench, CheckCircle } from 'lucide-react-native';
@@ -34,6 +34,7 @@ type ConsensusAgentResult = ConsensusDetails['agentResults'][number];
 
 const AgentCard = React.memo(function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: ThemeColors }) {
   const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
   const Icon = ROLE_ICONS[agent.agentId] ?? Sparkles;
   const accentColor = ROLE_COLORS[agent.agentId] ?? colors.primary;
   const isComplete = agent.status === 'complete';
@@ -51,7 +52,7 @@ const AgentCard = React.memo(function AgentCard({ agent, colors }: { agent: Cons
         marginBottom: Spacing.xs,
         backgroundColor: colors.codeBackground,
       }}
-      onPress={() => setExpanded(!expanded)}
+      onPress={toggleExpanded}
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={6}>
@@ -94,6 +95,7 @@ const ReviewerCard = React.memo(function ReviewerCard({ verdict, modelId, isRunn
   colors: ThemeColors;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
   if (!verdict && !isRunning) return null;
 
   const preview = verdict && verdict.length > 150 ? verdict.substring(0, 150) + '…' : verdict;
@@ -109,7 +111,7 @@ const ReviewerCard = React.memo(function ReviewerCard({ verdict, modelId, isRunn
         padding: Spacing.sm,
         backgroundColor: colors.codeBackground,
       }}
-      onPress={() => setExpanded(!expanded)}
+      onPress={toggleExpanded}
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={6}>

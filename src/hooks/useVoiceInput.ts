@@ -23,15 +23,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const lastTranscriptRef = useRef('');
 
   useEffect(() => {
-    checkAvailability();
+    let cancelled = false;
+    checkAvailability().then(result => { if (!cancelled) setIsAvailable(result); });
+    return () => { cancelled = true; };
   }, []);
 
-  const checkAvailability = async () => {
+  const checkAvailability = async (): Promise<boolean> => {
     try {
-      const result = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
-      setIsAvailable(result);
-    } catch { /* speech recognition not available on device */
-      setIsAvailable(false);
+      return await ExpoSpeechRecognitionModule.isRecognitionAvailable();
+    } catch {
+      return false;
     }
   };
 

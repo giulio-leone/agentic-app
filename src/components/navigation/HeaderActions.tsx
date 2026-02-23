@@ -16,7 +16,7 @@ interface HeaderActionsProps {
   onCreateSession: () => void;
 }
 
-export function HeaderActions({
+export const HeaderActions = React.memo(function HeaderActions({
   colors,
   isInitialized,
   onCreateSession,
@@ -34,4 +34,4 @@ export function HeaderActions({
       </TouchableOpacity>
     </XStack>
   );
-}
+});

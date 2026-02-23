@@ -4,7 +4,7 @@
  * CSV tables, Markdown, and images.
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Modal,
   ScrollView,
@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import type { Artifact, ArtifactType } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { useCopyFeedback } from '../../hooks/useCopyFeedback';
 import { HtmlRenderer } from './HtmlRenderer';
 import { SvgRenderer } from './SvgRenderer';
 import { MermaidRenderer } from './MermaidRenderer';
@@ -48,23 +49,18 @@ const TYPE_LABELS: Record<ArtifactType, string> = {
   image: 'Image',
 };
 
-export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Props) {
+export const CanvasPanel = React.memo(function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Props) {
   const { colors } = useDesignSystem();
   const { height } = useWindowDimensions();
-  const [copied, setCopied] = useState(false);
+  const { copied, triggerCopy } = useCopyFeedback();
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const handleCopy = useCallback(async () => {
     if (!artifact) return;
     await Clipboard.setStringAsync(artifact.content);
-    setCopied(true);
+    triggerCopy();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-  }, [artifact]);
+  }, [artifact, triggerCopy]);
 
   const handleShare = useCallback(async () => {
     if (!artifact) return;
@@ -178,7 +174,7 @@ export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Pro
       </Pressable>
     </Modal>
   );
-}
+});
 
 // ── Preview router ─────────────────────────────────────────────────────────────
 

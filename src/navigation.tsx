@@ -2,7 +2,7 @@
  * Navigation — Drawer + Stack layout, ChatGPT-style header with glass effects.
  */
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState, useMemo } from 'react';
 import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text, YStack } from 'tamagui';
 import { Menu } from 'lucide-react-native';
@@ -179,11 +179,14 @@ function AppContent() {
     }
   }, [servers, hasCheckedOnboarding]);
 
-  const navTheme = dark
-    ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
-    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } };
+  const navTheme = useMemo(
+    () => dark
+      ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } }
+      : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text, border: colors.separator } },
+    [dark, colors.background, colors.surface, colors.primary, colors.text, colors.separator],
+  );
 
-  const modalOptions = (title: string) => ({
+  const modalOptions = useCallback((title: string) => ({
     headerShown: true,
     title,
     presentation: 'modal' as const,
@@ -194,7 +197,7 @@ function AppContent() {
     headerStyle: Platform.OS === 'android' ? { backgroundColor: colors.surface } : undefined,
     headerTintColor: colors.text,
     headerShadowVisible: false,
-  });
+  }), [dark, colors]);
 
   return (
     <NavigationContainer
@@ -237,8 +240,12 @@ function AppContent() {
 
 export function AppNavigator() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={navStyles.rootView}>
       <AppContent />
     </GestureHandlerRootView>
   );
 }
+
+const navStyles = StyleSheet.create({
+  rootView: { flex: 1 },
+});

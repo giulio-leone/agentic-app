@@ -28,7 +28,7 @@ interface Props {
   colors: ThemeColors;
 }
 
-export function TemplateEditor({ visible, template, onSave, onClose, colors }: Props) {
+export const TemplateEditor = React.memo(function TemplateEditor({ visible, template, onSave, onClose, colors }: Props) {
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [category, setCategory] = useState<PromptTemplate['category']>('custom');
@@ -166,7 +166,7 @@ export function TemplateEditor({ visible, template, onSave, onClose, colors }: P
       </KeyboardAvoidingView>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   overlay: {

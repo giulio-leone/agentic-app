@@ -206,6 +206,9 @@ export function SessionDetailScreen() {
 
   const handleConsensusLongPress = useCallback(() => setConsensusSheetVisible(true), []);
 
+  const handleCloseAbPicker = useCallback(() => setAbPickerVisible(false), []);
+  const handleCloseConsensusSheet = useCallback(() => setConsensusSheetVisible(false), []);
+  const handleCloseModelPicker = useCallback(() => setModelPickerVisible(false), []);
 
   const { handleSpeak, isSpeakingMessage } = useChatSpeech();
 
@@ -317,6 +320,10 @@ export function SessionDetailScreen() {
     [colors.background],
   );
 
+  const handleScrollToIndexFailed = useCallback((info: { averageItemLength: number; index: number }) => {
+    flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+  }, []);
+
   return (
     <KeyboardAvoidingView
       style={containerStyle}
@@ -342,12 +349,7 @@ export function SessionDetailScreen() {
         extraData={extraData}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={showSkeleton ? <SkeletonMessage /> : showTyping ? <TypingIndicator /> : null}
-        onScrollToIndexFailed={(info) => {
-          flatListRef.current?.scrollToOffset({
-            offset: info.averageItemLength * info.index,
-            animated: true,
-          });
-        }}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         contentContainerStyle={
           chatMessages.length === 0 ? emptyListStyle : messageListStyle
         }
@@ -478,7 +480,7 @@ export function SessionDetailScreen() {
         visible={abPickerVisible}
         servers={servers}
         onStart={handleABStart}
-        onClose={() => setAbPickerVisible(false)}
+        onClose={handleCloseAbPicker}
         colors={colors}
       />
 
@@ -494,12 +496,12 @@ export function SessionDetailScreen() {
 
       <ConsensusConfigSheet
         visible={consensusSheetVisible}
-        onClose={() => setConsensusSheetVisible(false)}
+        onClose={handleCloseConsensusSheet}
       />
 
       <ProviderModelPicker
         visible={modelPickerVisible}
-        onClose={() => setModelPickerVisible(false)}
+        onClose={handleCloseModelPicker}
         servers={servers}
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}

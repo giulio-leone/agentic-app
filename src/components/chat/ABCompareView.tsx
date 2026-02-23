@@ -23,7 +23,7 @@ interface Props {
   colors: ThemeColors;
 }
 
-export function ABCompareView({ state, onClose, colors }: Props) {
+export const ABCompareView = React.memo(function ABCompareView({ state, onClose, colors }: Props) {
   const { width } = useWindowDimensions();
   const columnWidth = useMemo(() => Math.max((width - Spacing.lg * 2 - Spacing.sm) / state.results.length, 200), [width, state.results.length]);
 
@@ -116,7 +116,7 @@ export function ABCompareView({ state, onClose, colors }: Props) {
       </ScrollView>
     </YStack>
   );
-}
+});
 
 const styles = StyleSheet.create({
   columnsContainer: {

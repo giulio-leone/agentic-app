@@ -2,7 +2,7 @@
  * SegmentView — Renders a single message segment (text, tool call, thought).
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Wrench, Loader, Check, ChevronDown, ChevronRight, Terminal, FileEdit } from 'lucide-react-native';
@@ -28,6 +28,7 @@ interface Props {
 
 export const SegmentView = React.memo(function SegmentView({ segment, colors, isUser, mdStyles }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded(v => !v), []);
 
   switch (segment.type) {
     case 'text':
@@ -46,7 +47,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
       return (
         <TouchableOpacity
           style={[sharedStyles.separatorCard, { marginVertical: 4, borderColor: colors.separator }]}
-          onPress={() => setExpanded(!expanded)}
+          onPress={toggleExpanded}
           activeOpacity={0.7}
         >
           <XStack alignItems="center" gap={8}>
@@ -97,7 +98,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
       return (
         <TouchableOpacity
           style={segStyles.thoughtBtn}
-          onPress={() => setExpanded(!expanded)}
+          onPress={toggleExpanded}
           activeOpacity={0.7}
         >
           <Text fontSize={FontSize.footnote} fontWeight="500" color={colors.textTertiary}>
@@ -131,7 +132,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
       return (
         <TouchableOpacity
           style={segStyles.agentEventBtn}
-          onPress={() => setExpanded(!expanded)}
+          onPress={toggleExpanded}
           activeOpacity={0.7}
         >
           <XStack alignItems="center" gap={6}>

@@ -3,13 +3,14 @@
  * Uses simple token-based highlighting (no external dependency).
  */
 
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Text as RNText, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Copy, Check } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useDesignSystem } from '../utils/designSystem';
 import { type ThemeColors, FontSize, Spacing, Radius } from '../utils/theme';
+import { useCopyFeedback } from '../hooks/useCopyFeedback';
 
 // ── Token types ──────────────────────────────────────────────────────────────
 
@@ -184,21 +185,15 @@ interface CodeBlockProps {
 
 export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: CodeBlockProps) {
   const { colors } = useDesignSystem();
-  const [copied, setCopied] = useState(false);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Cleanup timeout on unmount
-  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
+  const { copied, triggerCopy } = useCopyFeedback();
 
   const tokens = useMemo(() => tokenize(code, language), [code, language]);
   const lines = useMemo(() => code.split('\n'), [code]);
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(code);
-    setCopied(true);
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-  }, [code]);
+    triggerCopy();
+  }, [code, triggerCopy]);
 
   const displayLang = language ? language.toUpperCase() : '';
 

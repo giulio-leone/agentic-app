@@ -28,7 +28,7 @@ interface Props {
   colors: ThemeColors;
 }
 
-export function ABModelPicker({ visible, servers, onStart, onClose, colors }: Props) {
+export const ABModelPicker = React.memo(function ABModelPicker({ visible, servers, onStart, onClose, colors }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const aiServers = servers.filter(
@@ -130,7 +130,7 @@ export function ABModelPicker({ visible, servers, onStart, onClose, colors }: Pr
       </Pressable>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   backdrop: {
