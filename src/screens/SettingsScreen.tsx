@@ -25,6 +25,65 @@ import {
 } from '../stores/selectors';
 import { MCPServerRow } from './settings/MCPServerRow';
 import { AddMCPServerForm } from './settings/AddMCPServerForm';
+import { CanvasPanel } from '../components/canvas/CanvasPanel';
+import type { Artifact } from '../acp/models/types';
+
+const TEST_ARTIFACTS: Artifact[] = [
+  {
+    id: 'test-html',
+    type: 'html',
+    title: 'Interactive HTML',
+    content: `<h1 style="color:#10A37F">Hello Canvas!</h1>
+<p>This is a <strong>live HTML preview</strong> with interactive elements.</p>
+<button onclick="this.textContent='Clicked! ✓'" style="padding:12px 24px;background:#10A37F;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer">Click me</button>
+<div style="margin-top:16px;padding:12px;background:rgba(16,163,127,0.1);border-radius:8px">
+  <code>const greeting = "Canvas Artifacts work!";</code>
+</div>`,
+  },
+  {
+    id: 'test-svg',
+    type: 'svg',
+    title: 'SVG Graphic',
+    content: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#10A37F"/><stop offset="100%" style="stop-color:#3B82F6"/></linearGradient></defs>
+  <circle cx="100" cy="100" r="80" fill="url(#g)" opacity="0.9"/>
+  <text x="100" y="108" text-anchor="middle" fill="white" font-size="24" font-weight="bold">A</text>
+</svg>`,
+  },
+  {
+    id: 'test-mermaid',
+    type: 'mermaid',
+    title: 'Architecture Diagram',
+    content: `graph TD
+    A[Mobile App] -->|ACP Protocol| B[Unified Bridge]
+    B --> C[Claude Code]
+    B --> D[Copilot CLI]
+    B --> E[Codex]
+    B --> F[Gemini CLI]
+    A -->|Direct API| G[OpenAI]
+    A -->|Direct API| H[Anthropic]`,
+  },
+  {
+    id: 'test-code',
+    type: 'code',
+    title: 'React Component',
+    language: 'typescript',
+    content: `import React from 'react';
+
+interface Props {
+  name: string;
+  onPress: () => void;
+}
+
+export function Greeting({ name, onPress }: Props) {
+  return (
+    <TouchableOpacity onPress={onPress}>
+      <Text>Hello, {name}!</Text>
+    </TouchableOpacity>
+  );
+}`,
+  },
+];
 
 export function SettingsScreen() {
   const { colors } = useDesignSystem();
@@ -45,6 +104,7 @@ export function SettingsScreen() {
   const { loadMCPServers, addMCPServer, removeMCPServer, connectMCPServer, disconnectMCPServer } = useMCPActions();
 
   const [showAddMCP, setShowAddMCP] = useState(false);
+  const [testArtifact, setTestArtifact] = useState<Artifact | null>(null);
 
   useEffect(() => {
     loadMCPServers();
@@ -357,6 +417,23 @@ export function SettingsScreen() {
 
       {/* Developer Logs */}
       {devModeEnabled && (
+        <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.sm} backgroundColor="$cardBackground">
+          <Text fontSize={17} fontWeight="600" color="$color" marginBottom={Spacing.xs}>🎨 Test Canvas</Text>
+          {TEST_ARTIFACTS.map(art => (
+            <TouchableOpacity
+              key={art.id}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 8 }}
+              onPress={() => setTestArtifact(art)}
+            >
+              <Text fontSize={14} color="$primary">{art.type === 'html' ? '🌐' : art.type === 'svg' ? '🎨' : art.type === 'mermaid' ? '📊' : '💻'}</Text>
+              <Text fontSize={14} color="$color">{art.title}</Text>
+              <Text fontSize={12} color="$textTertiary" marginLeft="auto">{art.type}</Text>
+            </TouchableOpacity>
+          ))}
+        </YStack>
+      )}
+
+      {devModeEnabled && (
         <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} gap={Spacing.md} backgroundColor="$cardBackground">
           <XStack justifyContent="space-between" alignItems="center">
             <Text fontSize={17} fontWeight="600" color="$color">Developer Logs</Text>
@@ -393,6 +470,12 @@ export function SettingsScreen() {
           <Text fontSize={16} color="$textTertiary">React Native (Expo)</Text>
         </XStack>
       </YStack>
+
+      <CanvasPanel
+        visible={!!testArtifact}
+        artifact={testArtifact}
+        onClose={() => setTestArtifact(null)}
+      />
     </ScrollView>
   );
 }
