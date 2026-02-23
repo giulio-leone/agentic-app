@@ -36,7 +36,7 @@ export const InlineImage = React.memo(function InlineImage({ url, alt, colors }:
     <>
       <TouchableOpacity onPress={() => setFullscreen(true)} activeOpacity={0.85}>
         <Image
-          source={{ uri: url }}
+          source={{ uri: url, cache: 'force-cache' }}
           style={{ width: SCREEN_WIDTH * 0.7, height: 200, borderRadius: 8, marginVertical: 4, alignSelf: 'flex-start' }}
           resizeMode="contain"
           onError={() => setError(true)}

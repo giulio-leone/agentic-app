@@ -24,6 +24,7 @@ import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
 import { useAppStore } from './stores/appStore';
+import { useAgentInfo, useConnectionState, useIsInitialized, useSessionActions } from './stores/selectors';
 import { ConnectionBadge } from './components/ConnectionBadge';
 import { ScreenWatcherPanel } from './components/ScreenWatcherPanel';
 
@@ -63,7 +64,9 @@ function LazySettings(props: NativeStackScreenProps<RootStackParamList, 'Setting
 
 function HeaderTitle() {
   const { colors } = useDesignSystem();
-  const { agentInfo, connectionState, isInitialized } = useAppStore();
+  const agentInfo = useAgentInfo();
+  const connectionState = useConnectionState();
+  const isInitialized = useIsInitialized();
 
   return (
     <XStack alignItems="center" gap={Spacing.xs}>
@@ -89,7 +92,8 @@ function GlassHeader({ children, tint }: { children: React.ReactNode; tint: 'lig
 function DrawerNavigator() {
   const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
-  const { createSession, isInitialized } = useAppStore();
+  const isInitialized = useIsInitialized();
+  const { createSession } = useSessionActions();
 
   return (
     <>

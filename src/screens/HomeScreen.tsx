@@ -147,6 +147,7 @@ export function HomeScreen() {
             renderItem={renderServerItem}
             scrollEnabled={servers.length > 3}
             style={servers.length > 3 ? { maxHeight: 240 } : undefined}
+            getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
           />
         )}
       </YStack>
@@ -239,6 +240,8 @@ export function HomeScreen() {
                 <RefreshControl refreshing={false} onRefresh={loadSessions} />
               }
               style={{ flex: 1 }}
+              getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+              removeClippedSubviews
             />
           )}
         </YStack>
