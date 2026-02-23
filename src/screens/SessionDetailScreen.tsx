@@ -222,6 +222,7 @@ export function SessionDetailScreen() {
         await loadSessionMessages(selectedSessionId);
       }
     } finally {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = setTimeout(() => setRefreshing(false), 400);
     }
   }, [isAIProvider, connectionState, connect, loadSessionMessages, selectedSessionId]);

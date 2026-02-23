@@ -3,7 +3,7 @@
  * Includes ping test and network scan for bridge discovery.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { TouchableOpacity, TextInput, StyleSheet, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { ChevronLeft, Check, Wifi, Search, Zap } from 'lucide-react-native';
@@ -27,6 +27,8 @@ export function Step1ACP({ w, colors }: Step1ACPProps) {
   const [pingLatency, setPingLatency] = useState<number | null>(null);
   const [scanning, setScanning] = useState(false);
   const [discovered, setDiscovered] = useState<DiscoveredHost[]>([]);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const handlePing = useCallback(async () => {
     const hostStr = w.acpHost.trim();
@@ -35,6 +37,7 @@ export function Step1ACP({ w, colors }: Step1ACPProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const [host, portStr] = hostStr.includes(':') ? hostStr.split(':') : [hostStr, '8765'];
     const latency = await pingHost(host, parseInt(portStr, 10) || 8765);
+    if (!mountedRef.current) return;
     if (latency !== null) {
       setPingState('ok');
       setPingLatency(latency);
@@ -54,13 +57,14 @@ export function Step1ACP({ w, colors }: Step1ACPProps) {
     const all: DiscoveredHost[] = [];
     for (const subnet of subnets) {
       const found = await scanSubnet(subnet, [8765, 4500], host => {
+        if (!mountedRef.current) return;
         all.push(host);
         setDiscovered([...all]);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       });
-      if (found.length > 0) break; // Stop after first subnet with results
+      if (found.length > 0) break;
     }
-    setScanning(false);
+    if (mountedRef.current) setScanning(false);
   }, []);
 
   const selectDiscovered = useCallback((h: DiscoveredHost) => {

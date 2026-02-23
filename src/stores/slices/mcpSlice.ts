@@ -8,6 +8,8 @@ import type { MCPServerConfig, MCPServerStatus } from '../../mcp/types';
 export type MCPSlice = Pick<AppState, 'mcpServers' | 'mcpStatuses'>
   & Pick<AppActions, 'loadMCPServers' | 'addMCPServer' | 'removeMCPServer' | 'connectMCPServer' | 'disconnectMCPServer' | 'refreshMCPStatuses'>;
 
+let unsubscribeMCP: (() => void) | null = null;
+
 export const createMCPSlice: StateCreator<AppState & AppActions, [], [], MCPSlice> = (set, get) => ({
   // State
   mcpServers: [],
@@ -19,7 +21,8 @@ export const createMCPSlice: StateCreator<AppState & AppActions, [], [], MCPSlic
     const servers = await SessionStorage.fetchMCPServers();
     set({ mcpServers: servers });
 
-    MCPManager.subscribe(() => {
+    if (unsubscribeMCP) unsubscribeMCP();
+    unsubscribeMCP = MCPManager.subscribe(() => {
       get().refreshMCPStatuses();
     });
 
