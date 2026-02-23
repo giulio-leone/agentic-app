@@ -90,7 +90,7 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
           <YStack
             borderTopLeftRadius={Radius.lg}
             borderTopRightRadius={Radius.lg}
-            maxHeight={maxHeight as any}
+            style={{ maxHeight }}
             paddingBottom={40}
             backgroundColor={backgroundColor}
           >

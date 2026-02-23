@@ -11,7 +11,7 @@ export const PromptLibrary = {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : [];
-    } catch {
+    } catch { /* corrupt storage data — reset to empty */
       return [];
     }
   },

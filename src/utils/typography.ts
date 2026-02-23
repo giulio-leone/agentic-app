@@ -38,9 +38,11 @@ export const typography = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // Ellipsis
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  singleLine: { numberOfLines: 1 } as any,
   italic: { fontStyle: 'italic' },
   mono: { fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }) },
 });
+
+/** Text component props (not styles — spread directly on <Text>) */
+export const textProps = {
+  singleLine: { numberOfLines: 1 } as const,
+};

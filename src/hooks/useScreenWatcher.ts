@@ -96,10 +96,13 @@ export function useScreenWatcher() {
     transform: [{ scale: pulse.value }],
   }));
 
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerFlash = useCallback(() => {
     setFlashVisible(true);
-    setTimeout(() => setFlashVisible(false), 150);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashVisible(false), 150);
   }, []);
+  useEffect(() => () => { if (flashTimerRef.current) clearTimeout(flashTimerRef.current); }, []);
 
   // Resume polling when LLM finishes
   const prevStreaming = useRef(isStreaming);

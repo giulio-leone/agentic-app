@@ -187,7 +187,7 @@ function formatEventDetail(detail: string | undefined, eventType: string): strin
       return data.output || data.content || JSON.stringify(data, null, 2);
     }
     return JSON.stringify(data, null, 2);
-  } catch {
+  } catch { /* JSON parse failed — render truncated text */
     return detail.substring(0, 500);
   }
 }

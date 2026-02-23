@@ -52,7 +52,7 @@ async function getFileSize(uri: string): Promise<number | undefined> {
     const FileSystem = await import('expo-file-system');
     const info = await FileSystem.getInfoAsync(uri);
     return info.exists ? info.size : undefined;
-  } catch {
+  } catch { /* file stat unavailable */
     return undefined;
   }
 }

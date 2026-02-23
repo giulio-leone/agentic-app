@@ -7,14 +7,18 @@ import { useCallback, useState, useMemo } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
 import { ACPConnectionState, SessionSummary, ServerType, ACPServerConfiguration } from '../acp/models/types';
 import { getProviderInfo } from '../ai/providers';
 import { groupSessionsByDate } from '../utils/sessionUtils';
 import { MCPConnectionState } from '../mcp/types';
+import type { RootStackParamList } from '../navigation';
+
+type RootNavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
-  const rootNav = useNavigation<any>();
+  const rootNav = useNavigation<RootNavProp>();
   const {
     servers,
     selectedServerId,

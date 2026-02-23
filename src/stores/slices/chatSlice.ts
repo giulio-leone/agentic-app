@@ -230,8 +230,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         await _service.cancelSession({ sessionId: state.selectedSessionId });
         set({ isStreaming: false });
         get().appendLog('→ session/cancel');
-      } catch {
-        // ignore
+      } catch { /* cancel may fail if session already ended */
       }
     },
 

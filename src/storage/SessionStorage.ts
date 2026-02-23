@@ -27,7 +27,7 @@ export const SessionStorage = {
       const raw = await AsyncStorage.getItem(SERVERS_KEY);
       if (!raw) return [];
       return JSON.parse(raw) as ACPServerConfiguration[];
-    } catch {
+    } catch { /* JSON parse error — return default */
       return [];
     }
   },
@@ -64,7 +64,7 @@ export const SessionStorage = {
     try {
       const raw = await AsyncStorage.getItem(ACTIVE_SERVER_KEY);
       return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
+    } catch { return null; /* corrupt data */ }
   },
 
   async saveActiveServerId(id: string | null): Promise<void> {
@@ -82,7 +82,7 @@ export const SessionStorage = {
       const raw = await AsyncStorage.getItem(sessionsKey(serverId));
       if (!raw) return [];
       return JSON.parse(raw) as SessionSummary[];
-    } catch {
+    } catch { /* JSON parse error — return default */
       return [];
     }
   },
@@ -129,7 +129,7 @@ export const SessionStorage = {
       const raw = await AsyncStorage.getItem(messagesKey(serverId, sessionId));
       if (!raw) return [];
       return JSON.parse(raw) as ChatMessage[];
-    } catch {
+    } catch { /* JSON parse error — return default */
       return [];
     }
   },
@@ -145,7 +145,7 @@ export const SessionStorage = {
       const raw = await AsyncStorage.getItem(MCP_SERVERS_KEY);
       if (!raw) return [];
       return JSON.parse(raw) as MCPServerConfig[];
-    } catch {
+    } catch { /* JSON parse error — return default */
       return [];
     }
   },
@@ -203,7 +203,7 @@ export const SessionStorage = {
       const raw = await AsyncStorage.getItem(BOOKMARKS_KEY);
       if (!raw) return [];
       return JSON.parse(raw) as string[];
-    } catch {
+    } catch { /* JSON parse error — return default */
       return [];
     }
   },

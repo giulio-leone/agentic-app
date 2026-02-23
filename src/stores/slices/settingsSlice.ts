@@ -28,7 +28,7 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   // Hydrate accent color
   const ACCENT_KEY = '@agentic/accentColor';
   AsyncStorage.getItem(ACCENT_KEY).then(raw => {
-    if (raw) set({ accentColor: raw as any });
+    if (raw) set({ accentColor: raw as import('../../utils/theme').AccentColorKey });
   });
 
   // Hydrate font scale
