@@ -8,7 +8,7 @@ function formatTimestamp(iso: string): string {
   try {
     const d = new Date(iso);
     return d.toLocaleString();
-  } catch {
+  } catch { /* invalid date string — return raw */
     return iso;
   }
 }

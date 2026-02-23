@@ -42,7 +42,7 @@ export function streamChat(
   onToolResult?: (toolName: string, result: string) => void,
   onAgentEvent?: (event: AgentEvent) => void,
   forceAgentMode?: boolean,
-  onApprovalRequired?: (req: any) => Promise<boolean>,
+  onApprovalRequired?: (req: { toolName: string; toolCallId: string; args: unknown; sessionId: string; stepIndex: number }) => Promise<boolean>,
 ): AbortController {
   const controller = new AbortController();
 

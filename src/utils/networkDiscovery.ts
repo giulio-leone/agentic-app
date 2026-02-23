@@ -40,7 +40,7 @@ function probeHost(host: string, port: number): Promise<number> {
 export async function pingHost(host: string, port: number): Promise<number | null> {
   try {
     return await probeHost(host, port);
-  } catch {
+  } catch { /* probe timeout/refused — host unreachable */
     return null;
   }
 }

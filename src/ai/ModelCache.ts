@@ -22,7 +22,7 @@ export async function getCachedModels(
     const cached: CachedModels = JSON.parse(raw);
     if (Date.now() - cached.fetchedAt > CACHE_TTL) return null;
     return cached.models;
-  } catch {
+  } catch { /* corrupt cache entry */
     return null;
   }
 }
@@ -44,7 +44,7 @@ export async function isCacheStale(providerType: string): Promise<boolean> {
     if (!raw) return true;
     const cached: CachedModels = JSON.parse(raw);
     return Date.now() - cached.fetchedAt > CACHE_TTL;
-  } catch {
+  } catch { /* corrupt cache — treat as stale */
     return true;
   }
 }

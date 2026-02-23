@@ -22,7 +22,7 @@ async function getSecureStore(): Promise<typeof import('expo-secure-store') | nu
   try {
     _storeCache = await import('expo-secure-store');
   } catch {
-    _storeCache = null;
+    _storeCache = null; /* expo-secure-store unavailable on this platform */
   }
   return _storeCache;
 }

@@ -30,7 +30,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     try {
       const result = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
       setIsAvailable(result);
-    } catch {
+    } catch { /* speech recognition not available on device */
       setIsAvailable(false);
     }
   };
@@ -89,7 +89,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const stopListening = useCallback(() => {
     try {
       ExpoSpeechRecognitionModule.stop();
-    } catch {
+    } catch { /* stop may fail if already stopped */
       // ignore
     }
     setIsListening(false);
