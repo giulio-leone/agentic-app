@@ -262,6 +262,12 @@ export function SessionDetailScreen() {
     [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds, setEditText],
   );
 
+  // Stable extraData to minimize full FlatList re-renders
+  const extraData = useMemo(
+    () => ({ isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds }),
+    [isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds],
+  );
+
   const renderEmpty = useCallback(
     () => <ChatEmptyState isConnected={isConnected} colors={colors} onSuggestion={handleSuggestion} />,
     [isConnected, colors, handleSuggestion],
@@ -309,6 +315,7 @@ export function SessionDetailScreen() {
         data={chatMessages}
         keyExtractor={keyExtractor}
         renderItem={renderMessage}
+        extraData={extraData}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={showSkeleton ? <SkeletonMessage /> : showTyping ? <TypingIndicator /> : null}
         onScrollToIndexFailed={(info) => {
@@ -324,11 +331,11 @@ export function SessionDetailScreen() {
         scrollEventThrottle={100}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
-        maxToRenderPerBatch={8}
+        maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
-        windowSize={11}
-        removeClippedSubviews={false}
-        initialNumToRender={10}
+        windowSize={7}
+        removeClippedSubviews
+        initialNumToRender={12}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
