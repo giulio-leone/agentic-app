@@ -2,7 +2,7 @@
  * AttachmentPreviewStrip — Horizontal scroll of attachment thumbnails in the composer.
  */
 import React, { useCallback } from 'react';
-import { ScrollView, TouchableOpacity, Image } from 'react-native';
+import { ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { X } from 'lucide-react-native';
 import { Attachment } from '../../acp/models/types';
@@ -47,7 +47,7 @@ const AttachmentItem = React.memo(function AttachmentItem({
       {att.mediaType.startsWith('image/') ? (
         <Image
           source={{ uri: att.uri, cache: 'force-cache' }}
-          style={{ width: 52, height: 52, borderTopLeftRadius: 11, borderBottomLeftRadius: 11 }}
+          style={styles.thumbImage}
         />
       ) : (
         <YStack width={52} height={52} justifyContent="center" alignItems="center">
@@ -83,12 +83,18 @@ export const AttachmentPreviewStrip = React.memo(function AttachmentPreviewStrip
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: Spacing.xs, maxHeight: 80 }}
-      contentContainerStyle={{ gap: Spacing.xs, paddingHorizontal: 2 }}
+      style={styles.strip}
+      contentContainerStyle={styles.stripContent}
     >
       {attachments.map(att => (
         <AttachmentItem key={att.id} att={att} onRemove={onRemove} colors={colors} />
       ))}
     </ScrollView>
   );
+});
+
+const styles = StyleSheet.create({
+  strip: { marginBottom: Spacing.xs, maxHeight: 80 },
+  stripContent: { gap: Spacing.xs, paddingHorizontal: 2 },
+  thumbImage: { width: 52, height: 52, borderTopLeftRadius: 11, borderBottomLeftRadius: 11 },
 });

@@ -11,10 +11,12 @@ import Animated, { SharedValue, useAnimatedStyle } from 'react-native-reanimated
 import { Reply } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { ThemeColors } from '../../utils/theme';
+import type { ChatMessage } from '../../acp/models/types';
 
 interface Props {
   children: React.ReactNode;
-  onSwipeReply: () => void;
+  message: ChatMessage;
+  onSwipeReply: (msg: ChatMessage) => void;
   colors: ThemeColors;
   enabled?: boolean;
 }
@@ -38,6 +40,7 @@ function LeftAction(_progress: SharedValue<number>, drag: SharedValue<number>, c
 
 export const SwipeableMessage = React.memo(function SwipeableMessage({
   children,
+  message,
   onSwipeReply,
   colors,
   enabled = true,
@@ -49,11 +52,11 @@ export const SwipeableMessage = React.memo(function SwipeableMessage({
     if (!didTrigger.current) {
       didTrigger.current = true;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onSwipeReply();
+      onSwipeReply(message);
     }
     // Auto-close after triggering
     swipeRef.current?.close();
-  }, [onSwipeReply]);
+  }, [onSwipeReply, message]);
 
   const handleClose = useCallback(() => {
     didTrigger.current = false;

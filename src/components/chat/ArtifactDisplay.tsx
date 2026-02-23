@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { TouchableOpacity, ScrollView } from 'react-native';
+import { TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Code, Globe, Palette, BarChart3, Table, FileText, Image, Paperclip, type LucideIcon } from 'lucide-react-native';
@@ -57,7 +57,7 @@ export const ArtifactCard = React.memo(function ArtifactCard({
           <TouchableOpacity
             onPress={handleOpen}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ paddingHorizontal: 6, paddingVertical: 2 }}
+            style={styles.openButton}
           >
             <Text fontSize={FontSize.caption} color={colors.primary} fontWeight="600">
               Open ↗
@@ -69,7 +69,7 @@ export const ArtifactCard = React.memo(function ArtifactCard({
         </Text>
       </XStack>
       {expanded && (
-        <ScrollView horizontal style={{ marginTop: 8, maxHeight: 200 }}>
+        <ScrollView horizontal style={styles.scrollView}>
           <Text fontFamily="monospace" fontSize={FontSize.caption} color={colors.codeText} selectable>
             {artifact.content}
           </Text>
@@ -77,6 +77,11 @@ export const ArtifactCard = React.memo(function ArtifactCard({
       )}
     </TouchableOpacity>
   );
+});
+
+const styles = StyleSheet.create({
+  openButton: { paddingHorizontal: 6, paddingVertical: 2 },
+  scrollView: { marginTop: 8, maxHeight: 200 },
 });
 
 export function ArtifactList({

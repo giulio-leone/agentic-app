@@ -271,7 +271,8 @@ export function SessionDetailScreen() {
 
       return (
         <SwipeableMessage
-          onSwipeReply={() => handleSwipeReply(item)}
+          message={item}
+          onSwipeReply={handleSwipeReply}
           colors={colors}
           enabled={!isStreaming && item.role !== 'system'}
         >
