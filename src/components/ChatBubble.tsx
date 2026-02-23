@@ -3,13 +3,14 @@
  * Sub-components extracted to src/components/chat/.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   TouchableOpacity,
   Pressable,
   Platform,
   View,
   Text as RNText,
+  StyleSheet,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { YStack, XStack, Text } from 'tamagui';
@@ -65,15 +66,27 @@ const systemContainerStyle = {
   alignSelf: 'center',
 } as const;
 
+const styles = StyleSheet.create({
+  contentWrapper: { flexShrink: 1 },
+  ttsButton: { padding: 4 },
+  systemBubble: { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
+});
+
 export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact, highlighted, bookmarked }: Props) {
   const { ds, colors } = useDesignSystem();
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const mdStyles = useMemo(() => createMarkdownStyles(colors), [colors]);
+  const handleLongPress = useCallback(() => onLongPress?.(message), [onLongPress, message]);
+  const handleSpeak = useCallback(() => onSpeak?.(message.content, message.id), [onSpeak, message.content, message.id]);
+  const containerDynStyle = useMemo(() => ({
+    justifyContent: isSystem ? 'center' as const : isUser ? 'flex-end' as const : 'flex-start' as const,
+    backgroundColor: highlighted ? colors.primaryMuted : undefined,
+  }), [isSystem, isUser, highlighted, colors.primaryMuted]);
 
   return (
     <Pressable
-      onLongPress={() => onLongPress?.(message)}
+      onLongPress={handleLongPress}
       delayLongPress={400}
       accessibilityRole="text"
       accessibilityLabel={`${isUser ? 'You' : message.serverName || 'Assistant'}: ${message.content.slice(0, 100)}`}
@@ -82,17 +95,14 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
         entering={FadeInDown.duration(250).springify().damping(18)}
         style={[
           containerStyle,
-          {
-            justifyContent: isSystem ? 'center' : isUser ? 'flex-end' : 'flex-start',
-            backgroundColor: highlighted ? colors.primaryMuted : undefined,
-          }
+          containerDynStyle,
         ]}
       >
         <View
           style={[
             bubbleStyle,
             isUser ? ds.bgUserMessage : ds.bgAssistantMessage,
-            isSystem && { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
+            isSystem && styles.systemBubble,
           ]}
         >
           {/* Avatar */}
@@ -104,7 +114,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             </YStack>
           )}
 
-          <View style={{ flexShrink: 1 }}>
+          <View style={styles.contentWrapper}>
             {/* Server name badge for multi-agent */}
             {!isUser && !isSystem && message.serverName && (
               <Text
@@ -170,8 +180,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
             {!isUser && !isSystem && !message.isStreaming && message.content && (
               <XStack gap={Spacing.sm} marginTop={Spacing.xs} alignItems="center">
                 <TouchableOpacity
-                  style={{ padding: 4 }}
-                  onPress={() => onSpeak?.(message.content, message.id)}
+                  style={styles.ttsButton}
+                  onPress={handleSpeak}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel={isSpeaking ? 'Stop reading aloud' : 'Read aloud'}
                   accessibilityRole="button"

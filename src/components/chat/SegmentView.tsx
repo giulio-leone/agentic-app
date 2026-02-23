@@ -13,6 +13,11 @@ import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { codeBlockRules } from './codeBlockRules';
 
+const segStyles = StyleSheet.create({
+  thoughtBtn: { marginVertical: 4, padding: Spacing.sm },
+  agentEventBtn: { marginVertical: 2, paddingVertical: 3, paddingHorizontal: Spacing.xs },
+});
+
 interface Props {
   segment: MessageSegment;
   colors: ThemeColors;
@@ -90,7 +95,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
     case 'thought':
       return (
         <TouchableOpacity
-          style={{ marginVertical: 4, padding: Spacing.sm }}
+          style={segStyles.thoughtBtn}
           onPress={() => setExpanded(!expanded)}
           activeOpacity={0.7}
         >
@@ -124,7 +129,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
 
       return (
         <TouchableOpacity
-          style={{ marginVertical: 2, paddingVertical: 3, paddingHorizontal: Spacing.xs }}
+          style={segStyles.agentEventBtn}
           onPress={() => setExpanded(!expanded)}
           activeOpacity={0.7}
         >

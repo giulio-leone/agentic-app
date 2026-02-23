@@ -3,7 +3,7 @@
  * Logic extracted to useDrawerState hook.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   TouchableOpacity,
   FlatList,
@@ -57,17 +57,13 @@ const ServerChip = React.memo(function ServerChip({
   } else if (server.serverType === ServerType.ACP) {
     ProviderIcon = Server;
   }
+  const chipStyle = useMemo(
+    () => [drawerStyles.serverChip, isSelected ? { backgroundColor: colors.sidebarSelectedItem } : null],
+    [isSelected, colors.sidebarSelectedItem],
+  );
   return (
     <TouchableOpacity
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: Radius.sm,
-        ...(isSelected && { backgroundColor: colors.sidebarSelectedItem }),
-      }}
+      style={chipStyle}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.7}
@@ -475,4 +471,12 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 const drawerStyles = StyleSheet.create({
   emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   sessionList: { paddingHorizontal: Spacing.md },
+  serverChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.sm,
+  },
 });

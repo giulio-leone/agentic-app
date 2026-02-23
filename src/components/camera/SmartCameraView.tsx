@@ -94,16 +94,17 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
         // This utilizes our custom native vision-camera-plugin (SceneDetector) 
         // to perform real-time pixel diffing between consecutive frames directly in C++/Kotlin/Swift.
         // It provides the average difference value to JS without the overhead of passing image buffers.
-        const onSceneChangedJS = Worklets.createRunOnJS(() => {
-            onSceneChanged?.();
-        });
+        const onSceneChangedJSRef = useRef(Worklets.createRunOnJS(() => { onSceneChanged?.(); }));
+        useEffect(() => {
+            onSceneChangedJSRef.current = Worklets.createRunOnJS(() => { onSceneChanged?.(); });
+        }, [onSceneChanged]);
 
         const lastMotionTime = useSharedValue(0);
         const isStabilizing = useSharedValue(false);
 
-        const logStateJS = Worklets.createRunOnJS((_diff: number, _motion: boolean, _stabilizing: boolean, _trigger: boolean) => {
+        const logStateJSRef = useRef(Worklets.createRunOnJS((_diff: number, _motion: boolean, _stabilizing: boolean, _trigger: boolean) => {
             // Intentionally silent in production. Enable via Flipper or local patch for debugging.
-        });
+        }));
 
         const frameProcessor = useFrameProcessor((frame) => {
             'worklet';
@@ -135,20 +136,20 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
                     if (Date.now() - lastMotionTime.value > 200) {
                         isStabilizing.value = false;
                         triggerFired = true;
-                        onSceneChangedJS();
+                        onSceneChangedJSRef.current();
                     }
                 } else {
                     // Safety catch: if we somehow missed the initial motion spike but the camera has been stable for a long time (e.g., 2.5 seconds) since last capture activity
                     if (Date.now() - lastMotionTime.value > 2500) {
                         lastMotionTime.value = Date.now(); // reset timer
                         triggerFired = true;
-                        onSceneChangedJS();
+                        onSceneChangedJSRef.current();
                     }
                 }
             }
 
             if (motionDetected || triggerFired) {
-                logStateJS(diff, motionDetected, isStabilizing.value, triggerFired);
+                logStateJSRef.current(diff, motionDetected, isStabilizing.value, triggerFired);
             }
         }, [enableAutoDetection, motionThreshold, stableThreshold]);
 
