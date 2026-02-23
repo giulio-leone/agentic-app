@@ -337,16 +337,16 @@ export const TerminalPanel = React.memo(function TerminalPanel() {
               </Text>
             </XStack>
             <XStack gap={Spacing.sm}>
-              <TouchableOpacity onPress={() => { setShowPicker(p => !p); refreshSessions(); }} hitSlop={8}>
+              <TouchableOpacity onPress={() => { setShowPicker(p => !p); refreshSessions(); }} hitSlop={8} accessibilityLabel="Session list" accessibilityRole="button">
                 <List size={16} color="#8E8EA0" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSpawn} hitSlop={8}>
+              <TouchableOpacity onPress={handleSpawn} hitSlop={8} accessibilityLabel="New shell" accessibilityRole="button">
                 <Plus size={16} color="#10A37F" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setIsFullscreen(f => !f)} hitSlop={8}>
+              <TouchableOpacity onPress={() => setIsFullscreen(f => !f)} hitSlop={8} accessibilityLabel={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} accessibilityRole="button">
                 {isFullscreen ? <Minimize2 size={16} color="#8E8EA0" /> : <Maximize2 size={16} color="#8E8EA0" />}
               </TouchableOpacity>
-              <TouchableOpacity onPress={onClose} hitSlop={8}>
+              <TouchableOpacity onPress={onClose} hitSlop={8} accessibilityLabel="Close terminal" accessibilityRole="button">
                 <X size={16} color="#8E8EA0" />
               </TouchableOpacity>
             </XStack>

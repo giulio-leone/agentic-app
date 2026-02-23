@@ -95,10 +95,12 @@ export function useAddServerForm() {
 
   // ── Effects ──
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const cached = await getCachedModels(selectedProvider);
-      if (cached && cached.length > 0) setFetchedModels(cached);
+      if (!cancelled && cached && cached.length > 0) setFetchedModels(cached);
     })();
+    return () => { cancelled = true; };
   }, [selectedProvider]);
 
   // ── Handlers ──
