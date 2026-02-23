@@ -3,7 +3,7 @@
  * Extracts state, callbacks, animations, and service lifecycle.
  */
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { v4 as uuidv4 } from 'uuid';
@@ -74,10 +74,10 @@ export function useScreenWatcher() {
   } = useAppStore();
 
   // Latest assistant message
-  const latestAssistantMessage = (() => {
+  const latestAssistantMessage = useMemo(() => {
     const reversed = [...chatMessages].reverse();
     return reversed.find((m) => m.role === 'assistant');
-  })();
+  }, [chatMessages]);
 
   // ── Animations ──
   const pulse = useSharedValue(1);
