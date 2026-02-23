@@ -88,7 +88,10 @@ export class CopilotProvider implements ProviderAdapter {
       tools = [];
     }
 
-    const { sessionId } = await this.sessions.create(c, model, tools, cwd, this.reasoningEffort);
+    const { sessionId } = await this.sessions.create(
+      c, model, tools, cwd,
+      (opts.reasoningEffort || this.reasoningEffort) as 'low' | 'medium' | 'high' | undefined
+    );
 
     return {
       id: sessionId,

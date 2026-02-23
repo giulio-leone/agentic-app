@@ -32,7 +32,32 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   connectionState: ACPConnectionState.Disconnected,
   isInitialized: false,
   agentInfo: null,
+  bridgeModels: [],
+  reasoningEffortLevels: [],
+  selectedBridgeModel: null,
+  selectedReasoningEffort: null,
+  selectedCwd: null,
   connectionError: null,
+
+  setSelectedBridgeModel: (modelId) => set({ selectedBridgeModel: modelId }),
+  setSelectedReasoningEffort: (level) => set({ selectedReasoningEffort: level }),
+  setSelectedCwd: (path) => set({ selectedCwd: path }),
+
+  listDirectory: async (path?: string) => {
+    if (!_service) return null;
+    try {
+      const response = await _service.fsList(path);
+      const result = response.result as Record<string, unknown> | undefined;
+      if (!result) return null;
+      return {
+        path: result.path as string,
+        entries: (result.entries as Array<{ name: string; path: string; isDirectory: boolean }>) ?? [],
+      };
+    } catch (err) {
+      get().appendLog(`fs/list error: ${(err as Error).message}`);
+      return null;
+    }
+  },
 
   // Actions
 
@@ -245,6 +270,25 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
         };
         set({ isInitialized: true, agentInfo });
         get().appendLog(`✓ Initialized: ${agentInfo.name} ${agentInfo.version}`);
+
+        // Extract bridge models from initialize response
+        const rawModels = result.models as Array<Record<string, JSONValue>> | undefined;
+        if (rawModels && rawModels.length > 0) {
+          const bridgeModels = rawModels.map(m => ({
+            id: (m.id as string) ?? '',
+            name: (m.name as string) ?? (m.id as string) ?? '',
+            provider: (m.provider as string) ?? 'bridge',
+          }));
+          set({ bridgeModels });
+          get().appendLog(`✓ Bridge models: ${bridgeModels.length}`);
+        }
+
+        // Extract reasoning effort levels
+        const rawLevels = result.reasoningEffortLevels as string[] | undefined;
+        if (rawLevels && rawLevels.length > 0) {
+          set({ reasoningEffortLevels: rawLevels });
+          get().appendLog(`✓ Reasoning effort levels: ${rawLevels.join(', ')}`);
+        }
 
         get().loadSessions();
       } else {

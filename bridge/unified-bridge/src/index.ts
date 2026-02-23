@@ -31,7 +31,7 @@ import type { BridgeConfig, ProviderConfig } from './core/types.js';
 
 function getArg(name: string, fallback: string): string {
   const idx = process.argv.indexOf(`--${name}`);
-  return idx !== -1 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback;
+  return idx !== -1 && process.argv[idx + 1] ? process.argv[idx + 1].trim() : fallback;
 }
 
 function hasFlag(name: string): boolean {

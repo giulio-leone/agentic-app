@@ -33,6 +33,11 @@ export interface AppState {
   connectionState: ACPConnectionState;
   isInitialized: boolean;
   agentInfo: AgentProfile | null;
+  bridgeModels: Array<{ id: string; name: string; provider: string }>;
+  reasoningEffortLevels: string[];
+  selectedBridgeModel: string | null;
+  selectedReasoningEffort: string | null;
+  selectedCwd: string | null;
   connectionError: string | null;
 
   // Sessions
@@ -102,6 +107,10 @@ export interface AppActions {
   selectSession: (id: string) => void | Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
+  setSelectedBridgeModel: (modelId: string | null) => void;
+  setSelectedReasoningEffort: (level: string | null) => void;
+  setSelectedCwd: (path: string | null) => void;
+  listDirectory: (path?: string) => Promise<{ path: string; entries: Array<{ name: string; path: string; isDirectory: boolean }> } | null>;
 
   // Chat
   sendPrompt: (text: string, attachments?: import('../acp/models/types').Attachment[]) => Promise<void>;

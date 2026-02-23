@@ -17,6 +17,8 @@ export interface InitializeParams {
 export interface SessionNewParams {
   cwd?: string;
   modeId?: string;
+  model?: string;
+  reasoningEffort?: string;
   mcpServers?: Array<{ name: string; url: string }>;
 }
 
@@ -68,6 +70,8 @@ export function buildSessionNewParams(opts?: SessionNewParams): JSONValue {
   params.cwd = opts?.cwd || '/tmp';
   params.mcpServers = (opts?.mcpServers ?? []) as unknown as JSONValue;
   if (opts?.modeId) params.modeId = opts.modeId;
+  if (opts?.model) params.model = opts.model;
+  if (opts?.reasoningEffort) params.reasoningEffort = opts.reasoningEffort;
   return params as unknown as JSONValue;
 }
 

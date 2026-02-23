@@ -56,6 +56,7 @@ export interface SessionSummary {
 export interface CreateSessionOpts {
   model?: string;
   cwd?: string;
+  reasoningEffort?: string;
 }
 
 // ── Agent Events (terminal, file edits, tool calls) ──

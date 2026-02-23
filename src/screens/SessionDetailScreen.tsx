@@ -25,6 +25,8 @@ import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
 import { ChatToolbar } from '../components/chat/ChatToolbar';
 import { ProviderModelPicker } from '../components/chat/ProviderModelPicker';
+import { ReasoningEffortPicker } from '../components/chat/ReasoningEffortPicker';
+import { DirectoryPicker } from '../components/chat/DirectoryPicker';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { ABModelPicker } from '../components/chat/ABModelPicker';
@@ -87,8 +89,22 @@ export function SessionDetailScreen() {
   const terminalVisible = useAppStore(s => s.terminalVisible);
   const setTerminalVisible = useAppStore(s => s.setTerminalVisible);
   const updateServer = useAppStore(s => s.updateServer);
+  const bridgeModels = useAppStore(s => s.bridgeModels);
+  const storeReasoningLevels = useAppStore(s => s.reasoningEffortLevels);
+  const reasoningEffortLevels = storeReasoningLevels.length > 0
+    ? storeReasoningLevels
+    : bridgeModels.length > 0 ? ['low', 'medium', 'high', 'xhigh'] : [];
+  const selectedBridgeModel = useAppStore(s => s.selectedBridgeModel);
+  const selectedReasoningEffort = useAppStore(s => s.selectedReasoningEffort);
+  const setSelectedBridgeModel = useAppStore(s => s.setSelectedBridgeModel);
+  const setSelectedReasoningEffort = useAppStore(s => s.setSelectedReasoningEffort);
+  const selectedCwd = useAppStore(s => s.selectedCwd);
+  const setSelectedCwd = useAppStore(s => s.setSelectedCwd);
+  const listDirectory = useAppStore(s => s.listDirectory);
   const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
   const [modelPickerVisible, setModelPickerVisible] = useState(false);
+  const [reasoningPickerVisible, setReasoningPickerVisible] = useState(false);
+  const [directoryPickerVisible, setDirectoryPickerVisible] = useState(false);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
@@ -96,10 +112,14 @@ export function SessionDetailScreen() {
 
   // Provider•Model label for toolbar chip
   const currentModelLabel = React.useMemo(() => {
+    if (bridgeModels.length > 0 && selectedBridgeModel) {
+      const suffix = selectedReasoningEffort ? ` (${selectedReasoningEffort})` : '';
+      return selectedBridgeModel.split('/').pop() + suffix;
+    }
     if (!isAIProvider || !selectedServer?.aiProviderConfig) return '';
     const cfg = selectedServer.aiProviderConfig;
     return cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
-  }, [isAIProvider, selectedServer?.aiProviderConfig?.modelId]);
+  }, [isAIProvider, selectedServer?.aiProviderConfig?.modelId, bridgeModels, selectedBridgeModel, selectedReasoningEffort]);
 
   const providerIcon = React.useMemo(() => {
     if (!isAIProvider || !selectedServer?.aiProviderConfig) return null;
@@ -193,7 +213,15 @@ export function SessionDetailScreen() {
     [toggleChatSearch, resetSearch],
   );
 
-  const handleOpenModelPicker = useCallback(() => setModelPickerVisible(true), []);
+  const handleOpenModelPicker = useCallback(() => {
+    setModelPickerVisible(true);
+  }, []);
+
+  const handleLongPressModelPicker = useCallback(() => {
+    if (bridgeModels.length > 0 && reasoningEffortLevels.length > 0) {
+      setReasoningPickerVisible(true);
+    }
+  }, [bridgeModels, reasoningEffortLevels]);
 
   const handleToggleAB = useCallback(() => {
     if (abState.active) { clearTest(); }
@@ -208,7 +236,13 @@ export function SessionDetailScreen() {
 
   const handleCloseAbPicker = useCallback(() => setAbPickerVisible(false), []);
   const handleCloseConsensusSheet = useCallback(() => setConsensusSheetVisible(false), []);
-  const handleCloseModelPicker = useCallback(() => setModelPickerVisible(false), []);
+  const handleCloseModelPicker = useCallback(() => {
+    setModelPickerVisible(false);
+    // After selecting a bridge model, open reasoning effort picker
+    if (bridgeModels.length > 0 && reasoningEffortLevels.length > 0) {
+      setTimeout(() => setReasoningPickerVisible(true), 300);
+    }
+  }, [bridgeModels, reasoningEffortLevels]);
 
   const { handleSpeak, isSpeakingMessage, speakingMessageId } = useChatSpeech();
 
@@ -410,7 +444,10 @@ export function SessionDetailScreen() {
         onSelectServer={selectServer}
         onOpenTemplates={openTemplates}
         onOpenModelPicker={handleOpenModelPicker}
+        onLongPressModelPicker={handleLongPressModelPicker}
+        onOpenDirectoryPicker={bridgeModels.length > 0 ? () => { console.warn('[DIR] Opening directory picker'); setDirectoryPickerVisible(true); } : undefined}
         currentModelLabel={currentModelLabel}
+        currentCwdLabel={selectedCwd ? selectedCwd.split('/').pop() : null}
         providerIcon={providerIcon}
         onToggleAB={handleToggleAB}
         abActive={abState.active}
@@ -507,8 +544,30 @@ export function SessionDetailScreen() {
         onClose={handleCloseModelPicker}
         servers={servers}
         selectedServerId={selectedServerId}
+        bridgeModels={bridgeModels}
+        selectedBridgeModel={selectedBridgeModel}
         onSelectServer={selectServer}
         onUpdateServer={updateServer}
+        onSelectBridgeModel={setSelectedBridgeModel}
+        colors={colors}
+      />
+
+      <ReasoningEffortPicker
+        visible={reasoningPickerVisible}
+        onClose={() => setReasoningPickerVisible(false)}
+        levels={reasoningEffortLevels}
+        selectedLevel={selectedReasoningEffort}
+        selectedModel={selectedBridgeModel}
+        onSelect={setSelectedReasoningEffort}
+        colors={colors}
+      />
+
+      <DirectoryPicker
+        visible={directoryPickerVisible}
+        onClose={() => setDirectoryPickerVisible(false)}
+        selectedPath={selectedCwd}
+        onSelect={setSelectedCwd}
+        listDirectory={listDirectory}
         colors={colors}
       />
     </KeyboardAvoidingView>

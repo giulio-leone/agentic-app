@@ -1,13 +1,14 @@
 /**
  * ProviderModelPicker — full-screen modal with autocomplete search.
- * Unified search across all providers, grouped by provider in SectionList.
+ * Uses FlatList with plain RN Views to avoid Fabric SectionList crash on Android.
  */
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
+  View,
   TouchableOpacity,
   StyleSheet,
-  SectionList,
+  FlatList,
   TextInput,
   ActivityIndicator,
   Keyboard,
@@ -15,8 +16,8 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  Text as RNText,
 } from 'react-native';
-import { YStack, XStack, Text } from 'tamagui';
 import { Check, Eye, Brain, Wrench, Search, X, ChevronLeft } from 'lucide-react-native';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { ServerType } from '../../acp/models/types';
@@ -25,19 +26,20 @@ import { getProviderInfo } from '../../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { getCachedModels } from '../../ai/ModelCache';
 import { getApiKey } from '../../storage/SecureStorage';
-import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   servers: ACPServerConfiguration[];
   selectedServerId: string | null;
+  bridgeModels: Array<{ id: string; name: string; provider: string }>;
+  selectedBridgeModel: string | null;
   onSelectServer: (id: string) => void;
   onUpdateServer: (server: ACPServerConfiguration) => void;
+  onSelectBridgeModel: (modelId: string | null) => void;
   colors: ThemeColors;
 }
 
-/** Model entry enriched with provider info for the unified list. */
 interface ModelOption {
   id: string;
   modelId: string;
@@ -45,6 +47,7 @@ interface ModelOption {
   providerServerId: string;
   displayName: string;
   model: FetchedModel;
+  isHeader?: boolean;
 }
 
 export const ProviderModelPicker = React.memo(function ProviderModelPicker({
@@ -52,8 +55,11 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   onClose,
   servers,
   selectedServerId,
+  bridgeModels,
+  selectedBridgeModel,
   onSelectServer,
   onUpdateServer,
+  onSelectBridgeModel,
   colors,
 }: Props) {
   const providers = useMemo(
@@ -64,42 +70,62 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   const [allOptions, setAllOptions] = useState<ModelOption[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [contentReady, setContentReady] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  // Fetch models from ALL providers on open
+  // Delay content rendering until Modal is fully mounted (avoids Fabric crash)
   useEffect(() => {
-    if (!visible || providers.length === 0) return;
+    if (visible) {
+      const timer = requestAnimationFrame(() => setContentReady(true));
+      return () => cancelAnimationFrame(timer);
+    }
+    setContentReady(false);
+    return undefined;
+  }, [visible]);
 
-    let cancelled = false;
-    let focusTimer: ReturnType<typeof setTimeout> | undefined;
-    setLoading(true);
+  // Populate models
+  useEffect(() => {
+    if (!visible || !contentReady) return;
+    if (providers.length === 0 && bridgeModels.length === 0) return;
+
     setQuery('');
+
+    // Bridge models: synchronous
+    if (bridgeModels.length > 0) {
+      const bridgeServer = servers.find(s => s.serverType === ServerType.ACP || s.scheme === 'tcp');
+      setAllOptions(bridgeModels.map(m => ({
+        id: `bridge::${m.id}`,
+        modelId: m.id,
+        providerName: `Bridge (${m.provider})`,
+        providerServerId: bridgeServer?.id ?? 'bridge',
+        displayName: m.name,
+        model: { id: m.id, name: m.name, created: 0 },
+      })));
+      setLoading(false);
+      return;
+    }
+
+    // AI Provider models: async fetch
+    let cancelled = false;
+    setLoading(true);
 
     (async () => {
       const options: ModelOption[] = [];
-
       for (const provider of providers) {
         const config = provider.aiProviderConfig!;
         const info = getProviderInfo(config.providerType);
-
         let models = await getCachedModels(config.providerType);
         if (cancelled) return;
-
         if (!models || models.length === 0) {
           try {
             const apiKey = await getApiKey(`${provider.id}_${config.providerType}`);
             if (cancelled) return;
             if (apiKey) {
-              models = await fetchModelsFromProvider(
-                config.providerType,
-                apiKey,
-                config.baseUrl ?? info.defaultBaseUrl,
-              );
+              models = await fetchModelsFromProvider(config.providerType, apiKey, config.baseUrl ?? info.defaultBaseUrl);
             }
-          } catch { /* keep empty */ }
+          } catch { /* skip */ }
         }
         if (cancelled) return;
-
         if (models) {
           for (const m of models) {
             options.push({
@@ -113,47 +139,49 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
           }
         }
       }
-
       if (!cancelled) {
         setAllOptions(options);
         setLoading(false);
-        focusTimer = setTimeout(() => inputRef.current?.focus(), 300);
       }
     })();
 
-    return () => {
-      cancelled = true;
-      if (focusTimer) clearTimeout(focusTimer);
-    };
-  }, [visible, providers]);
+    return () => { cancelled = true; };
+  }, [visible, contentReady, providers, bridgeModels, servers]);
 
-  // Filter based on query
+  // Filter
   const filtered = useMemo(() => {
-    if (!query.trim()) return allOptions;
-    const q = query.toLowerCase();
-    return allOptions.filter(o =>
-      o.modelId.toLowerCase().includes(q) ||
-      o.displayName.toLowerCase().includes(q) ||
-      o.providerName.toLowerCase().includes(q)
-    );
-  }, [query, allOptions]);
+    const opts = query.trim()
+      ? allOptions.filter(o => {
+          const q = query.toLowerCase();
+          return o.modelId.toLowerCase().includes(q) || o.displayName.toLowerCase().includes(q) || o.providerName.toLowerCase().includes(q);
+        })
+      : allOptions;
 
-  // Group by provider
-  const sections = useMemo(() => {
-    const map = new Map<string, ModelOption[]>();
-    for (const o of filtered) {
-      const list = map.get(o.providerName) ?? [];
-      list.push(o);
-      map.set(o.providerName, list);
+    // Insert section headers
+    const result: ModelOption[] = [];
+    let lastProvider = '';
+    for (const o of opts) {
+      if (o.providerName !== lastProvider) {
+        lastProvider = o.providerName;
+        result.push({ ...o, id: `header::${o.providerName}`, isHeader: true });
+      }
+      result.push(o);
     }
-    return Array.from(map, ([title, data]) => ({ title, data }));
-  }, [filtered]);
+    return result;
+  }, [query, allOptions]);
 
   const currentServer = providers.find(p => p.id === selectedServerId);
   const currentModelId = currentServer?.aiProviderConfig?.modelId;
 
   const selectModel = useCallback((option: ModelOption) => {
     const provider = servers.find(s => s.id === option.providerServerId);
+    if (option.id.startsWith('bridge::')) {
+      if (provider) onSelectServer(provider.id);
+      onSelectBridgeModel(option.modelId);
+      Keyboard.dismiss();
+      onClose();
+      return;
+    }
     if (!provider?.aiProviderConfig) return;
     onSelectServer(option.providerServerId);
     onUpdateServer({
@@ -162,7 +190,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
     });
     Keyboard.dismiss();
     onClose();
-  }, [servers, onSelectServer, onUpdateServer, onClose]);
+  }, [servers, onSelectServer, onUpdateServer, onClose, onSelectBridgeModel]);
 
   const handleManualSubmit = useCallback(() => {
     const val = query.trim();
@@ -176,96 +204,67 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   }, [query, currentServer, onUpdateServer, onClose]);
 
   const renderItem = useCallback(({ item }: { item: ModelOption }) => {
-    const isSelected = item.modelId === currentModelId && item.providerServerId === selectedServerId;
+    if (item.isHeader) {
+      return (
+        <View style={[styles.sectionHeader, { backgroundColor: colors.surface, borderBottomColor: colors.separator }]}>
+          <RNText style={[styles.sectionTitle, { color: colors.textSecondary }]}>{item.providerName}</RNText>
+        </View>
+      );
+    }
+
+    const isBridge = item.id.startsWith('bridge::');
+    const isSelected = isBridge
+      ? item.modelId === selectedBridgeModel
+      : item.modelId === currentModelId && item.providerServerId === selectedServerId;
+
     return (
       <TouchableOpacity
-        style={[
-          styles.modelRow,
-          { borderBottomColor: colors.separator },
-          isSelected && { backgroundColor: `${colors.primary}10` },
-        ]}
+        style={[styles.modelRow, { borderBottomColor: colors.separator }, isSelected && { backgroundColor: `${colors.primary}10` }]}
         onPress={() => selectModel(item)}
         activeOpacity={0.6}
       >
-        <YStack flex={1} gap={2}>
-          <Text
-            color={isSelected ? colors.primary : colors.text}
-            fontSize={16}
-            fontWeight={isSelected ? '600' : '400'}
-          >
+        <View style={styles.modelInfo}>
+          <RNText style={[styles.modelName, { color: isSelected ? colors.primary : colors.text }, isSelected && styles.modelNameSelected]}>
             {item.displayName}
-          </Text>
-          <XStack alignItems="center" gap={4}>
-            <Text fontSize={13} color={colors.textTertiary}>{item.modelId}</Text>
-          </XStack>
-          <XStack alignItems="center" gap={8} marginTop={2}>
+          </RNText>
+          <RNText style={[styles.modelId, { color: colors.textTertiary }]}>{item.modelId}</RNText>
+          <View style={styles.badges}>
             {item.model.supportsVision && (
-              <XStack alignItems="center" gap={3}>
+              <View style={styles.badge}>
                 <Eye size={11} color={colors.textTertiary} />
-                <Text fontSize={11} color={colors.textTertiary}>Vision</Text>
-              </XStack>
+                <RNText style={[styles.badgeText, { color: colors.textTertiary }]}>Vision</RNText>
+              </View>
             )}
             {item.model.supportsTools && (
-              <XStack alignItems="center" gap={3}>
+              <View style={styles.badge}>
                 <Wrench size={11} color={colors.textTertiary} />
-                <Text fontSize={11} color={colors.textTertiary}>Tools</Text>
-              </XStack>
+                <RNText style={[styles.badgeText, { color: colors.textTertiary }]}>Tools</RNText>
+              </View>
             )}
             {item.model.supportsReasoning && (
-              <XStack alignItems="center" gap={3}>
+              <View style={styles.badge}>
                 <Brain size={11} color={colors.textTertiary} />
-                <Text fontSize={11} color={colors.textTertiary}>Reasoning</Text>
-              </XStack>
+                <RNText style={[styles.badgeText, { color: colors.textTertiary }]}>Reasoning</RNText>
+              </View>
             )}
-          </XStack>
-        </YStack>
+          </View>
+        </View>
         {isSelected && <Check size={20} color={colors.primary} />}
       </TouchableOpacity>
     );
-  }, [currentModelId, selectedServerId, colors, selectModel]);
-
-  const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: ModelOption[] } }) => (
-    <XStack
-      paddingHorizontal={Spacing.md}
-      paddingVertical={8}
-      backgroundColor={colors.surface}
-      borderBottomWidth={StyleSheet.hairlineWidth}
-      borderBottomColor={colors.separator}
-    >
-      <Text fontSize={13} fontWeight="700" color={colors.textSecondary} textTransform="uppercase" letterSpacing={0.8}>
-        {section.title}
-      </Text>
-      <Text fontSize={13} color={colors.textTertiary} marginLeft={8}>({section.data.length})</Text>
-    </XStack>
-  ), [colors]);
+  }, [currentModelId, selectedServerId, selectedBridgeModel, colors, selectModel]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
         <StatusBar barStyle={colors.background === '#FFFFFF' ? 'dark-content' : 'light-content'} />
 
-        {/* Header with back + search */}
-        <XStack
-          alignItems="center"
-          paddingHorizontal={Spacing.sm}
-          paddingVertical={8}
-          gap={8}
-          borderBottomWidth={StyleSheet.hairlineWidth}
-          borderBottomColor={colors.separator}
-        >
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.separator }]}>
           <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.backButton}>
             <ChevronLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <XStack
-            flex={1}
-            alignItems="center"
-            paddingHorizontal={12}
-            borderRadius={Radius.lg}
-            backgroundColor={colors.inputBackground}
-            borderWidth={1}
-            borderColor={colors.inputBorder}
-            gap={8}
-          >
+          <View style={[styles.searchBox, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
             <Search size={16} color={colors.textTertiary} />
             <TextInput
               ref={inputRef}
@@ -284,43 +283,37 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
                 <X size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
-          </XStack>
-        </XStack>
+          </View>
+        </View>
 
-        {/* Results */}
-        {loading ? (
-          <YStack flex={1} alignItems="center" justifyContent="center">
+        {/* Content */}
+        {!contentReady || loading ? (
+          <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text fontSize={14} color={colors.textTertiary} marginTop={Spacing.md}>Loading models…</Text>
-          </YStack>
+            <RNText style={[styles.loadingText, { color: colors.textTertiary }]}>Loading models…</RNText>
+          </View>
         ) : (
-          <SectionList
-            sections={sections}
+          <FlatList
+            data={filtered}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            renderSectionHeader={renderSectionHeader}
-            stickySectionHeadersEnabled
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <YStack alignItems="center" paddingVertical={Spacing.xl} paddingHorizontal={Spacing.lg}>
-                <Text fontSize={16} color={colors.textTertiary} textAlign="center">
+              <View style={styles.emptyContainer}>
+                <RNText style={[styles.emptyText, { color: colors.textTertiary }]}>
                   {query ? `No models matching "${query}"` : 'No models available\nConfigure a provider in Settings'}
-                </Text>
+                </RNText>
                 {query.trim().length > 0 && (
-                  <TouchableOpacity
-                    onPress={handleManualSubmit}
-                    style={[styles.useCustom, { borderColor: colors.primary }]}
-                  >
-                    <Text fontSize={15} color={colors.primary} fontWeight="500">Use "{query}" as model ID</Text>
+                  <TouchableOpacity onPress={handleManualSubmit} style={[styles.useCustom, { borderColor: colors.primary }]}>
+                    <RNText style={[styles.useCustomText, { color: colors.primary }]}>Use "{query}" as model ID</RNText>
                   </TouchableOpacity>
                 )}
-              </YStack>
+              </View>
             }
-            showsVerticalScrollIndicator
-            style={sharedStyles.flex1}
-            contentContainerStyle={sharedStyles.listContentPadBottom40}
-            removeClippedSubviews
           />
         )}
       </SafeAreaView>
@@ -333,16 +326,59 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   backButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: 8,
+  },
   searchInput: {
     flex: 1,
     fontSize: 16,
     paddingVertical: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    marginTop: Spacing.md,
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  sectionHeader: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   modelRow: {
     flexDirection: 'row',
@@ -351,11 +387,50 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  modelInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  modelName: {
+    fontSize: 16,
+  },
+  modelNameSelected: {
+    fontWeight: '600',
+  },
+  modelId: {
+    fontSize: 13,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  badgeText: {
+    fontSize: 11,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
   useCustom: {
     marginTop: Spacing.lg,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,
+  },
+  useCustomText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
