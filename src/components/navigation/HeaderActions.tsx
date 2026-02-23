@@ -8,6 +8,7 @@ import { TouchableOpacity } from 'react-native';
 import { XStack } from 'tamagui';
 import { PenLine } from 'lucide-react-native';
 import { Spacing } from '../../utils/theme';
+import { HIT_SLOP_8 } from '../../utils/sharedStyles';
 import type { ThemeColors } from '../../utils/theme';
 
 interface HeaderActionsProps {
@@ -26,7 +27,7 @@ export const HeaderActions = React.memo(function HeaderActions({
       <TouchableOpacity
         onPress={onCreateSession}
         style={{ paddingHorizontal: Spacing.md }}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={HIT_SLOP_8}
         accessibilityLabel="New chat"
         accessibilityRole="button"
       >

@@ -19,9 +19,11 @@ import * as Haptics from 'expo-haptics';
 import { v4 as uuidv4 } from 'uuid';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { HIT_SLOP_8 } from '../../utils/sharedStyles';
 import type { PromptTemplate } from '../../utils/promptTemplates';
 import { PromptLibrary } from '../../storage/PromptLibrary';
 import { TemplateEditor } from './TemplateEditor';
+import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
 
 interface Props {
   visible: boolean;
@@ -63,6 +65,11 @@ export const TemplatePickerSheet = React.memo(function TemplatePickerSheet({
   const filtered = useMemo(() =>
     category === 'all' ? allTemplates : allTemplates.filter(t => t.category === category),
     [allTemplates, category],
+  );
+
+  const categoryHandlers = useMemo(
+    () => Object.fromEntries(CATEGORIES.map(c => [c.key, () => setCategory(c.key)])),
+    [],
   );
 
   const handleSaveTemplate = useCallback(async (data: Omit<PromptTemplate, 'id' | 'isBuiltIn'> & { id?: string }) => {
@@ -130,7 +137,7 @@ export const TemplatePickerSheet = React.memo(function TemplatePickerSheet({
             <Text fontSize={FontSize.caption} color={colors.primary}>Custom</Text>
             <TouchableOpacity
               onPress={() => handleDeleteTemplate(item)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={HIT_SLOP_8}
             >
               <Trash2 size={14} color={colors.destructive} />
             </TouchableOpacity>
@@ -159,7 +166,7 @@ export const TemplatePickerSheet = React.memo(function TemplatePickerSheet({
             <TouchableOpacity
               onPress={() => { setEditingTemplate(null); setEditorVisible(true); }}
               style={[styles.addBtn, { backgroundColor: colors.primary }]}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={HIT_SLOP_8}
             >
               <Plus size={16} color="#FFF" />
             </TouchableOpacity>
@@ -170,7 +177,7 @@ export const TemplatePickerSheet = React.memo(function TemplatePickerSheet({
             {CATEGORIES.map(cat => (
               <TouchableOpacity
                 key={cat.key}
-                onPress={() => setCategory(cat.key)}
+                onPress={categoryHandlers[cat.key]}
                 style={[
                   styles.tab,
                   {
@@ -192,11 +199,11 @@ export const TemplatePickerSheet = React.memo(function TemplatePickerSheet({
 
           <FlatList
             data={filtered}
-            keyExtractor={item => item.id}
+            keyExtractor={keyExtractorById}
             renderItem={renderItem}
             style={{ maxHeight: 400 }}
             showsVerticalScrollIndicator={false}
-            getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+            getItemLayout={ITEM_LAYOUT_60}
             removeClippedSubviews
           />
         </Animated.View>

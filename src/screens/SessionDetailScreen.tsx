@@ -231,6 +231,7 @@ export function SessionDetailScreen() {
   }, [isStreaming, chatMessages.length]);
 
   // ── Pull-to-refresh ──
+  const refreshColors = useMemo(() => [colors.primary], [colors.primary]);
   const [refreshing, setRefreshing] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRefresh = useCallback(async () => {
@@ -367,7 +368,7 @@ export function SessionDetailScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
-            colors={[colors.primary]}
+            colors={refreshColors}
           />
         }
       />

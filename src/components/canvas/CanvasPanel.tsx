@@ -39,6 +39,8 @@ interface Props {
 
 type ViewMode = 'preview' | 'source';
 
+const PREVENT_CLOSE = () => { /* prevent close */ };
+
 const TYPE_LABELS: Record<ArtifactType, string> = {
   code: 'Code',
   html: 'HTML Preview',
@@ -99,7 +101,7 @@ export const CanvasPanel = React.memo(function CanvasPanel({ visible, artifact, 
               maxHeight: height * 0.9,
             },
           ]}
-          onPress={() => {/* prevent close */}}
+          onPress={PREVENT_CLOSE}
         >
           {/* Header */}
           <XStack

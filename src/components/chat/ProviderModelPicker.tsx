@@ -25,6 +25,7 @@ import { getProviderInfo } from '../../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { getCachedModels } from '../../ai/ModelCache';
 import { getApiKey } from '../../storage/SecureStorage';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   visible: boolean;
@@ -318,7 +319,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
             }
             showsVerticalScrollIndicator
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={sharedStyles.listContentPadBottom40}
             removeClippedSubviews
           />
         )}

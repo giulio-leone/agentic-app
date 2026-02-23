@@ -19,6 +19,7 @@ import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ThemeColors } from '../../utils/theme';
 import type { ACPServerConfiguration } from '../../acp/models/types';
 import { ServerType } from '../../acp/models/types';
+import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
 
 interface Props {
   visible: boolean;
@@ -118,11 +119,11 @@ export const ABModelPicker = React.memo(function ABModelPicker({ visible, server
           ) : (
             <FlatList
               data={aiServers}
-              keyExtractor={item => item.id}
+              keyExtractor={keyExtractorById}
               renderItem={renderItem}
               style={{ maxHeight: 400 }}
               showsVerticalScrollIndicator={false}
-              getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+              getItemLayout={ITEM_LAYOUT_60}
               removeClippedSubviews
             />
           )}

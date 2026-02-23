@@ -21,7 +21,7 @@ import { Spacing, Radius } from '../../utils/theme';
 
 const SHIMMER_DURATION = 1200;
 
-function ShimmerBar({ width, height = 12 }: { width: number | string; height?: number }) {
+const ShimmerBar = React.memo(function ShimmerBar({ width, height = 12 }: { width: number | string; height?: number }) {
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ function ShimmerBar({ width, height = 12 }: { width: number | string; height?: n
       ]}
     />
   );
-}
+});
 
 export const SkeletonMessage = React.memo(function SkeletonMessage() {
   const { ds } = useDesignSystem();

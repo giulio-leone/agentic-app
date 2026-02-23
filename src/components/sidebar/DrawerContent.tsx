@@ -24,8 +24,10 @@ import { SessionSummary, ServerType, ACPServerConfiguration, ACPConnectionState 
 import { useDesignSystem } from '../../utils/designSystem';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { HIT_SLOP_8 } from '../../utils/sharedStyles';
 import { getProviderInfo } from '../../ai/providers';
 import { useDrawerState } from '../../hooks/useDrawerState';
+import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
 
 interface ServerChipProps {
   server: ACPServerConfiguration;
@@ -289,7 +291,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => w.navigateToQuickSetup()}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  hitSlop={HIT_SLOP_8}
                   accessibilityLabel="Add server"
                   accessibilityRole="button"
                 >
@@ -313,7 +315,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 </XStack>
                 <TouchableOpacity
                   onPress={() => w.navigateToQuickSetup()}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  hitSlop={HIT_SLOP_8}
                   accessibilityLabel="Add server"
                   accessibilityRole="button"
                 >
@@ -421,7 +423,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
       {/* Sessions list */}
       <FlatList
         data={w.filteredSessions}
-        keyExtractor={item => item.id}
+        keyExtractor={keyExtractorById}
         renderItem={renderSessionItem}
         contentContainerStyle={
           w.filteredSessions.length === 0
@@ -445,7 +447,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         style={{ flex: 1 }}
         maxToRenderPerBatch={15}
         updateCellsBatchingPeriod={50}
-        getItemLayout={(_, index) => ({ length: 60, offset: 60 * index, index })}
+        getItemLayout={ITEM_LAYOUT_60}
         removeClippedSubviews
       />
 

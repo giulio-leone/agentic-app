@@ -9,6 +9,7 @@ import { XStack, YStack, Text } from 'tamagui';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { PromptTemplate } from '../../utils/promptTemplates';
+import { keyExtractorById } from '../../utils/listUtils';
 
 interface Props {
   visible: boolean;
@@ -48,7 +49,7 @@ export const SlashCommandAutocomplete = React.memo(function SlashCommandAutocomp
     >
       <FlatList
         data={matches.slice(0, 5)}
-        keyExtractor={item => item.id}
+        keyExtractor={keyExtractorById}
         renderItem={renderItem}
         scrollEnabled={false}
         keyboardShouldPersistTaps="handled"

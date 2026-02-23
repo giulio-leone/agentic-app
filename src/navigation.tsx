@@ -23,6 +23,7 @@ const LazyTerminalPanel = React.lazy(() => import('./components/TerminalPanel').
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
+import { HIT_SLOP_8 } from './utils/sharedStyles';
 import { useAppStore } from './stores/appStore';
 import { useAgentInfo, useConnectionState, useIsInitialized, useSessionActions } from './stores/selectors';
 import { ConnectionBadge } from './components/ConnectionBadge';
@@ -132,7 +133,7 @@ function DrawerNavigator() {
               <TouchableOpacity
                 onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
                 style={{ paddingHorizontal: Spacing.md }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={HIT_SLOP_8}
                 accessibilityLabel="Open menu"
                 accessibilityRole="button"
               >

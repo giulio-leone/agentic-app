@@ -18,6 +18,7 @@ import { Sparkles, Volume1, Volume2, Bookmark } from 'lucide-react-native';
 import { ChatMessage } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
+import { HIT_SLOP_8 } from '../utils/sharedStyles';
 import { getServerColor } from '../utils/serverColors';
 import { MarkdownContent, createMarkdownStyles } from './chat/MarkdownContent';
 import { ReasoningView } from './chat/ReasoningView';
@@ -184,7 +185,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                 <TouchableOpacity
                   style={styles.ttsButton}
                   onPress={handleSpeak}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  hitSlop={HIT_SLOP_8}
                   accessibilityLabel={isSpeaking ? 'Stop reading aloud' : 'Read aloud'}
                   accessibilityRole="button"
                 >
