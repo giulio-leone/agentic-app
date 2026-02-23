@@ -1,6 +1,14 @@
 /**
  * Module-level private state shared across store slices.
- * Kept separate so slices can access service/controller without circular imports.
+ *
+ * **Why module-level instead of Zustand state?**
+ * These values are *imperative handles* (WebSocket service, AbortController) that
+ * don't trigger React re-renders. Putting them in Zustand would cause unnecessary
+ * subscriber notifications on every connect/disconnect cycle. Module-level `let`
+ * keeps them out of the reactive graph while still accessible from any slice.
+ *
+ * Trade-off: not directly testable via store snapshots. Acceptable for a companion
+ * app with a single service instance.
  */
 
 import { ACPService } from '../acp/ACPService';
