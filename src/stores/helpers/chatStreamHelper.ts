@@ -123,10 +123,12 @@ export function startAIStream(
     const finalState = ctx.get();
     const sid = ctx.chatStorageId();
     if (sid && finalState.selectedSessionId) {
-      SessionStorage.saveMessages(finalState.chatMessages, sid, finalState.selectedSessionId);
+      SessionStorage.saveMessages(finalState.chatMessages, sid, finalState.selectedSessionId)
+        .catch(e => ctx.get().appendLog(`✗ Save messages failed: ${e.message}`));
     }
     if (isAppInBackground() && finalContent.length > 0) {
-      notifyResponseComplete(finalContent);
+      notifyResponseComplete(finalContent)
+        .catch(() => { /* notification failure is non-critical */ });
     }
   };
 

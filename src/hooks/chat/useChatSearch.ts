@@ -52,7 +52,7 @@ export function useChatSearch({ chatMessages, flatListRef }: UseChatSearchOption
     if (searchMatches.length > 0) {
       scrollToMatch(0);
     }
-  }, [searchQuery]);
+  }, [searchQuery, searchMatches, scrollToMatch]);
 
   // Clamp match index when matches shrink
   useEffect(() => {

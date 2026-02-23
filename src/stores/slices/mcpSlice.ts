@@ -29,7 +29,9 @@ export const createMCPSlice: StateCreator<AppState & AppActions, [], [], MCPSlic
           get().appendLog(`✗ MCP auto-connect failed: ${server.name} — ${err.message}`);
         });
       } else {
-        MCPManager.addServer(server, false);
+        MCPManager.addServer(server, false).catch((err) => {
+          get().appendLog(`✗ MCP register failed: ${server.name} — ${err.message}`);
+        });
       }
     }
     get().refreshMCPStatuses();
