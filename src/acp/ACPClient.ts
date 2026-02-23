@@ -62,7 +62,7 @@ export class ACPClient implements ACPTransport {
         this.handleIncomingData(data);
       };
 
-      this.ws.onerror = (event: any) => {
+      this.ws.onerror = (event: Event & { message?: string; reason?: string }) => {
         const detail = event?.message || event?.reason || '';
         const error = new Error(
           detail ? `WebSocket error: ${detail}` : `WebSocket error connecting to ${this.config.endpoint}`,
@@ -71,7 +71,7 @@ export class ACPClient implements ACPTransport {
         this.listener.onError?.(error);
       };
 
-      this.ws.onclose = (event: any) => {
+      this.ws.onclose = (event: { code?: number; reason?: string; message?: string }) => {
         this.stopHeartbeat();
         if (this._state === ACPConnectionState.Connecting) {
           const reason = event?.reason || event?.message || 'Connection refused';
