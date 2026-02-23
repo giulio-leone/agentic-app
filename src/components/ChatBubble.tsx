@@ -83,6 +83,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     justifyContent: isSystem ? 'center' as const : isUser ? 'flex-end' as const : 'flex-start' as const,
     backgroundColor: highlighted ? colors.primaryMuted : undefined,
   }), [isSystem, isUser, highlighted, colors.primaryMuted]);
+  const userTextStyle = useMemo(() => ({ fontSize: FontSize.body, lineHeight: 24, color: colors.userBubbleText }), [colors.userBubbleText]);
+  const systemTextStyle = useMemo(() => ({ fontSize: FontSize.footnote, fontStyle: 'italic' as const, textAlign: 'center' as const, color: colors.textTertiary }), [colors.textTertiary]);
 
   return (
     <Pressable
@@ -160,11 +162,11 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
                 ) : null}
               </>
             ) : isUser ? (
-              <RNText style={{ fontSize: FontSize.body, lineHeight: 24, color: colors.userBubbleText }} selectable>
+              <RNText style={userTextStyle} selectable>
                 {message.content || ''}
               </RNText>
             ) : isSystem ? (
-              <RNText style={{ fontSize: FontSize.footnote, fontStyle: 'italic', textAlign: 'center', color: colors.textTertiary }} selectable>
+              <RNText style={systemTextStyle} selectable>
                 {message.content}
               </RNText>
             ) : (

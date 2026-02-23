@@ -32,7 +32,7 @@ interface Props {
 
 type ConsensusAgentResult = ConsensusDetails['agentResults'][number];
 
-function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: ThemeColors }) {
+const AgentCard = React.memo(function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: ThemeColors }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = ROLE_ICONS[agent.agentId] ?? Sparkles;
   const accentColor = ROLE_COLORS[agent.agentId] ?? colors.primary;
@@ -85,9 +85,9 @@ function AgentCard({ agent, colors }: { agent: ConsensusAgentResult; colors: The
       ) : null}
     </TouchableOpacity>
   );
-}
+});
 
-function ReviewerCard({ verdict, modelId, isRunning, colors }: {
+const ReviewerCard = React.memo(function ReviewerCard({ verdict, modelId, isRunning, colors }: {
   verdict?: string;
   modelId?: string;
   isRunning: boolean;
@@ -143,7 +143,7 @@ function ReviewerCard({ verdict, modelId, isRunning, colors }: {
       ) : null}
     </TouchableOpacity>
   );
-}
+});
 
 export const ConsensusDetailView = React.memo(function ConsensusDetailView({ details, colors, isStreaming }: Props) {
   const completedCount = details.agentResults.filter(a => a.status === 'complete').length;
