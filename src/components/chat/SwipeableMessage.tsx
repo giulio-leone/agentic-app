@@ -62,6 +62,11 @@ export const SwipeableMessage = React.memo(function SwipeableMessage({
     didTrigger.current = false;
   }, []);
 
+  const renderLeft = useCallback(
+    (progress: SharedValue<number>, drag: SharedValue<number>) => LeftAction(progress, drag, colors),
+    [colors],
+  );
+
   if (!enabled) return <>{children}</>;
 
   return (
@@ -69,7 +74,7 @@ export const SwipeableMessage = React.memo(function SwipeableMessage({
       ref={swipeRef}
       friction={2}
       leftThreshold={TRIGGER_THRESHOLD}
-      renderLeftActions={(progress, drag) => LeftAction(progress, drag, colors)}
+      renderLeftActions={renderLeft}
       onSwipeableOpen={handleOpen}
       onSwipeableClose={handleClose}
       overshootLeft={false}

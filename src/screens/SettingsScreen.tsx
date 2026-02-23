@@ -3,7 +3,7 @@
  * Uses Tamagui styled components for layout and text.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Switch,
   TouchableOpacity,
@@ -15,7 +15,7 @@ import Slider from '@react-native-community/slider';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
 import { Palette, Smartphone, Sun, Moon, Eclipse, Check, Type, Vibrate, Trash2, TerminalSquare } from 'lucide-react-native';
 import { useDesignSystem } from '../utils/designSystem';
-import { FontSize, Spacing, Radius, AccentColors, type AccentColorKey } from '../utils/theme';
+import { FontSize, Spacing, Radius, AccentColors, type AccentColorKey, type ThemeColors } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
 import {
   useDevMode, useDeveloperLogs, useYoloMode, useAutoStartVisionDetect,
@@ -24,6 +24,7 @@ import {
   useSettingsActions, useMCPActions,
 } from '../stores/selectors';
 import { MCPServerRow } from './settings/MCPServerRow';
+import type { MCPServerConfig } from '../mcp/types';
 import { AddMCPServerForm } from './settings/AddMCPServerForm';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import type { Artifact } from '../acp/models/types';
@@ -86,6 +87,44 @@ export function Greeting({ name, onPress }: Props) {
   },
 ];
 
+type MCPStatus = { state: string; toolCount: number; resourceCount: number; error?: string };
+
+const MCPServerItem = React.memo(function MCPServerItem({
+  server,
+  status,
+  colors,
+  connectMCPServer,
+  disconnectMCPServer,
+  removeMCPServer,
+}: {
+  server: MCPServerConfig;
+  status: MCPStatus | undefined;
+  colors: ThemeColors;
+  connectMCPServer: (id: string) => void;
+  disconnectMCPServer: (id: string) => void;
+  removeMCPServer: (id: string) => void;
+}) {
+  const onConnect = useCallback(() => connectMCPServer(server.id), [connectMCPServer, server.id]);
+  const onDisconnect = useCallback(() => disconnectMCPServer(server.id), [disconnectMCPServer, server.id]);
+  const onRemove = useCallback(() => {
+    Alert.alert('Remove Server', `Remove "${server.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => removeMCPServer(server.id) },
+    ]);
+  }, [removeMCPServer, server.id, server.name]);
+
+  return (
+    <MCPServerRow
+      server={server}
+      status={status}
+      colors={colors}
+      onConnect={onConnect}
+      onDisconnect={onDisconnect}
+      onRemove={onRemove}
+    />
+  );
+});
+
 export function SettingsScreen() {
   const { colors } = useDesignSystem();
 
@@ -147,19 +186,14 @@ export function SettingsScreen() {
         {mcpServers.map((server) => {
           const status = mcpStatuses.find(s => s.serverId === server.id);
           return (
-            <MCPServerRow
+            <MCPServerItem
               key={server.id}
               server={server}
               status={status}
               colors={colors}
-              onConnect={() => connectMCPServer(server.id)}
-              onDisconnect={() => disconnectMCPServer(server.id)}
-              onRemove={() => {
-                Alert.alert('Remove Server', `Remove "${server.name}"?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => removeMCPServer(server.id) },
-                ]);
-              }}
+              connectMCPServer={connectMCPServer}
+              disconnectMCPServer={disconnectMCPServer}
+              removeMCPServer={removeMCPServer}
             />
           );
         })}

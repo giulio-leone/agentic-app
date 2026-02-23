@@ -13,6 +13,7 @@ import Animated, {
   Easing,
   FadeIn,
   FadeOut,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { XStack, YStack } from 'tamagui';
 import { Sparkles } from 'lucide-react-native';
@@ -30,6 +31,7 @@ const ShimmerBar = React.memo(function ShimmerBar({ width, height = 12 }: { widt
       -1,
       true,
     );
+    return () => { cancelAnimation(opacity); };
   }, [opacity]);
 
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
