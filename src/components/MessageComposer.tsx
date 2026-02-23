@@ -21,6 +21,7 @@ import { useFilePicker } from '../hooks/useFilePicker';
 import { AttachmentSheet } from './AttachmentSheet';
 import { AttachmentPreviewStrip } from './composer/AttachmentPreviewStrip';
 import { ComposerActionButton } from './composer/ComposerActionButton';
+import { VoiceWaveform } from './composer/VoiceWaveform';
 
 interface Props {
   value: string;
@@ -188,6 +189,7 @@ export const MessageComposer = React.memo(function MessageComposer({
           accessibilityLabel="Message input"
           accessibilityHint="Type your message here"
         />
+        <VoiceWaveform color={colors.destructive || '#EF4444'} visible={!!isListening} />
         <ComposerActionButton
           isStreaming={isStreaming}
           canSend={canSend}
