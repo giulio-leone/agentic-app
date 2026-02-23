@@ -105,7 +105,7 @@ export function useFilePicker() {
       base64: true,
     });
 
-    if (result.canceled) return null;
+    if (result.canceled || !result.assets || result.assets.length === 0) return null;
 
     const asset = result.assets[0];
     const name = asset.fileName ?? `photo_${Date.now()}.jpg`;
