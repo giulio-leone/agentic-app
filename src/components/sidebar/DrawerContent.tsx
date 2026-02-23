@@ -20,11 +20,80 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { ConnectionBadge } from '../ConnectionBadge';
-import { SessionSummary, ServerType } from '../../acp/models/types';
+import { SessionSummary, ServerType, ACPServerConfiguration, ACPConnectionState } from '../../acp/models/types';
 import { useDesignSystem } from '../../utils/designSystem';
+import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { getProviderInfo } from '../../ai/providers';
 import { useDrawerState } from '../../hooks/useDrawerState';
+
+interface ServerChipProps {
+  server: ACPServerConfiguration;
+  isSelected: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+  colors: ThemeColors;
+  connectionState: ACPConnectionState;
+  isInitialized: boolean;
+}
+
+const ServerChip = React.memo(function ServerChip({
+  server,
+  isSelected,
+  onPress,
+  onLongPress,
+  colors,
+  connectionState,
+  isInitialized,
+}: ServerChipProps) {
+  const isAIProvider = server.serverType === ServerType.AIProvider;
+  let ProviderIcon: React.ComponentType<any> | null = null;
+  if (isAIProvider && server.aiProviderConfig?.providerType) {
+    try { ProviderIcon = getProviderInfo(server.aiProviderConfig.providerType).icon; } catch { /* unknown provider */ }
+  } else if (server.serverType === ServerType.CopilotCLI) {
+    ProviderIcon = Github;
+  } else if (server.serverType === ServerType.Codex) {
+    ProviderIcon = Terminal;
+  } else if (server.serverType === ServerType.ACP) {
+    ProviderIcon = Server;
+  }
+  return (
+    <TouchableOpacity
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: Radius.sm,
+        ...(isSelected && { backgroundColor: colors.sidebarSelectedItem }),
+      }}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+      accessibilityLabel={`Server: ${server.name || server.host}`}
+      accessibilityRole="button"
+      accessibilityHint="Tap to select, long press to edit or delete"
+    >
+      {ProviderIcon && (
+        <ProviderIcon size={14} color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary} style={{ marginRight: 4 }} />
+      )}
+      <Text
+        color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary}
+        fontSize={FontSize.footnote}
+        fontWeight="500"
+        flex={1}
+        marginRight={Spacing.sm}
+        numberOfLines={1}
+      >
+        {server.name || server.host}
+      </Text>
+      {isSelected && !isAIProvider && (
+        <ConnectionBadge state={connectionState} isInitialized={isInitialized} />
+      )}
+    </TouchableOpacity>
+  );
+});
 
 export function DrawerContent(props: DrawerContentComponentProps) {
   const { colors } = useDesignSystem();
@@ -189,57 +258,18 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           </TouchableOpacity>
         ) : (
           <>
-            {w.servers.map(server => {
-              const isSelected = server.id === w.selectedServerId;
-              const isAIProvider = server.serverType === ServerType.AIProvider;
-              let ProviderIcon: React.ComponentType<any> | null = null;
-              if (isAIProvider && server.aiProviderConfig?.providerType) {
-                try { ProviderIcon = getProviderInfo(server.aiProviderConfig.providerType).icon; } catch { /* unknown provider */ }
-              } else if (server.serverType === ServerType.CopilotCLI) {
-                ProviderIcon = Github;
-              } else if (server.serverType === ServerType.Codex) {
-                ProviderIcon = Terminal;
-              } else if (server.serverType === ServerType.ACP) {
-                ProviderIcon = Server;
-              }
-              return (
-                <TouchableOpacity
-                  key={server.id}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingHorizontal: Spacing.md,
-                    paddingVertical: Spacing.sm,
-                    borderRadius: Radius.sm,
-                    ...(isSelected && { backgroundColor: colors.sidebarSelectedItem }),
-                  }}
-                  onPress={() => w.handleServerPress(server.id)}
-                  onLongPress={() => w.handleServerLongPress(server)}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`Server: ${server.name || server.host}`}
-                  accessibilityRole="button"
-                  accessibilityHint="Tap to select, long press to edit or delete"
-                >
-                  {ProviderIcon && (
-                    <ProviderIcon size={14} color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary} style={{ marginRight: 4 }} />
-                  )}
-                  <Text
-                    color={isSelected ? colors.sidebarText : colors.sidebarTextSecondary}
-                    fontSize={FontSize.footnote}
-                    fontWeight="500"
-                    flex={1}
-                    marginRight={Spacing.sm}
-                    numberOfLines={1}
-                  >
-                    {server.name || server.host}
-                  </Text>
-                  {isSelected && !isAIProvider && (
-                    <ConnectionBadge state={w.connectionState} isInitialized={w.isInitialized} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            {w.servers.map(server => (
+              <ServerChip
+                key={server.id}
+                server={server}
+                isSelected={server.id === w.selectedServerId}
+                onPress={() => w.handleServerPress(server.id)}
+                onLongPress={() => w.handleServerLongPress(server)}
+                colors={colors}
+                connectionState={w.connectionState}
+                isInitialized={w.isInitialized}
+              />
+            ))}
 
             {w.selectedServer && w.selectedServer.serverType !== ServerType.AIProvider && (
               <XStack

@@ -19,7 +19,7 @@ import { HeaderActions } from './components/navigation/HeaderActions';
 const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').then(m => ({ default: m.AddServerScreen })));
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
-import { TerminalPanel } from './components/TerminalPanel';
+const LazyTerminalPanel = React.lazy(() => import('./components/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
@@ -150,7 +150,7 @@ function DrawerNavigator() {
         />
       </Drawer.Navigator>
       <ScreenWatcherPanel />
-      <TerminalPanel />
+      <Suspense fallback={null}><LazyTerminalPanel /></Suspense>
     </>
   );
 }
