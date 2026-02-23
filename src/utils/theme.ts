@@ -89,37 +89,37 @@ const DarkPalette: typeof LightPalette = {
   // System grays
   secondaryLabel: '#9CA3AF',
   tertiaryLabel: '#6B7280',
-  systemGray6: '#2F2F2F',
-  systemGray5: '#424242',
-  systemGray4: '#424242',
+  systemGray6: '#2A2A2A',
+  systemGray5: '#3A3A3A',
+  systemGray4: '#444444',
   systemGray3: '#6B7280',
   systemGray2: '#8E8EA0',
   systemGray: '#D1D5DB',
 
-  // Surfaces — ChatGPT dark
-  background: '#212121',
-  surface: '#212121',
-  cardBackground: '#2F2F2F',
-  separator: 'rgba(255,255,255,0.08)',
+  // Surfaces — refined dark
+  background: '#1A1A1A',
+  surface: '#1A1A1A',
+  cardBackground: '#262626',
+  separator: 'rgba(255,255,255,0.10)',
 
-  // Text
-  text: '#ECECEC',
-  textSecondary: '#D1D5DB',
+  // Text — improved contrast
+  text: '#F0F0F0',
+  textSecondary: '#D4D4D4',
   textTertiary: '#8E8EA0',
 
   // Chat — full-width, no bubbles
-  userBubble: '#2F2F2F',
-  userBubbleText: '#ECECEC',
-  assistantBubble: '#212121',
-  assistantBubbleText: '#ECECEC',
-  userMessageBg: '#2F2F2F',
-  assistantMessageBg: '#212121',
-  inputBackground: '#2F2F2F',
-  inputBorder: '#424242',
+  userBubble: '#262626',
+  userBubbleText: '#F0F0F0',
+  assistantBubble: '#1A1A1A',
+  assistantBubbleText: '#F0F0F0',
+  userMessageBg: '#262626',
+  assistantMessageBg: '#1A1A1A',
+  inputBackground: '#262626',
+  inputBorder: '#3A3A3A',
 
-  // Sidebar — always dark
-  sidebarBackground: '#171717',
-  sidebarHeader: '#171717',
+  // Sidebar — deeper dark
+  sidebarBackground: '#141414',
+  sidebarHeader: '#141414',
   sidebarItem: 'transparent',
   sidebarItemActive: 'rgba(255,255,255,0.10)',
   sidebarText: '#ECECF1',
@@ -130,8 +130,8 @@ const DarkPalette: typeof LightPalette = {
   sidebarInputBg: 'rgba(255,255,255,0.08)',
 
   // Code & special
-  codeBackground: '#2F2F2F',
-  codeText: '#ECECEC',
+  codeBackground: '#262626',
+  codeText: '#F0F0F0',
   toolCallBackground: 'transparent',
   thoughtBackground: 'transparent',
 
