@@ -70,6 +70,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
     if (!visible || providers.length === 0) return;
 
     let cancelled = false;
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     setQuery('');
 
@@ -115,11 +116,14 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
       if (!cancelled) {
         setAllOptions(options);
         setLoading(false);
-        setTimeout(() => inputRef.current?.focus(), 300);
+        focusTimer = setTimeout(() => inputRef.current?.focus(), 300);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (focusTimer) clearTimeout(focusTimer);
+    };
   }, [visible, providers]);
 
   // Filter based on query

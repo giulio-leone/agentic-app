@@ -2,7 +2,7 @@
  * BottomSheetModal — reusable bottom sheet with drag-to-dismiss gesture and spring animation.
  */
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   Modal,
   TouchableOpacity,
@@ -33,19 +33,20 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
   backgroundColor,
   maxHeight = '80%',
 }: Props) {
-  const translateY = useRef(new Animated.Value(0)).current;
+  const [translateY] = useState(() => new Animated.Value(0));
+
+  // Stop animations on unmount
+  useEffect(() => () => { translateY.stopAnimation(); }, [translateY]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, g) => g.dy > 8,
       onPanResponderMove: (_, g) => {
-        // Only allow downward drag
         if (g.dy > 0) translateY.setValue(g.dy);
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy > DISMISS_THRESHOLD || g.vy > 0.5) {
-          // Dismiss with spring animation
           Animated.timing(translateY, {
             toValue: SCREEN_HEIGHT,
             duration: 250,
@@ -55,7 +56,6 @@ export const BottomSheetModal = React.memo(function BottomSheetModal({
             translateY.setValue(0);
           });
         } else {
-          // Snap back
           Animated.spring(translateY, {
             toValue: 0,
             useNativeDriver: true,
