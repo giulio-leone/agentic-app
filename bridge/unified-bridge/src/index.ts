@@ -50,10 +50,12 @@ const config: BridgeConfig = {
 };
 
 if (enableCopilot) {
+  const reasoningEffort = getArg('reasoning-effort', '');
   config.providers.push({
     type: 'copilot',
     enabled: true,
     model: getArg('model', 'gpt-4.1'),
+    reasoningEffort: reasoningEffort as ProviderConfig['reasoningEffort'] || undefined,
     cliPath: hasFlag('cli-path') ? getArg('cli-path', '') : undefined,
   });
 }

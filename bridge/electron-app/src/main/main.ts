@@ -5,6 +5,8 @@ import { BridgeManager } from './bridge-manager.js';
 import { setupIPC } from './ipc-handlers.js';
 import { createTray } from './tray.js';
 
+app.commandLine.appendSwitch('remote-debugging-port', '9222');
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

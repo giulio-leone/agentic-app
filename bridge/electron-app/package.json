@@ -7,9 +7,10 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"tsc -p tsconfig.main.json --watch\" \"electron .\"",
     "dev:renderer": "vite",
+    "build:bridge": "cd ../unified-bridge && npx esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/bridge.mjs --external:node-pty --external:@github/copilot-sdk --external:vscode-jsonrpc --external:zod",
     "build:main": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "build:renderer": "vite build",
-    "build": "npm run build:main && npm run build:renderer",
+    "build": "npm run build:bridge && npm run build:main && npm run build:renderer",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac"
@@ -42,6 +43,29 @@
     "files": [
       "dist/**/*",
       "resources/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../unified-bridge/dist/bridge.mjs",
+        "to": "bridge/bridge.mjs"
+      },
+      {
+        "from": "../unified-bridge/node_modules/node-pty",
+        "to": "bridge/node_modules/node-pty",
+        "filter": ["**/*.node", "**/*.js", "**/*.json", "**/LICENSE*"]
+      },
+      {
+        "from": "../unified-bridge/node_modules/@github",
+        "to": "bridge/node_modules/@github"
+      },
+      {
+        "from": "../unified-bridge/node_modules/vscode-jsonrpc",
+        "to": "bridge/node_modules/vscode-jsonrpc"
+      },
+      {
+        "from": "../unified-bridge/node_modules/zod",
+        "to": "bridge/node_modules/zod"
+      }
     ],
     "mac": {
       "target": "dmg",

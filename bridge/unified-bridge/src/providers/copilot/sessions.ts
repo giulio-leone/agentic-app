@@ -22,15 +22,18 @@ export class CopilotSessionManager {
     client: CopilotClient,
     model: string,
     tools: Tool[],
-    workingDirectory?: string
+    workingDirectory?: string,
+    reasoningEffort?: 'low' | 'medium' | 'high'
   ): Promise<{ sessionId: string; session: CopilotSession }> {
     const sessionId = `copilot-${++this.counter}-${Date.now()}`;
-    const session = await client.createSession({
+    const sessionOpts: Record<string, unknown> = {
       model,
       streaming: true,
       tools,
       ...(workingDirectory ? { workingDirectory } : {}),
-    });
+      ...(reasoningEffort ? { reasoningEffort } : {}),
+    };
+    const session = await client.createSession(sessionOpts as Parameters<CopilotClient['createSession']>[0]);
 
     this.sessions.set(sessionId, {
       session,

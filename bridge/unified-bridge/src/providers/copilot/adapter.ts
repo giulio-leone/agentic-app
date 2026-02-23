@@ -27,6 +27,7 @@ export class CopilotProvider implements ProviderAdapter {
   private client: ResilientCopilotClient;
   private sessions = new CopilotSessionManager();
   private defaultModel: string;
+  private reasoningEffort?: 'low' | 'medium' | 'high';
   private workingDirectory: string;
   private cachedModels: ModelInfo[] = [];
 
@@ -35,6 +36,7 @@ export class CopilotProvider implements ProviderAdapter {
 
   constructor(config: ProviderConfig, workingDirectory: string) {
     this.defaultModel = config.model || 'gpt-4.1';
+    this.reasoningEffort = config.reasoningEffort;
     this.workingDirectory = workingDirectory;
     this.client = new ResilientCopilotClient({ cliPath: config.cliPath });
   }
@@ -86,7 +88,7 @@ export class CopilotProvider implements ProviderAdapter {
       tools = [];
     }
 
-    const { sessionId } = await this.sessions.create(c, model, tools, cwd);
+    const { sessionId } = await this.sessions.create(c, model, tools, cwd, this.reasoningEffort);
 
     return {
       id: sessionId,
