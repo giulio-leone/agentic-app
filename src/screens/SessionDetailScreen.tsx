@@ -25,6 +25,7 @@ import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
 import { ChatToolbar } from '../components/chat/ChatToolbar';
+import { ProviderModelPicker } from '../components/chat/ProviderModelPicker';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { ABModelPicker } from '../components/chat/ABModelPicker';
@@ -85,11 +86,21 @@ export function SessionDetailScreen() {
   const setScreenWatcherVisible = useAppStore(s => s.setScreenWatcherVisible);
   const terminalVisible = useAppStore(s => s.terminalVisible);
   const setTerminalVisible = useAppStore(s => s.setTerminalVisible);
+  const updateServer = useAppStore(s => s.updateServer);
   const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
+
+  // Provider•Model label for toolbar chip
+  const currentModelLabel = React.useMemo(() => {
+    if (!isAIProvider || !selectedServer?.aiProviderConfig) return '';
+    const cfg = selectedServer.aiProviderConfig;
+    const modelShort = cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
+    return modelShort;
+  }, [isAIProvider, selectedServer?.aiProviderConfig?.modelId]);
 
   // ── Custom hooks ──
   const {
@@ -361,6 +372,8 @@ export function SessionDetailScreen() {
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}
         onOpenTemplates={openTemplates}
+        onOpenModelPicker={() => setModelPickerVisible(true)}
+        currentModelLabel={currentModelLabel}
         onToggleAB={() => {
           if (abState.active) { clearTest(); }
           else { setAbPickerVisible(true); }
@@ -452,6 +465,16 @@ export function SessionDetailScreen() {
       <ConsensusConfigSheet
         visible={consensusSheetVisible}
         onClose={() => setConsensusSheetVisible(false)}
+      />
+
+      <ProviderModelPicker
+        visible={modelPickerVisible}
+        onClose={() => setModelPickerVisible(false)}
+        servers={servers}
+        selectedServerId={selectedServerId}
+        onSelectServer={selectServer}
+        onUpdateServer={updateServer}
+        colors={colors}
       />
     </KeyboardAvoidingView>
   );

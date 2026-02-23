@@ -41,6 +41,8 @@ interface Props {
   onSelectServer: (id: string) => void;
   /** Chat actions */
   onOpenTemplates: () => void;
+  onOpenModelPicker: () => void;
+  currentModelLabel: string;
   onToggleAB: () => void;
   abActive: boolean;
   onToggleVoice?: () => void;
@@ -69,6 +71,8 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   selectedServerId,
   onSelectServer,
   onOpenTemplates,
+  onOpenModelPicker,
+  currentModelLabel,
   onToggleAB,
   abActive,
   onToggleVoice,
@@ -182,6 +186,24 @@ export const ChatToolbar = React.memo(function ChatToolbar({
           <Separator color={colors.separator} />
         </>
       )}
+
+      {/* Provider•Model chip */}
+      <TouchableOpacity
+        onPress={onOpenModelPicker}
+        activeOpacity={0.7}
+        style={{
+          borderRadius: 12,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          backgroundColor: colors.codeBackground,
+          maxWidth: 160,
+        }}
+      >
+        <Text fontSize={11} fontWeight="500" color={colors.textSecondary} numberOfLines={1}>
+          {currentModelLabel || 'Model'}
+        </Text>
+      </TouchableOpacity>
+      <Separator color={colors.separator} />
 
       <ScrollView
         horizontal
