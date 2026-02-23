@@ -36,32 +36,27 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     }
   };
 
-  useSpeechRecognitionEvent('start', () => {
-    setIsListening(true);
-  });
-
-  useSpeechRecognitionEvent('end', () => {
+  const onStart = useCallback(() => setIsListening(true), []);
+  const onEnd = useCallback(() => {
     setIsListening(false);
-    if (lastTranscriptRef.current) {
-      onFinalTranscript?.(lastTranscriptRef.current);
-    }
-  });
-
-  useSpeechRecognitionEvent('result', (event) => {
+    if (lastTranscriptRef.current) onFinalTranscript?.(lastTranscriptRef.current);
+  }, [onFinalTranscript]);
+  const onResult = useCallback((event: { results?: { transcript: string }[]; isFinal?: boolean }) => {
     const text = event.results?.[0]?.transcript || '';
     setTranscript(text);
     lastTranscriptRef.current = text;
     onTranscript?.(text);
-
-    if (event.isFinal && text) {
-      onFinalTranscript?.(text);
-    }
-  });
-
-  useSpeechRecognitionEvent('error', (event) => {
+    if (event.isFinal && text) onFinalTranscript?.(text);
+  }, [onTranscript, onFinalTranscript]);
+  const onError = useCallback((event: { error?: string }) => {
     console.warn('Speech recognition error:', event.error);
     setIsListening(false);
-  });
+  }, []);
+
+  useSpeechRecognitionEvent('start', onStart);
+  useSpeechRecognitionEvent('end', onEnd);
+  useSpeechRecognitionEvent('result', onResult);
+  useSpeechRecognitionEvent('error', onError);
 
   const startListening = useCallback(async () => {
     try {

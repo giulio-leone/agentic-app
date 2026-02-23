@@ -128,6 +128,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   const renderSessionItem = useCallback(
     ({ item }: { item: SessionSummary }) => {
       const isActive = item.id === w.selectedSessionId;
+      const rowStyle = isActive
+        ? [sessionItemStyles.row, { backgroundColor: colors.sidebarActiveItem }]
+        : sessionItemStyles.row;
       return (
         <Swipeable
           renderRightActions={renderDeleteAction}
@@ -139,30 +142,14 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           friction={2}
         >
           <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: Spacing.md,
-              paddingVertical: Spacing.sm + 2,
-              borderRadius: Radius.sm,
-              marginBottom: 1,
-              ...(isActive && { backgroundColor: colors.sidebarActiveItem }),
-            }}
+            style={rowStyle}
             onPress={() => w.handleSessionPress(item)}
             activeOpacity={0.6}
             accessibilityLabel={`Chat: ${item.title || 'New chat'}`}
             accessibilityHint="Swipe left to delete"
           >
             {isActive && (
-              <View
-                style={{
-                  width: 3,
-                  alignSelf: 'stretch',
-                  backgroundColor: colors.primary,
-                  borderRadius: 1.5,
-                  marginRight: Spacing.sm,
-                }}
-              />
+              <View style={[sessionItemStyles.activeBar, { backgroundColor: colors.primary }]} />
             )}
             <Text
               color={colors.sidebarText}
@@ -482,5 +469,22 @@ const drawerStyles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.sm,
+  },
+});
+
+const sessionItemStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Radius.sm,
+    marginBottom: 1,
+  },
+  activeBar: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 1.5,
+    marginRight: Spacing.sm,
   },
 });

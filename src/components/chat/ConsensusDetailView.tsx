@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { TouchableOpacity, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Sparkles, ShieldAlert, Wrench, CheckCircle } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
@@ -40,18 +40,14 @@ const AgentCard = React.memo(function AgentCard({ agent, colors }: { agent: Cons
   const isComplete = agent.status === 'complete';
   const preview = agent.output.length > 150 ? agent.output.substring(0, 150) + '…' : agent.output;
 
+  const cardStyle = useMemo(
+    () => [cardStyles.base, { borderColor: colors.separator, borderLeftColor: accentColor, backgroundColor: colors.codeBackground }],
+    [colors.separator, accentColor, colors.codeBackground],
+  );
+
   return (
     <TouchableOpacity
-      style={{
-        borderWidth: 1,
-        borderLeftWidth: 3,
-        borderColor: colors.separator,
-        borderLeftColor: accentColor,
-        borderRadius: Radius.sm,
-        padding: Spacing.sm,
-        marginBottom: Spacing.xs,
-        backgroundColor: colors.codeBackground,
-      }}
+      style={cardStyle}
       onPress={toggleExpanded}
       activeOpacity={0.7}
     >
@@ -100,17 +96,14 @@ const ReviewerCard = React.memo(function ReviewerCard({ verdict, modelId, isRunn
 
   const preview = verdict && verdict.length > 150 ? verdict.substring(0, 150) + '…' : verdict;
 
+  const reviewerCardStyle = useMemo(
+    () => [cardStyles.base, { borderColor: colors.separator, borderLeftColor: '#F59E0B', backgroundColor: colors.codeBackground }],
+    [colors.separator, colors.codeBackground],
+  );
+
   return (
     <TouchableOpacity
-      style={{
-        borderWidth: 1,
-        borderLeftWidth: 3,
-        borderColor: colors.separator,
-        borderLeftColor: '#F59E0B',
-        borderRadius: Radius.sm,
-        padding: Spacing.sm,
-        backgroundColor: colors.codeBackground,
-      }}
+      style={reviewerCardStyle}
       onPress={toggleExpanded}
       activeOpacity={0.7}
     >
@@ -179,4 +172,14 @@ export const ConsensusDetailView = React.memo(function ConsensusDetailView({ det
       />
     </YStack>
   );
+});
+
+const cardStyles = StyleSheet.create({
+  base: {
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
 });
