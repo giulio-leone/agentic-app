@@ -1,6 +1,6 @@
 /**
  * ConsensusConfigSheet — Bottom sheet for configuring consensus mode.
- * Accessible via long-press on the Scale (⚖️) icon in the header.
+ * Accessible via long-press on the Scale (⚖️) icon in the toolbar.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -11,6 +11,8 @@ import {
   TextInput,
   Platform,
   KeyboardAvoidingView,
+  Switch,
+  StyleSheet,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Plus, Minus, X, ChevronDown } from 'lucide-react-native';
@@ -19,7 +21,6 @@ import { useServers, useSelectedServerId, useServerActions } from '../stores/sel
 import { FontSize, Spacing, Radius, useTheme } from '../utils/theme';
 import type { ConsensusAgentConfig, ConsensusConfig, ProviderModelSelection } from '../ai/types';
 import { DEFAULT_CONSENSUS_AGENTS } from '../ai/types';
-import { ServerType } from '../acp/models/types';
 import { getProviderInfo } from '../ai/providers';
 import { ProviderModelPicker } from './chat/ProviderModelPicker';
 
@@ -36,7 +37,7 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
   const selectedServerId = useSelectedServerId();
   const { selectServer, updateServer } = useServerActions();
   const [localConfig, setLocalConfig] = useState<ConsensusConfig>({ ...consensusConfig });
-  const [pickerTarget, setPickerTarget] = useState<string | null>(null); // agent id or '__reviewer__'
+  const [pickerTarget, setPickerTarget] = useState<string | null>(null);
 
   const addAgent = useCallback(() => {
     const idx = localConfig.agents.length;
@@ -49,7 +50,7 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
   }, [localConfig.agents.length]);
 
   const removeAgent = useCallback((id: string) => {
-    if (localConfig.agents.length <= 2) return; // minimum 2
+    if (localConfig.agents.length <= 2) return;
     setLocalConfig(c => ({ ...c, agents: c.agents.filter(a => a.id !== id) }));
   }, [localConfig.agents.length]);
 
@@ -66,14 +67,12 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
   }, [localConfig, updateConsensusConfig, onClose]);
 
   const reset = useCallback(() => {
-    const defaultCfg: ConsensusConfig = {
+    setLocalConfig({
       agents: [...DEFAULT_CONSENSUS_AGENTS],
       useSharedModel: true,
-    };
-    setLocalConfig(defaultCfg);
+    });
   }, []);
 
-  // Build a display label for a ProviderModelSelection
   const providerLabel = useCallback((sel?: ProviderModelSelection) => {
     if (!sel) return 'Default (server model)';
     const info = getProviderInfo(sel.providerType);
@@ -81,10 +80,7 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
     return `${info.name} • ${modelShort}`;
   }, []);
 
-  // When the ProviderModelPicker selects a model, we intercept onSelectServer/onUpdateServer
-  // to capture the selection into localConfig instead of changing the global state.
   const handlePickerSelect = useCallback((serverId: string) => {
-    // Find the server to get providerType + modelId
     const srv = servers.find(s => s.id === serverId);
     if (!srv?.aiProviderConfig) return;
     const selection: ProviderModelSelection = {
@@ -103,13 +99,16 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
     setPickerTarget(null);
   }, [servers, pickerTarget]);
 
+  const canRemove = localConfig.agents.length > 2;
+  const canAdd = localConfig.agents.length < 7;
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={{ flex: 1, justifyContent: 'flex-end' }}
+        style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <YStack
           backgroundColor={colors.cardBackground}
           borderTopLeftRadius={Radius.lg}
@@ -125,42 +124,29 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
                 Consensus Config
               </Text>
             </XStack>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} hitSlop={12}>
               <X size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           </XStack>
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
-            {/* Shared model toggle */}
+            {/* Shared model toggle — native Switch */}
             <XStack alignItems="center" justifyContent="space-between" marginBottom={Spacing.md}>
               <Text fontSize={FontSize.subheadline} color={colors.text}>Same model for all</Text>
-              <TouchableOpacity
-                style={{
-                  width: 50, height: 28, borderRadius: 14,
-                  backgroundColor: localConfig.useSharedModel ? colors.primary : colors.systemGray4,
-                  justifyContent: 'center',
-                  paddingHorizontal: 2,
-                }}
-                onPress={() => setLocalConfig(c => ({ ...c, useSharedModel: !c.useSharedModel }))}
-              >
-                <YStack
-                  width={24} height={24} borderRadius={12}
-                  backgroundColor="white"
-                  alignSelf={localConfig.useSharedModel ? 'flex-end' : 'flex-start'}
-                />
-              </TouchableOpacity>
+              <Switch
+                value={localConfig.useSharedModel}
+                onValueChange={(v) => setLocalConfig(c => ({ ...c, useSharedModel: v }))}
+                trackColor={{ false: colors.systemGray4, true: colors.primary }}
+                thumbColor="white"
+              />
             </XStack>
 
-            {/* Reviewer model (shown when not shared) */}
+            {/* Reviewer model */}
             {!localConfig.useSharedModel && (
               <YStack marginBottom={Spacing.md}>
                 <Text fontSize={FontSize.caption} color={colors.textTertiary} marginBottom={2}>Reviewer Model</Text>
                 <TouchableOpacity
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                    padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
-                    borderColor: colors.separator, backgroundColor: colors.codeBackground,
-                  }}
+                  style={[styles.modelSelector, { borderColor: colors.separator, backgroundColor: colors.codeBackground }]}
                   onPress={() => setPickerTarget('__reviewer__')}
                 >
                   <Text fontSize={FontSize.footnote} color={colors.text} flex={1} numberOfLines={1}>
@@ -171,37 +157,31 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
               </YStack>
             )}
 
-            {/* Agent count */}
+            {/* Agent count controls */}
             <XStack alignItems="center" justifyContent="space-between" marginBottom={Spacing.sm}>
               <Text fontSize={FontSize.subheadline} color={colors.text}>
                 Analysts ({localConfig.agents.length})
               </Text>
               <XStack gap={Spacing.sm}>
                 <TouchableOpacity
-                  style={{
-                    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: localConfig.agents.length <= 2 ? colors.systemGray5 : colors.destructive + '20',
-                  }}
+                  style={[styles.roundButton, { backgroundColor: canRemove ? `${colors.destructive}20` : colors.systemGray5 }]}
                   onPress={() => removeAgent(localConfig.agents[localConfig.agents.length - 1]?.id)}
-                  disabled={localConfig.agents.length <= 2}
+                  disabled={!canRemove}
                 >
-                  <Minus size={16} color={localConfig.agents.length <= 2 ? colors.textTertiary : colors.destructive} />
+                  <Minus size={16} color={canRemove ? colors.destructive : colors.textTertiary} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={{
-                    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: localConfig.agents.length >= 7 ? colors.systemGray5 : colors.primary + '20',
-                  }}
+                  style={[styles.roundButton, { backgroundColor: canAdd ? `${colors.primary}20` : colors.systemGray5 }]}
                   onPress={addAgent}
-                  disabled={localConfig.agents.length >= 7}
+                  disabled={!canAdd}
                 >
-                  <Plus size={16} color={localConfig.agents.length >= 7 ? colors.textTertiary : colors.primary} />
+                  <Plus size={16} color={canAdd ? colors.primary : colors.textTertiary} />
                 </TouchableOpacity>
               </XStack>
             </XStack>
 
             {/* Agent cards */}
-            {localConfig.agents.map((agent, idx) => (
+            {localConfig.agents.map((agent) => (
               <YStack
                 key={agent.id}
                 borderWidth={1} borderColor={colors.separator} borderRadius={Radius.sm}
@@ -212,15 +192,12 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
                   <TextInput
                     value={agent.role}
                     onChangeText={(t) => updateAgent(agent.id, { role: t })}
-                    style={{
-                      flex: 1, fontSize: FontSize.footnote, fontWeight: '600',
-                      color: colors.text, padding: 0,
-                    }}
+                    style={[styles.roleInput, { color: colors.text }]}
                     placeholderTextColor={colors.textTertiary}
                     placeholder="Role name"
                   />
-                  {localConfig.agents.length > 2 && (
-                    <TouchableOpacity onPress={() => removeAgent(agent.id)}>
+                  {canRemove && (
+                    <TouchableOpacity onPress={() => removeAgent(agent.id)} hitSlop={8}>
                       <X size={14} color={colors.destructive} />
                     </TouchableOpacity>
                   )}
@@ -228,10 +205,7 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
                 <TextInput
                   value={agent.instructions}
                   onChangeText={(t) => updateAgent(agent.id, { instructions: t })}
-                  style={{
-                    fontSize: FontSize.caption, color: colors.textSecondary,
-                    padding: 0, minHeight: 40,
-                  }}
+                  style={[styles.instructionsInput, { color: colors.textSecondary }]}
                   multiline
                   placeholderTextColor={colors.textTertiary}
                   placeholder="Instructions for this analyst…"
@@ -242,11 +216,7 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
                       Model for {agent.role}
                     </Text>
                     <TouchableOpacity
-                      style={{
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                        padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
-                        borderColor: colors.separator, backgroundColor: colors.surface,
-                      }}
+                      style={[styles.modelSelector, { borderColor: colors.separator, backgroundColor: colors.surface }]}
                       onPress={() => setPickerTarget(agent.id)}
                     >
                       <Text fontSize={FontSize.footnote} color={colors.text} flex={1} numberOfLines={1}>
@@ -263,19 +233,13 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
           {/* Actions */}
           <XStack gap={Spacing.sm} marginTop={Spacing.md}>
             <TouchableOpacity
-              style={{
-                flex: 1, padding: Spacing.md, borderRadius: Radius.sm, alignItems: 'center',
-                borderWidth: 1, borderColor: colors.separator,
-              }}
+              style={[styles.actionButton, { borderWidth: 1, borderColor: colors.separator }]}
               onPress={reset}
             >
               <Text fontSize={FontSize.subheadline} color={colors.textSecondary}>Reset</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{
-                flex: 2, padding: Spacing.md, borderRadius: Radius.sm, alignItems: 'center',
-                backgroundColor: colors.primary,
-              }}
+              style={[styles.actionButton, styles.saveButton, { backgroundColor: colors.primary }]}
               onPress={save}
             >
               <Text fontSize={FontSize.subheadline} fontWeight="600" color="white">Save</Text>
@@ -284,7 +248,6 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
         </YStack>
       </KeyboardAvoidingView>
 
-      {/* Cross-provider model picker — opens on top of consensus sheet */}
       <ProviderModelPicker
         visible={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
@@ -297,3 +260,48 @@ export function ConsensusConfigSheet({ visible, onClose }: Props) {
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    flex: 1,
+  },
+  modelSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.sm,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+  },
+  roundButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleInput: {
+    flex: 1,
+    fontSize: FontSize.footnote,
+    fontWeight: '600',
+    padding: 0,
+  },
+  instructionsInput: {
+    fontSize: FontSize.caption,
+    padding: 0,
+    minHeight: 40,
+  },
+  actionButton: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+  },
+  saveButton: {
+    flex: 2,
+  },
+});
