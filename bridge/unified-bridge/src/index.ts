@@ -20,6 +20,8 @@
  */
 
 import { createServer, type Socket } from 'net';
+import { createServer as createHttpServer } from 'http';
+import { WebSocketServer, type WebSocket as WsType } from 'ws';
 import { ProviderRegistry } from './core/provider-registry.js';
 import { createProtocolHandler } from './core/protocol.js';
 import { CopilotProvider } from './providers/copilot/adapter.js';
@@ -90,6 +92,20 @@ function createProvider(pc: ProviderConfig) {
 
 const terminalManager = new TerminalManager();
 
+// ── WebSocket adapter (wraps WS as Socket-like for protocol handler) ──
+
+function createWSSocketAdapter(ws: WsType): Socket {
+  const fakeSocket = Object.create(null) as Socket;
+  Object.defineProperty(fakeSocket, 'writable', { get: () => ws.readyState === 1 });
+  fakeSocket.write = ((data: string | Buffer) => {
+    if (ws.readyState === 1) ws.send(typeof data === 'string' ? data : data.toString('utf8'));
+    return true;
+  }) as Socket['write'];
+  fakeSocket.remoteAddress = 'ws-client';
+  fakeSocket.remotePort = 0;
+  return fakeSocket;
+}
+
 // ── Connection handler ──
 
 function handleConnection(socket: Socket): void {
@@ -128,6 +144,41 @@ function handleConnection(socket: Socket): void {
   });
 }
 
+// ── WebSocket connection handler ──
+
+function handleWSConnection(ws: WsType): void {
+  console.log('[ws-server] Client connected');
+  const fakeSocket = createWSSocketAdapter(ws);
+  const handler = createProtocolHandler(registry, config, fakeSocket, terminalManager);
+
+  ws.on('message', (data: Buffer | string) => {
+    const text = typeof data === 'string' ? data : data.toString('utf8');
+    // Handle both single JSON and NDJSON
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const msg = JSON.parse(trimmed);
+        if (msg.jsonrpc === '2.0' && msg.method) {
+          handler.handle(msg);
+        }
+      } catch {
+        console.warn(`[ws-server] Malformed JSON: ${trimmed.substring(0, 80)}`);
+      }
+    }
+  });
+
+  ws.on('close', async () => {
+    console.log('[ws-server] Client disconnected');
+    await handler.cleanup();
+  });
+
+  ws.on('error', (err: Error) => {
+    console.error('[ws-server] Error:', err.message);
+  });
+}
+
 // ── Start server ──
 
 async function main(): Promise<void> {
@@ -153,27 +204,37 @@ async function main(): Promise<void> {
   // Start TCP server
   const server = createServer(handleConnection);
 
-  server.listen(config.port, '0.0.0.0', () => {
-    const providerLines = providerList
-      .map((p) => `║  ✓ ${p.padEnd(40)}║`)
-      .join('\n');
+  // Start WebSocket server on port+1
+  const wsPort = config.port + 1;
+  const httpServer = createHttpServer();
+  const wss = new WebSocketServer({ server: httpServer });
+  wss.on('connection', handleWSConnection);
 
-    console.log(`
+  server.listen(config.port, '0.0.0.0', () => {
+    httpServer.listen(wsPort, '0.0.0.0', () => {
+      const providerLines = providerList
+        .map((p) => `║  ✓ ${p.padEnd(40)}║`)
+        .join('\n');
+
+      console.log(`
 ╔═══════════════════════════════════════════════╗
 ║   Agentic Unified Bridge v1.0.0              ║
 ╠═══════════════════════════════════════════════╣
-║  Port:     ${String(config.port).padEnd(35)}║
+║  TCP:      ${String(config.port).padEnd(35)}║
+║  WS:       ${String(wsPort).padEnd(35)}║
 ║  CWD:      ${config.workingDirectory.substring(0, 35).padEnd(35)}║
 ║  Models:   ${String(totalModels).padEnd(35)}║
 ╠═══════════════════════════════════════════════╣
 ${providerLines}
 ╠═══════════════════════════════════════════════╣
-║  Proto:    ACP over TCP NDJSON               ║
+║  Proto:    ACP over TCP/WS NDJSON            ║
 ║  Events:   agent_event (terminal, files)     ║
 ╚═══════════════════════════════════════════════╝
 
-Connect from Agentic: tcp://localhost:${config.port}
+Connect TCP: tcp://localhost:${config.port}
+Connect WS:  ws://localhost:${wsPort}
 `);
+    });
   });
 
   server.on('error', (err) => {
@@ -185,6 +246,8 @@ Connect from Agentic: tcp://localhost:${config.port}
   async function shutdown(): Promise<void> {
     console.log('\n[server] Shutting down...');
     server.close();
+    wss.close();
+    httpServer.close();
     terminalManager.shutdown();
     await registry.shutdownAll();
     process.exit(0);

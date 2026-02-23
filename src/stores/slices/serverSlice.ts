@@ -227,6 +227,33 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
     const listener = createACPListener(get, set);
 
+    // TCP→WS auto-fallback: if TCP fails, retry with WS on port+1
+    if (scheme === 'tcp') {
+      const originalOnError = listener.onError;
+      let triedFallback = false;
+      listener.onError = (error: Error) => {
+        if (!triedFallback && error.message.includes('TCP')) {
+          triedFallback = true;
+          // Extract host and port, build WS endpoint on port+1
+          const hostPort = cleanHost;
+          const colonIdx = hostPort.lastIndexOf(':');
+          if (colonIdx !== -1) {
+            const host = hostPort.substring(0, colonIdx);
+            const tcpPort = parseInt(hostPort.substring(colonIdx + 1), 10);
+            const wsEndpoint = `ws://${host}:${tcpPort + 1}`;
+            get().appendLog(`TCP failed, trying WebSocket fallback: ${wsEndpoint}`);
+            _service?.disconnect();
+            const wsConfig: ACPTransportConfig = { endpoint: wsEndpoint, authToken: server.token || undefined };
+            const wsListener = createACPListener(get, set);
+            setService(new ACPService(wsConfig, wsListener));
+            _service!.connect();
+            return;
+          }
+        }
+        originalOnError?.(error);
+      };
+    }
+
     setService(new ACPService(config, listener));
     clearRetry();
     _service!.connect();
