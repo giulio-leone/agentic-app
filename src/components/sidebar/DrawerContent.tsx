@@ -318,6 +318,58 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 🔌 {w.mcpSummary.totalTools} MCP tool{w.mcpSummary.totalTools !== 1 ? 's' : ''} from {w.mcpSummary.serverCount} server{w.mcpSummary.serverCount !== 1 ? 's' : ''}
               </Text>
             )}
+
+            {/* Quick stats dashboard */}
+            {w.isInitialized && (
+              <XStack
+                paddingHorizontal={Spacing.md}
+                marginTop={Spacing.sm}
+                gap={Spacing.sm}
+              >
+                <YStack
+                  flex={1}
+                  backgroundColor={colors.sidebarActiveItem}
+                  borderRadius={Radius.sm}
+                  padding={Spacing.sm}
+                  alignItems="center"
+                >
+                  <Text color={colors.primary} fontSize={20} fontWeight="700">
+                    {w.filteredSessions.length}
+                  </Text>
+                  <Text color={colors.sidebarTextSecondary} fontSize={10}>
+                    Sessions
+                  </Text>
+                </YStack>
+                <YStack
+                  flex={1}
+                  backgroundColor={colors.sidebarActiveItem}
+                  borderRadius={Radius.sm}
+                  padding={Spacing.sm}
+                  alignItems="center"
+                >
+                  <Text color={colors.primary} fontSize={20} fontWeight="700">
+                    {w.servers.length}
+                  </Text>
+                  <Text color={colors.sidebarTextSecondary} fontSize={10}>
+                    Servers
+                  </Text>
+                </YStack>
+                <YStack
+                  flex={1}
+                  backgroundColor={colors.sidebarActiveItem}
+                  borderRadius={Radius.sm}
+                  padding={Spacing.sm}
+                  alignItems="center"
+                >
+                  <Text color={colors.primary} fontSize={20} fontWeight="700">
+                    {w.mcpSummary.totalTools}
+                  </Text>
+                  <Text color={colors.sidebarTextSecondary} fontSize={10}>
+                    Tools
+                  </Text>
+                </YStack>
+              </XStack>
+            )}
           </>
         )}
 
