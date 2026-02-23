@@ -70,6 +70,8 @@ export const MessageComposer = React.memo(function MessageComposer({
     setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
 
+  const handleSheetClose = useCallback(() => setSheetVisible(false), []);
+
   const handleAttach = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSheetVisible(true);
@@ -213,7 +215,7 @@ export const MessageComposer = React.memo(function MessageComposer({
         </BlurView>
         <AttachmentSheet
           visible={sheetVisible}
-          onClose={() => setSheetVisible(false)}
+          onClose={handleSheetClose}
           options={attachmentOptions}
         />
       </>
@@ -230,7 +232,7 @@ export const MessageComposer = React.memo(function MessageComposer({
       </YStack>
       <AttachmentSheet
         visible={sheetVisible}
-        onClose={() => setSheetVisible(false)}
+        onClose={handleSheetClose}
         options={attachmentOptions}
       />
     </>
