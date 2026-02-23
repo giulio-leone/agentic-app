@@ -160,6 +160,23 @@ function getTokenColor(type: TokenType, colors: ThemeColors): string {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+const styles = StyleSheet.create({
+  copyBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  lineNum: {
+    fontFamily: 'monospace',
+    fontSize: FontSize.caption,
+    lineHeight: FontSize.caption * 1.6,
+    textAlign: 'right',
+    opacity: 0.5,
+  },
+});
+
 interface CodeBlockProps {
   code: string;
   language?: string;
@@ -202,7 +219,7 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
         <Text fontSize={FontSize.caption - 1} fontWeight="600" letterSpacing={0.5} color={colors.textTertiary}>
           {displayLang}
         </Text>
-        <TouchableOpacity onPress={handleCopy} style={{ paddingHorizontal: 8, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleCopy} style={styles.copyBtn} activeOpacity={0.7}>
           {copied ? <Check size={13} color={colors.primary} /> : <Copy size={13} color={colors.textTertiary} />}
           <Text fontSize={FontSize.caption} fontWeight="500" color={copied ? colors.primary : colors.textTertiary}>
             {copied ? 'Copied' : 'Copy'}
@@ -216,7 +233,7 @@ export const CodeBlock = React.memo(function CodeBlock({ code, language = '' }: 
           {/* Line numbers gutter */}
           <YStack paddingVertical={Spacing.md} paddingLeft={Spacing.sm} paddingRight={Spacing.xs} borderRightWidth={StyleSheet.hairlineWidth} borderRightColor="rgba(255,255,255,0.06)">
           {lines.map((_, i) => (
-              <RNText key={i} style={{ color: colors.textTertiary, fontFamily: 'monospace', fontSize: FontSize.caption, lineHeight: FontSize.caption * 1.6, textAlign: 'right', minWidth: lines.length > 99 ? 24 : 16, opacity: 0.5 }}>
+              <RNText key={i} style={[styles.lineNum, { color: colors.textTertiary, minWidth: lines.length > 99 ? 24 : 16 }]}>
                 {i + 1}
               </RNText>
             ))}

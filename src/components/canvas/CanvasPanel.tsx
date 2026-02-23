@@ -4,7 +4,7 @@
  * CSV tables, Markdown, and images.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Modal,
   ScrollView,
@@ -53,13 +53,17 @@ export function CanvasPanel({ visible, artifact, onClose, onUpdateContent }: Pro
   const { height } = useWindowDimensions();
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const handleCopy = useCallback(async () => {
     if (!artifact) return;
     await Clipboard.setStringAsync(artifact.content);
     setCopied(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   }, [artifact]);
 
   const handleShare = useCallback(async () => {

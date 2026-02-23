@@ -17,7 +17,9 @@ try {
 }
 
 type ProviderFactory = (opts: Record<string, unknown>) => (modelId: string) => LanguageModel;
+type OpenRouterFactory = (opts: Record<string, unknown>) => { chat: (modelId: string) => LanguageModel };
 const _providerCache = new Map<string, ProviderFactory>();
+const _openRouterCache = new Map<string, OpenRouterFactory>();
 
 async function getOpenAIProvider(): Promise<ProviderFactory> {
   if (!_providerCache.has('openai')) {
@@ -51,15 +53,15 @@ async function getXaiProvider(): Promise<ProviderFactory> {
   return _providerCache.get('xai')!;
 }
 
-async function getOpenRouterProvider(): Promise<any> {
-  if (!_providerCache.has('openrouter')) {
+async function getOpenRouterProvider(): Promise<OpenRouterFactory> {
+  if (!_openRouterCache.has('openrouter')) {
     const { createOpenRouter } = await import('@openrouter/ai-sdk-provider');
-    _providerCache.set('openrouter', createOpenRouter as unknown as ProviderFactory);
+    _openRouterCache.set('openrouter', createOpenRouter as unknown as OpenRouterFactory);
   }
-  return _providerCache.get('openrouter')!;
+  return _openRouterCache.get('openrouter')!;
 }
 
-async function getOpenAICompatibleProvider(): Promise<any> {
+async function getOpenAICompatibleProvider(): Promise<ProviderFactory> {
   if (!_providerCache.has('openai-compatible')) {
     const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
     _providerCache.set('openai-compatible', createOpenAICompatible as unknown as ProviderFactory);

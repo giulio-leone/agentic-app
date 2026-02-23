@@ -4,7 +4,7 @@
 import React, { useRef, useCallback } from 'react';
 import { TouchableOpacity, Platform, StyleSheet, View } from 'react-native';
 import { Text, XStack } from 'tamagui';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { SharedValue, useAnimatedStyle, FadeIn } from 'react-native-reanimated';
 import { Trash2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -52,7 +52,7 @@ function RenderRightActions(_progress: SharedValue<number>, drag: SharedValue<nu
 export const SessionListItem = React.memo(function SessionListItem({
   session, isSelected, onPress, onDelete, colors,
 }: Props) {
-  const swipeRef = useRef<any>(null);
+  const swipeRef = useRef<SwipeableMethods | null>(null);
 
   const handleSwipeOpen = useCallback((direction: string) => {
     if (direction === 'right') {

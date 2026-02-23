@@ -58,8 +58,9 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
     const anims = chipAnims.map((anim, i) =>
       Animated.timing(anim, { toValue: 1, duration: 300, delay: 200 + i * 80, useNativeDriver: true }),
     );
-    Animated.parallel(anims).start();
-    return () => chipAnims.forEach(a => a.setValue(0));
+    const parallel = Animated.parallel(anims);
+    parallel.start();
+    return () => { parallel.stop(); chipAnims.forEach(a => a.setValue(0)); };
   }, [isConnected, chipAnims]);
 
   const iconStyle = useMemo(

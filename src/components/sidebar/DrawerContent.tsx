@@ -47,7 +47,7 @@ const ServerChip = React.memo(function ServerChip({
   isInitialized,
 }: ServerChipProps) {
   const isAIProvider = server.serverType === ServerType.AIProvider;
-  let ProviderIcon: React.ComponentType<any> | null = null;
+  let ProviderIcon: React.ComponentType<{ size?: number; color?: string; style?: object }> | null = null;
   if (isAIProvider && server.aiProviderConfig?.providerType) {
     try { ProviderIcon = getProviderInfo(server.aiProviderConfig.providerType).icon; } catch { /* unknown provider */ }
   } else if (server.serverType === ServerType.CopilotCLI) {

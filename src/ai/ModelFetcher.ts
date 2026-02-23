@@ -6,7 +6,7 @@ import { AIProviderType } from './types';
 import { getProviderInfo } from './providers';
 
 /** Safe JSON parse from fetch response — throws descriptive error on failure */
-async function safeJson(res: Response, provider: string): Promise<any> {
+async function safeJson(res: Response, provider: string): Promise<unknown> {
   const text = await res.text();
   try {
     return JSON.parse(text);
@@ -70,7 +70,7 @@ async function fetchOpenAIModels(apiKey: string): Promise<FetchedModel[]> {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
-  const json = await safeJson(res, 'OpenAI');
+  const json = await safeJson(res, 'OpenAI') as { data?: OpenAIModelEntry[] };
   const entries: OpenAIModelEntry[] = json.data ?? [];
   return entries
     .filter(e => isOpenAIChatModel(e.id))
@@ -84,7 +84,14 @@ async function fetchGoogleModels(apiKey: string): Promise<FetchedModel[]> {
     { headers: { 'x-goog-api-key': apiKey } },
   );
   if (!res.ok) throw new Error(`Google API error: ${res.status}`);
-  const json = await safeJson(res, 'Google');
+  const json = await safeJson(res, 'Google') as { models?: Array<{
+    name: string;
+    displayName: string;
+    description?: string;
+    inputTokenLimit?: number;
+    outputTokenLimit?: number;
+    supportedGenerationMethods?: string[];
+  }> };
   const models: Array<{
     name: string;
     displayName: string;
@@ -116,7 +123,7 @@ async function fetchXAIModels(apiKey: string): Promise<FetchedModel[]> {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`xAI API error: ${res.status}`);
-  const json = await safeJson(res, 'xAI');
+  const json = await safeJson(res, 'xAI') as { data?: OpenAIModelEntry[] };
   const entries: OpenAIModelEntry[] = json.data ?? [];
   return entries.map(e => ({
     id: e.id,
@@ -133,7 +140,13 @@ async function fetchOpenRouterModels(apiKey: string): Promise<FetchedModel[]> {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`OpenRouter API error: ${res.status}`);
-  const json = await safeJson(res, 'OpenRouter');
+  const json = await safeJson(res, 'OpenRouter') as { data?: Array<{
+    id: string;
+    name?: string;
+    context_length?: number;
+    supported_parameters?: string[];
+    architecture?: { input_modalities?: string[] };
+  }> };
   const entries: Array<{
     id: string;
     name?: string;
@@ -167,7 +180,7 @@ async function fetchOpenAICompatibleModels(
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const json = await safeJson(res, 'OpenAI-compatible');
+  const json = await safeJson(res, 'OpenAI-compatible') as { data?: OpenAIModelEntry[] };
   const entries: OpenAIModelEntry[] = json.data ?? [];
   return entries.map(e => ({
     id: e.id,

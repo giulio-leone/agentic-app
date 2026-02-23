@@ -2,8 +2,9 @@
  * ArtifactDisplay — Collapsible artifact cards with "Open" action.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, ScrollView } from 'react-native';
+import type { GestureResponderEvent } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Code, Globe, Palette, BarChart3, Table, FileText, Image, Paperclip, type LucideIcon } from 'lucide-react-native';
 import type { Artifact, ArtifactType } from '../../acp/models/types';
@@ -31,10 +32,16 @@ export const ArtifactCard = React.memo(function ArtifactCard({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  const handleToggle = useCallback(() => setExpanded(v => !v), []);
+  const handleOpen = useCallback((e: GestureResponderEvent) => {
+    e.stopPropagation?.();
+    onOpen?.(artifact);
+  }, [onOpen, artifact]);
+
   return (
     <TouchableOpacity
       style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, overflow: 'hidden', borderColor: colors.separator, backgroundColor: colors.codeBackground }}
-      onPress={() => setExpanded(!expanded)}
+      onPress={handleToggle}
       activeOpacity={0.7}
     >
       <XStack alignItems="center" gap={8}>
@@ -47,10 +54,7 @@ export const ArtifactCard = React.memo(function ArtifactCard({
         </YStack>
         {onOpen && (
           <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation?.();
-              onOpen(artifact);
-            }}
+            onPress={handleOpen}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{ paddingHorizontal: 6, paddingVertical: 2 }}
           >

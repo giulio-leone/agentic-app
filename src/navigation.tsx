@@ -6,7 +6,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { XStack, Text, YStack } from 'tamagui';
 import { Menu } from 'lucide-react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions, type NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -160,7 +160,7 @@ function AppContent() {
   const loadServers = useAppStore(s => s.loadServers);
   const loadMCPServers = useAppStore(s => s.loadMCPServers);
   const servers = useAppStore(s => s.servers);
-  const navigationRef = React.useRef<any>(null);
+  const navigationRef = React.useRef<NavigationContainerRef<RootStackParamList> | null>(null);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
   useEffect(() => {

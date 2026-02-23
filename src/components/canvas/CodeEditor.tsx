@@ -3,7 +3,7 @@
  * Uses the existing CodeBlock for display and a TextInput overlay for editing.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { TextInput, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Edit3, Eye, Copy, Check } from 'lucide-react-native';
@@ -25,6 +25,9 @@ export function CodeEditor({ content, language, colors, onContentChange }: Props
   const [editText, setEditText] = useState(content);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const toggleEdit = useCallback(() => {
     if (isEditing && editText !== content) {
@@ -38,7 +41,8 @@ export function CodeEditor({ content, language, colors, onContentChange }: Props
     await Clipboard.setStringAsync(isEditing ? editText : content);
     setCopied(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   }, [isEditing, editText, content]);
 
   return (

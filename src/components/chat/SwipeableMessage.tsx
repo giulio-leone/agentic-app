@@ -6,7 +6,7 @@
 
 import React, { useRef, useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { Reply } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -42,7 +42,7 @@ export const SwipeableMessage = React.memo(function SwipeableMessage({
   colors,
   enabled = true,
 }: Props) {
-  const swipeRef = useRef<any>(null);
+  const swipeRef = useRef<SwipeableMethods | null>(null);
   const didTrigger = useRef(false);
 
   const handleOpen = useCallback(() => {
