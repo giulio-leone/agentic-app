@@ -1,12 +1,12 @@
 /**
- * ChatToolbar — compact horizontal action bar above the composer.
- * Consolidates all chat actions: server, templates, A/B, voice, search,
- * export, terminal, screen watcher, agent mode, consensus.
+ * ChatToolbar — two-row action bar above the composer.
+ * Row 1: Model chip (prominent) + server chip.
+ * Row 2: Icon-only action buttons in a horizontal scroll.
  */
 
-import React, { useCallback, useRef } from 'react';
-import { ScrollView, TouchableOpacity, StyleSheet, Animated, View } from 'react-native';
-import { XStack, Text } from 'tamagui';
+import React, { useCallback } from 'react';
+import { ScrollView, TouchableOpacity, StyleSheet, View, Alert } from 'react-native';
+import { XStack, YStack, Text } from 'tamagui';
 import {
   PenLine,
   GitCompareArrows,
@@ -25,7 +25,7 @@ import type { ACPServerConfiguration } from '../../acp/models/types';
 
 interface ToolbarAction {
   id: string;
-  icon: React.ReactNode;
+  icon: (color: string) => React.ReactNode;
   label: string;
   active?: boolean;
   disabled?: boolean;
@@ -35,11 +35,9 @@ interface ToolbarAction {
 
 interface Props {
   colors: ThemeColors;
-  /** Server selection */
   servers: ACPServerConfiguration[];
   selectedServerId: string | null;
   onSelectServer: (id: string) => void;
-  /** Chat actions */
   onOpenTemplates: () => void;
   onOpenModelPicker: () => void;
   currentModelLabel: string;
@@ -52,7 +50,6 @@ interface Props {
   searchActive: boolean;
   onExport: () => void;
   hasMessages: boolean;
-  /** Feature toggles (moved from header) */
   onOpenTerminal: () => void;
   terminalActive: boolean;
   onOpenScreenWatcher: () => void;
@@ -64,7 +61,7 @@ interface Props {
   consensusActive: boolean;
 }
 
-const ICON_SIZE = 16;
+const ICON = 18;
 
 export const ChatToolbar = React.memo(function ChatToolbar({
   colors,
@@ -97,68 +94,66 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   const serverAccent = selectedServerId ? getServerColor(selectedServerId) : colors.primary;
 
   const actions: ToolbarAction[] = [
-    // ── Chat actions ──
     {
       id: 'templates',
-      icon: <PenLine size={ICON_SIZE} color={colors.textSecondary} />,
+      icon: (c) => <PenLine size={ICON} color={c} />,
       label: 'Templates',
       onPress: onOpenTemplates,
     },
     {
       id: 'ab',
-      icon: <GitCompareArrows size={ICON_SIZE} color={abActive ? colors.primary : colors.textSecondary} />,
-      label: 'A/B',
+      icon: (c) => <GitCompareArrows size={ICON} color={c} />,
+      label: 'A/B Compare',
       active: abActive,
       onPress: onToggleAB,
     },
     ...(onToggleVoice
       ? [{
           id: 'voice',
-          icon: <Mic size={ICON_SIZE} color={isListening ? colors.destructive || '#EF4444' : colors.textSecondary} />,
-          label: 'Voice',
+          icon: (c: string) => <Mic size={ICON} color={c} />,
+          label: 'Voice Input',
           active: isListening,
           onPress: onToggleVoice,
         }]
       : []),
     {
       id: 'search',
-      icon: <Search size={ICON_SIZE} color={searchActive ? colors.primary : colors.textSecondary} />,
+      icon: (c) => <Search size={ICON} color={c} />,
       label: 'Search',
       active: searchActive,
       onPress: onToggleSearch,
     },
     {
       id: 'export',
-      icon: <Share2 size={ICON_SIZE} color={hasMessages ? colors.textSecondary : colors.textTertiary} />,
+      icon: (c) => <Share2 size={ICON} color={c} />,
       label: 'Export',
       disabled: !hasMessages,
       onPress: onExport,
     },
-    // ── Feature toggles (from header) ──
     {
       id: 'terminal',
-      icon: <TerminalIcon size={ICON_SIZE} color={terminalActive ? colors.primary : colors.textSecondary} />,
-      label: 'Term',
+      icon: (c) => <TerminalIcon size={ICON} color={c} />,
+      label: 'Terminal',
       active: terminalActive,
       onPress: onOpenTerminal,
     },
     {
       id: 'watcher',
-      icon: <Eye size={ICON_SIZE} color={screenWatcherActive ? colors.destructive || '#EF4444' : colors.textSecondary} />,
-      label: 'Watch',
+      icon: (c) => <Eye size={ICON} color={c} />,
+      label: 'Screen Watcher',
       active: screenWatcherActive,
       onPress: onOpenScreenWatcher,
     },
     {
       id: 'agent',
-      icon: <Bot size={ICON_SIZE} color={agentActive ? colors.primary : colors.textSecondary} />,
-      label: 'Agent',
+      icon: (c) => <Bot size={ICON} color={c} />,
+      label: 'Agent Mode',
       active: agentActive,
       onPress: onToggleAgent,
     },
     {
       id: 'consensus',
-      icon: <Scale size={ICON_SIZE} color={consensusActive ? colors.primary : colors.textSecondary} />,
+      icon: (c) => <Scale size={ICON} color={c} />,
       label: 'Consensus',
       active: consensusActive,
       onPress: onToggleConsensus,
@@ -167,17 +162,33 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   ];
 
   return (
-    <XStack
-      paddingHorizontal={Spacing.sm}
-      paddingVertical={5}
-      alignItems="center"
-      gap={4}
+    <YStack
       borderTopWidth={StyleSheet.hairlineWidth}
       borderTopColor={colors.separator}
     >
-      {/* Server chip — always first */}
-      {servers.length >= 2 && (
-        <>
+      {/* Row 1 — Model + Server */}
+      <XStack
+        alignItems="center"
+        paddingHorizontal={Spacing.sm}
+        paddingTop={6}
+        paddingBottom={4}
+        gap={Spacing.sm}
+      >
+        {/* Model chip — hero element, flex takes remaining space */}
+        <TouchableOpacity
+          onPress={onOpenModelPicker}
+          activeOpacity={0.7}
+          style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30`, flex: 1 }]}
+        >
+          {providerIcon ?? null}
+          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
+            {currentModelLabel || 'Select model'}
+          </Text>
+          <Text fontSize={10} color={colors.primary} style={{ opacity: 0.6 }}>▾</Text>
+        </TouchableOpacity>
+
+        {/* Server chip — right side, does not shrink */}
+        {servers.length >= 2 && (
           <ServerChip
             servers={servers}
             selected={selectedServer}
@@ -185,122 +196,76 @@ export const ChatToolbar = React.memo(function ChatToolbar({
             colors={colors}
             onSelect={onSelectServer}
           />
-          <Separator color={colors.separator} />
-        </>
-      )}
+        )}
+      </XStack>
 
-      {/* Provider•Model chip */}
-      <TouchableOpacity
-        onPress={onOpenModelPicker}
-        activeOpacity={0.7}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderRadius: 12,
-          paddingHorizontal: 8,
-          paddingVertical: 4,
-          backgroundColor: colors.codeBackground,
-          maxWidth: 180,
-          gap: 3,
-        }}
-      >
-        {providerIcon ? providerIcon : null}
-        <Text fontSize={11} fontWeight="600" color={colors.text} numberOfLines={1} style={{ flexShrink: 1 }}>
-          {currentModelLabel || 'Model'}
-        </Text>
-        <Text fontSize={9} color={colors.textTertiary}>▾</Text>
-      </TouchableOpacity>
-      <Separator color={colors.separator} />
-
+      {/* Row 2 — Action icons */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {actions.map((action, i) => (
-          <React.Fragment key={action.id}>
-            <ToolbarButton action={action} colors={colors} />
-            {(action.id === 'ab' || action.id === 'export') && i < actions.length - 1 && (
-              <Separator color={colors.separator} />
-            )}
-          </React.Fragment>
+        {actions.map(action => (
+          <ActionIcon key={action.id} action={action} colors={colors} />
         ))}
       </ScrollView>
-    </XStack>
+    </YStack>
   );
 });
 
-/** Thin vertical separator between action groups */
-const Separator = React.memo(function Separator({ color }: { color: string }) {
-  return (
-    <View style={[styles.separator, { backgroundColor: color }]} />
-  );
-});
-
-/** Animated toolbar icon button with press scale + haptic */
-const ToolbarButton = React.memo(function ToolbarButton({
+/** Icon-only action button with long-press tooltip */
+const ActionIcon = React.memo(function ActionIcon({
   action,
   colors,
 }: {
   action: ToolbarAction;
   colors: ThemeColors;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: 0.9,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
-    }).start();
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 40,
-      bounciness: 6,
-    }).start();
-  }, [scale]);
+  const getColor = () => {
+    if (action.disabled) return colors.textTertiary;
+    if (action.active) {
+      // Watcher/voice use destructive color when active
+      if (action.id === 'watcher' || action.id === 'voice') return colors.destructive || '#EF4444';
+      return colors.primary;
+    }
+    return colors.textSecondary;
+  };
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     action.onPress();
   }, [action]);
 
+  const handleLongPress = useCallback(() => {
+    if (action.onLongPress) {
+      action.onLongPress();
+    } else {
+      // Show tooltip with label
+      Alert.alert(action.label);
+    }
+  }, [action]);
+
+  const color = getColor();
+
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <TouchableOpacity
-        onPress={handlePress}
-        onLongPress={action.onLongPress}
-        delayLongPress={400}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={action.disabled}
-        activeOpacity={0.7}
-        hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
-        accessibilityLabel={action.label}
-        accessibilityRole="button"
-        accessibilityState={{ selected: action.active, disabled: action.disabled }}
-        style={[
-          styles.button,
-          action.active && { backgroundColor: `${colors.primary}18` },
-          action.disabled && { opacity: 0.35 },
-        ]}
-      >
-        {action.icon}
-        <Text
-          fontSize={11}
-          fontWeight={action.active ? '600' : '400'}
-          color={action.active ? colors.primary : colors.textSecondary}
-          numberOfLines={1}
-        >
-          {action.label}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+    <TouchableOpacity
+      onPress={handlePress}
+      onLongPress={handleLongPress}
+      delayLongPress={500}
+      disabled={action.disabled}
+      activeOpacity={0.6}
+      hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
+      accessibilityLabel={action.label}
+      accessibilityRole="button"
+      accessibilityState={{ selected: action.active, disabled: action.disabled }}
+      style={[
+        styles.iconButton,
+        action.active && { backgroundColor: `${colors.primary}14` },
+        action.disabled && { opacity: 0.35 },
+      ]}
+    >
+      {action.icon(color)}
+    </TouchableOpacity>
   );
 });
 
@@ -344,7 +309,7 @@ const ServerChip = React.memo(function ServerChip({
         backgroundColor={`${accent}15`}
       >
         <XStack width={6} height={6} borderRadius={3} backgroundColor={accent} />
-        <Text fontSize={11} fontWeight="600" color={accent} numberOfLines={1}>
+        <Text fontSize={12} fontWeight="600" color={accent} numberOfLines={1}>
           {selected?.name ?? 'Server'}
         </Text>
       </XStack>
@@ -356,21 +321,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    paddingRight: 4,
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingBottom: 6,
   },
-  button: {
+  modelChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 14,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 5,
+    borderWidth: 1,
   },
-  separator: {
-    width: StyleSheet.hairlineWidth,
-    height: 18,
-    marginHorizontal: 4,
-    opacity: 0.5,
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

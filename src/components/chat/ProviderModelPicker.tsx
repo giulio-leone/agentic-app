@@ -1,20 +1,24 @@
 /**
- * ProviderModelPicker — unified bottom sheet for selecting provider + model.
- * Replaces the old ModelPickerBar + ServerChip combo.
+ * ProviderModelPicker — full-screen modal with autocomplete search.
+ * Unified search across all providers, grouped by provider in SectionList.
  */
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  SectionList,
   TextInput,
   ActivityIndicator,
-  ScrollView,
+  Keyboard,
+  Modal,
+  SafeAreaView,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Check, Eye, Brain, Wrench } from 'lucide-react-native';
-import { FontSize, Spacing, Radius, type ThemeColors } from '../../utils/theme';
+import { Check, Eye, Brain, Wrench, Search, X, ChevronLeft } from 'lucide-react-native';
+import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { ServerType } from '../../acp/models/types';
 import type { ACPServerConfiguration } from '../../acp/models/types';
 import { getProviderInfo } from '../../ai/providers';
@@ -22,12 +26,9 @@ import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { getCachedModels } from '../../ai/ModelCache';
 import { getApiKey } from '../../storage/SecureStorage';
 
-import { BottomSheetModal } from './BottomSheetModal';
-
 interface Props {
   visible: boolean;
   onClose: () => void;
-  /** All configured servers (both AI and CLI) */
   servers: ACPServerConfiguration[];
   selectedServerId: string | null;
   onSelectServer: (id: string) => void;
@@ -35,7 +36,15 @@ interface Props {
   colors: ThemeColors;
 }
 
-const hairline = StyleSheet.hairlineWidth;
+/** Model entry enriched with provider info for the unified list. */
+interface ModelOption {
+  id: string;
+  modelId: string;
+  providerName: string;
+  providerServerId: string;
+  displayName: string;
+  model: FetchedModel;
+}
 
 export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   visible,
@@ -46,259 +55,301 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   onUpdateServer,
   colors,
 }: Props) {
-  // Only show AI provider servers
   const providers = useMemo(
     () => servers.filter(s => s.serverType === ServerType.AIProvider && s.aiProviderConfig),
     [servers],
   );
 
-  const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
-  const [models, setModels] = useState<FetchedModel[]>([]);
-  const [filtered, setFiltered] = useState<FetchedModel[]>([]);
-  const [search, setSearch] = useState('');
+  const [allOptions, setAllOptions] = useState<ModelOption[]>([]);
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const mountedRef = useRef(true);
+  const inputRef = useRef<TextInput>(null);
 
-  useEffect(() => () => { mountedRef.current = false; }, []);
-
-  // When opening, default to currently selected provider
+  // Fetch models from ALL providers on open
   useEffect(() => {
-    if (visible) {
-      const current = providers.find(p => p.id === selectedServerId);
-      setActiveProviderId(current?.id ?? providers[0]?.id ?? null);
-      setSearch('');
-    }
-  }, [visible, selectedServerId, providers]);
-
-  // Fetch models when active provider changes
-  const activeProvider = providers.find(p => p.id === activeProviderId);
-  const config = activeProvider?.aiProviderConfig;
-  const providerInfo = config ? getProviderInfo(config.providerType) : null;
-
-  useEffect(() => {
-    if (!visible || !activeProviderId || !config || !providerInfo || !activeProvider) return;
+    if (!visible || providers.length === 0) return;
 
     let cancelled = false;
     setLoading(true);
-    setModels([]);
-    setFiltered([]);
+    setQuery('');
 
     (async () => {
-      // Try cached first
-      const cached = await getCachedModels(config.providerType);
-      if (cancelled) return;
-      if (cached && cached.length > 0) {
-        setModels(cached);
-        setFiltered(cached);
-        setLoading(false);
-      }
+      const options: ModelOption[] = [];
 
-      // Fetch fresh
-      try {
-        const apiKey = await getApiKey(`${activeProvider.id}_${config.providerType}`);
+      for (const provider of providers) {
+        const config = provider.aiProviderConfig!;
+        const info = getProviderInfo(config.providerType);
+
+        let models = await getCachedModels(config.providerType);
         if (cancelled) return;
-        if (apiKey) {
-          const fresh = await fetchModelsFromProvider(
-            config.providerType,
-            apiKey,
-            config.baseUrl ?? providerInfo.defaultBaseUrl,
-          );
-          if (cancelled) return;
-          if (fresh.length > 0) {
-            setModels(fresh);
-            setFiltered(fresh);
+
+        if (!models || models.length === 0) {
+          try {
+            const apiKey = await getApiKey(`${provider.id}_${config.providerType}`);
+            if (cancelled) return;
+            if (apiKey) {
+              models = await fetchModelsFromProvider(
+                config.providerType,
+                apiKey,
+                config.baseUrl ?? info.defaultBaseUrl,
+              );
+            }
+          } catch { /* keep empty */ }
+        }
+        if (cancelled) return;
+
+        if (models) {
+          for (const m of models) {
+            options.push({
+              id: `${provider.id}::${m.id}`,
+              modelId: m.id,
+              providerName: info.name,
+              providerServerId: provider.id,
+              displayName: m.name || m.id.split('/').pop() || m.id,
+              model: m,
+            });
           }
         }
-      } catch {
-        // keep cached
       }
-      if (!cancelled) setLoading(false);
+
+      if (!cancelled) {
+        setAllOptions(options);
+        setLoading(false);
+        setTimeout(() => inputRef.current?.focus(), 300);
+      }
     })();
 
     return () => { cancelled = true; };
-  }, [visible, activeProviderId, config?.providerType]);
+  }, [visible, providers]);
 
-  // Search filter
-  useEffect(() => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      setFiltered(models.filter(m => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)));
-    } else {
-      setFiltered(models);
+  // Filter based on query
+  const filtered = useMemo(() => {
+    if (!query.trim()) return allOptions;
+    const q = query.toLowerCase();
+    return allOptions.filter(o =>
+      o.modelId.toLowerCase().includes(q) ||
+      o.displayName.toLowerCase().includes(q) ||
+      o.providerName.toLowerCase().includes(q)
+    );
+  }, [query, allOptions]);
+
+  // Group by provider
+  const sections = useMemo(() => {
+    const map = new Map<string, ModelOption[]>();
+    for (const o of filtered) {
+      const list = map.get(o.providerName) ?? [];
+      list.push(o);
+      map.set(o.providerName, list);
     }
-  }, [search, models]);
+    return Array.from(map, ([title, data]) => ({ title, data }));
+  }, [filtered]);
 
-  const selectModel = useCallback((modelId: string) => {
-    if (!activeProvider || !config) return;
-    // Select this provider as active server
-    onSelectServer(activeProvider.id);
-    // Update the model
+  const currentServer = providers.find(p => p.id === selectedServerId);
+  const currentModelId = currentServer?.aiProviderConfig?.modelId;
+
+  const selectModel = useCallback((option: ModelOption) => {
+    const provider = servers.find(s => s.id === option.providerServerId);
+    if (!provider?.aiProviderConfig) return;
+    onSelectServer(option.providerServerId);
     onUpdateServer({
-      ...activeProvider,
-      aiProviderConfig: { ...config, modelId },
+      ...provider,
+      aiProviderConfig: { ...provider.aiProviderConfig, modelId: option.modelId },
     });
+    Keyboard.dismiss();
     onClose();
-  }, [activeProvider, config, onSelectServer, onUpdateServer, onClose]);
+  }, [servers, onSelectServer, onUpdateServer, onClose]);
 
-  const renderModelItem = useCallback(({ item }: { item: FetchedModel }) => {
-    const isSelected = item.id === config?.modelId && activeProviderId === selectedServerId;
+  const handleManualSubmit = useCallback(() => {
+    const val = query.trim();
+    if (!val || !currentServer?.aiProviderConfig) return;
+    onUpdateServer({
+      ...currentServer,
+      aiProviderConfig: { ...currentServer.aiProviderConfig, modelId: val },
+    });
+    Keyboard.dismiss();
+    onClose();
+  }, [query, currentServer, onUpdateServer, onClose]);
+
+  const renderItem = useCallback(({ item }: { item: ModelOption }) => {
+    const isSelected = item.modelId === currentModelId && item.providerServerId === selectedServerId;
     return (
       <TouchableOpacity
         style={[
-          styles.modelItem,
+          styles.modelRow,
           { borderBottomColor: colors.separator },
-          isSelected && { backgroundColor: `${colors.primary}18` },
+          isSelected && { backgroundColor: `${colors.primary}10` },
         ]}
-        onPress={() => selectModel(item.id)}
+        onPress={() => selectModel(item)}
         activeOpacity={0.6}
       >
-        <YStack flex={1}>
+        <YStack flex={1} gap={2}>
           <Text
             color={isSelected ? colors.primary : colors.text}
-            fontSize={FontSize.body}
-            numberOfLines={1}
+            fontSize={16}
+            fontWeight={isSelected ? '600' : '400'}
           >
-            {item.id}
+            {item.displayName}
           </Text>
-          <XStack gap={4} marginTop={2}>
-            {item.supportsVision && <Eye size={10} color={colors.textTertiary} />}
-            {item.supportsTools && <Wrench size={10} color={colors.textTertiary} />}
-            {item.supportsReasoning && <Brain size={10} color={colors.textTertiary} />}
+          <XStack alignItems="center" gap={4}>
+            <Text fontSize={13} color={colors.textTertiary}>{item.modelId}</Text>
+          </XStack>
+          <XStack alignItems="center" gap={8} marginTop={2}>
+            {item.model.supportsVision && (
+              <XStack alignItems="center" gap={3}>
+                <Eye size={11} color={colors.textTertiary} />
+                <Text fontSize={11} color={colors.textTertiary}>Vision</Text>
+              </XStack>
+            )}
+            {item.model.supportsTools && (
+              <XStack alignItems="center" gap={3}>
+                <Wrench size={11} color={colors.textTertiary} />
+                <Text fontSize={11} color={colors.textTertiary}>Tools</Text>
+              </XStack>
+            )}
+            {item.model.supportsReasoning && (
+              <XStack alignItems="center" gap={3}>
+                <Brain size={11} color={colors.textTertiary} />
+                <Text fontSize={11} color={colors.textTertiary}>Reasoning</Text>
+              </XStack>
+            )}
           </XStack>
         </YStack>
-        {isSelected && <Check size={16} color={colors.primary} />}
+        {isSelected && <Check size={20} color={colors.primary} />}
       </TouchableOpacity>
     );
-  }, [config?.modelId, activeProviderId, selectedServerId, colors, selectModel]);
+  }, [currentModelId, selectedServerId, colors, selectModel]);
+
+  const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: ModelOption[] } }) => (
+    <XStack
+      paddingHorizontal={Spacing.md}
+      paddingVertical={8}
+      backgroundColor={colors.surface}
+      borderBottomWidth={StyleSheet.hairlineWidth}
+      borderBottomColor={colors.separator}
+    >
+      <Text fontSize={13} fontWeight="700" color={colors.textSecondary} textTransform="uppercase" letterSpacing={0.8}>
+        {section.title}
+      </Text>
+      <Text fontSize={13} color={colors.textTertiary} marginLeft={8}>({section.data.length})</Text>
+    </XStack>
+  ), [colors]);
 
   return (
-    <BottomSheetModal visible={visible} onClose={onClose} backgroundColor={colors.surface}>
-      {/* Header */}
-      <XStack justifyContent="space-between" alignItems="center" padding={Spacing.md}>
-        <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
-          Select Provider & Model
-        </Text>
-        <TouchableOpacity onPress={onClose}>
-          <Text fontSize={FontSize.body} fontWeight="500" color={colors.primary}>Done</Text>
-        </TouchableOpacity>
-      </XStack>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
+        <StatusBar barStyle={colors.background === '#FFFFFF' ? 'dark-content' : 'light-content'} />
 
-          {/* Provider tabs */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
-            <XStack gap={Spacing.xs} paddingHorizontal={Spacing.md} paddingBottom={Spacing.sm}>
-              {providers.map(provider => {
-                const info = provider.aiProviderConfig ? getProviderInfo(provider.aiProviderConfig.providerType) : null;
-                const isActive = provider.id === activeProviderId;
-                return (
-                  <TouchableOpacity
-                    key={provider.id}
-                    onPress={() => setActiveProviderId(provider.id)}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.providerTab,
-                      {
-                        backgroundColor: isActive ? `${colors.primary}18` : colors.codeBackground,
-                        borderColor: isActive ? colors.primary : 'transparent',
-                      },
-                    ]}
-                  >
-                    <XStack alignItems="center" gap={4}>
-                      {info && (() => { const Icon = info.icon; return <Icon size={13} color={isActive ? colors.primary : colors.textSecondary} />; })()}
-                      <Text fontSize={13} fontWeight={isActive ? '600' : '400'} color={isActive ? colors.primary : colors.textSecondary}>
-                        {info?.name ?? provider.name}
-                      </Text>
-                    </XStack>
-                  </TouchableOpacity>
-                );
-              })}
-            </XStack>
-          </ScrollView>
-
-          {/* Search */}
-          <TextInput
-            style={[styles.searchInput, {
-              backgroundColor: colors.inputBackground,
-              color: colors.text,
-              borderColor: colors.inputBorder,
-            }]}
-            placeholder="Search models..."
-            placeholderTextColor={colors.textTertiary}
-            value={search}
-            onChangeText={setSearch}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          {/* Model list */}
-          {loading ? (
-            <ActivityIndicator style={{ marginTop: Spacing.xl }} color={colors.primary} />
-          ) : (
-            <FlatList
-              data={filtered}
-              keyExtractor={item => item.id}
-              renderItem={renderModelItem}
-              ListEmptyComponent={
-                <Text textAlign="center" paddingVertical={Spacing.xl} fontSize={FontSize.body} color={colors.textTertiary}>
-                  {search ? 'No models match' : 'No models available — add API key in settings'}
-                </Text>
-              }
-              showsVerticalScrollIndicator={false}
-              style={{ flex: 1 }}
-            />
-          )}
-
-          {/* Manual model input */}
-          <YStack paddingHorizontal={Spacing.md} paddingTop={Spacing.sm}>
+        {/* Header with back + search */}
+        <XStack
+          alignItems="center"
+          paddingHorizontal={Spacing.sm}
+          paddingVertical={8}
+          gap={8}
+          borderBottomWidth={StyleSheet.hairlineWidth}
+          borderBottomColor={colors.separator}
+        >
+          <TouchableOpacity onPress={onClose} hitSlop={12} style={styles.backButton}>
+            <ChevronLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <XStack
+            flex={1}
+            alignItems="center"
+            paddingHorizontal={12}
+            borderRadius={Radius.lg}
+            backgroundColor={colors.inputBackground}
+            borderWidth={1}
+            borderColor={colors.inputBorder}
+            gap={8}
+          >
+            <Search size={16} color={colors.textTertiary} />
             <TextInput
-              style={[styles.manualInput, {
-                backgroundColor: colors.inputBackground,
-                color: colors.text,
-                borderColor: colors.inputBorder,
-              }]}
-              placeholder="Or type model ID manually..."
+              ref={inputRef}
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search models…"
               placeholderTextColor={colors.textTertiary}
+              value={query}
+              onChangeText={setQuery}
               autoCapitalize="none"
               autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={(e) => {
-                const val = e.nativeEvent.text.trim();
-                if (val) selectModel(val);
-              }}
+              returnKeyType="go"
+              onSubmitEditing={handleManualSubmit}
             />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
+                <X size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </XStack>
+        </XStack>
+
+        {/* Results */}
+        {loading ? (
+          <YStack flex={1} alignItems="center" justifyContent="center">
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text fontSize={14} color={colors.textTertiary} marginTop={Spacing.md}>Loading models…</Text>
           </YStack>
-    </BottomSheetModal>
+        ) : (
+          <SectionList
+            sections={sections}
+            keyExtractor={item => item.id}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            stickySectionHeadersEnabled
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            ListEmptyComponent={
+              <YStack alignItems="center" paddingVertical={Spacing.xl} paddingHorizontal={Spacing.lg}>
+                <Text fontSize={16} color={colors.textTertiary} textAlign="center">
+                  {query ? `No models matching "${query}"` : 'No models available\nConfigure a provider in Settings'}
+                </Text>
+                {query.trim().length > 0 && (
+                  <TouchableOpacity
+                    onPress={handleManualSubmit}
+                    style={[styles.useCustom, { borderColor: colors.primary }]}
+                  >
+                    <Text fontSize={15} color={colors.primary} fontWeight="500">Use "{query}" as model ID</Text>
+                  </TouchableOpacity>
+                )}
+              </YStack>
+            }
+            showsVerticalScrollIndicator
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 40 }}
+          />
+        )}
+      </SafeAreaView>
+    </Modal>
   );
 });
 
 const styles = StyleSheet.create({
-  modelItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    borderBottomWidth: hairline,
+  container: {
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0,
   },
-  providerTab: {
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-    borderWidth: 1.5,
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchInput: {
-    marginHorizontal: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: FontSize.body,
-    marginBottom: Spacing.sm,
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 10,
   },
-  manualInput: {
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  useCustom: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: FontSize.body,
   },
 });
