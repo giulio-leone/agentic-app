@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { BridgeConfig } from '../main/bridge-manager.js';
+interface BridgeConfig {
+  port: number;
+  cwd: string;
+  copilot: boolean;
+  codex: boolean;
+  model: string;
+  codexModel: string;
+  codexPath: string;
+}
 
 export interface ElectronAPI {
   getConfig(): Promise<BridgeConfig>;
