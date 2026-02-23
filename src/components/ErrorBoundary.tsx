@@ -19,6 +19,7 @@ interface State {
 
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
+  private autoRecoverTimer: ReturnType<typeof setTimeout> | null = null;
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -34,12 +35,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidUpdate(_prevProps: Props, prevState: State) {
     if (!prevState.hasError && this.state.hasError) {
-      // Auto-recover after a short delay to automatically restart the UI
-      setTimeout(() => {
+      this.autoRecoverTimer = setTimeout(() => {
         if (this.state.hasError) {
           this.handleReset();
         }
       }, 1500);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.autoRecoverTimer) {
+      clearTimeout(this.autoRecoverTimer);
+      this.autoRecoverTimer = null;
     }
   }
 

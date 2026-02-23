@@ -43,6 +43,7 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
           retryCount++;
           get().appendLog(`Retry ${retryCount}/${MAX_RETRIES} in ${delay}ms…`);
           showInfoToast('Reconnecting…', `Attempt ${retryCount}/${MAX_RETRIES}`);
+          if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
           retryTimer = setTimeout(() => {
             if (_service && get().connectionState === ACPConnectionState.Failed) {
               _service.connect();

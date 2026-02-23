@@ -69,7 +69,7 @@ export async function scanSubnet(
               found.push(host);
               onFound?.(host);
             })
-            .catch(() => {}),
+            .catch(() => { /* probe timeout/refused — expected for inactive hosts */ }),
         );
       }
     }
