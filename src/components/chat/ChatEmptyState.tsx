@@ -2,7 +2,7 @@
  * Empty state for the chat — pulsing icon, staggered chip entrance, fade-in.
  */
 
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Animated, Pressable } from 'react-native';
 import { YStack, Text } from 'tamagui';
 import { MessageSquare, Code, Lightbulb, Zap, Wifi, WifiOff } from 'lucide-react-native';
@@ -67,7 +67,10 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
     [colors.primary, pulseAnim],
   );
 
-  const handlePress = useCallback((prompt: string) => () => onSuggestion(prompt), [onSuggestion]);
+  const pressHandlers = useMemo(
+    () => SUGGESTION_CHIPS.map(chip => () => onSuggestion(chip.prompt)),
+    [onSuggestion],
+  );
 
   return (
     <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
@@ -93,7 +96,7 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
             {SUGGESTION_CHIPS.map((chip, i) => (
               <Animated.View key={chip.text} style={{ opacity: chipAnims[i], transform: [{ translateY: chipAnims[i].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
                 <Pressable
-                  onPress={handlePress(chip.prompt)}
+                  onPress={pressHandlers[i]}
                   style={({ pressed }) => ({
                     opacity: pressed ? 0.7 : 1,
                     flexDirection: 'row',

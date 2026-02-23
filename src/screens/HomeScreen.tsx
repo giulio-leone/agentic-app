@@ -45,7 +45,7 @@ export function HomeScreen() {
 
   useEffect(() => {
     loadServers();
-  }, []);
+  }, [loadServers]);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isConnected = connectionState === ACPConnectionState.Connected;

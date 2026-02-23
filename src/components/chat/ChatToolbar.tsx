@@ -4,7 +4,7 @@
  * Row 2: Icon-only action buttons in a horizontal scroll.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ScrollView, TouchableOpacity, StyleSheet, View, Alert } from 'react-native';
 import { XStack, YStack, Text } from 'tamagui';
 import {
@@ -93,7 +93,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const serverAccent = selectedServerId ? getServerColor(selectedServerId) : colors.primary;
 
-  const actions: ToolbarAction[] = [
+  const actions: ToolbarAction[] = useMemo(() => [
     {
       id: 'templates',
       icon: (c) => <PenLine size={ICON} color={c} />,
@@ -159,7 +159,12 @@ export const ChatToolbar = React.memo(function ChatToolbar({
       onPress: onToggleConsensus,
       onLongPress: onConsensusLongPress,
     },
-  ];
+  ], [
+    onOpenTemplates, abActive, onToggleAB, onToggleVoice, isListening,
+    searchActive, onToggleSearch, hasMessages, onExport,
+    terminalActive, onOpenTerminal, screenWatcherActive, onOpenScreenWatcher,
+    agentActive, onToggleAgent, consensusActive, onToggleConsensus, onConsensusLongPress,
+  ]);
 
   return (
     <YStack

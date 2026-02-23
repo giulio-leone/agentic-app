@@ -14,6 +14,7 @@ import Animated, {
   Easing,
   FadeIn,
   FadeOut,
+  cancelAnimation,
 } from 'react-native-reanimated';
 
 const BAR_COUNT = 5;
@@ -35,6 +36,7 @@ function WaveBar({ index, color }: { index: number; color: string }) {
         true,
       ),
     );
+    return () => { cancelAnimation(height); };
   }, [height, index]);
 
   const animStyle = useAnimatedStyle(() => ({

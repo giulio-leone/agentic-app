@@ -47,6 +47,33 @@ export const useDeveloperLogs = () => useAppStore(s => s.developerLogs);
 export const useYoloMode = () => useAppStore(s => s.yoloModeEnabled);
 export const useAutoStartVisionDetect = () => useAppStore(s => s.autoStartVisionDetect);
 
+// ── Screen Watcher selectors ─────────────────────────────────────────────────
+
+export const useScreenWatcherVisible = () => useAppStore(s => s.screenWatcherVisible);
+export const useIsWatching = () => useAppStore(s => s.isWatching);
+export const useWatcherStatus = () => useAppStore(s => s.watcherStatus);
+export const useCaptureCount = () => useAppStore(s => s.captureCount);
+export const useIsAutoMode = () => useAppStore(s => s.isAutoMode);
+export const useZoomLevel = () => useAppStore(s => s.zoomLevel);
+export const useCustomPrompt = () => useAppStore(s => s.customPrompt);
+export const useIsRemoteLLMEnabled = () => useAppStore(s => s.isRemoteLLMEnabled);
+export const useMotionThreshold = () => useAppStore(s => s.motionThreshold);
+export const useStableThreshold = () => useAppStore(s => s.stableThreshold);
+
+export const useScreenWatcherActions = () => useAppStore(useShallow(s => ({
+  setScreenWatcherVisible: s.setScreenWatcherVisible,
+  setWatching: s.setWatching,
+  setWatcherStatus: s.setWatcherStatus,
+  incrementCapture: s.incrementCapture,
+  setAutoMode: s.setAutoMode,
+  setZoomLevel: s.setZoomLevel,
+  setCustomPrompt: s.setCustomPrompt,
+  setRemoteLLMEnabled: s.setRemoteLLMEnabled,
+  setWatcherProcessing: s.setWatcherProcessing,
+  setMotionThreshold: s.setMotionThreshold,
+  setStableThreshold: s.setStableThreshold,
+})));
+
 // ── Action selectors (stable references via useShallow) ──────────────────────
 
 export const useServerActions = () => useAppStore(useShallow(s => ({

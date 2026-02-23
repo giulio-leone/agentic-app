@@ -53,7 +53,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         </XStack>
       );
     },
-    [],
+    [colors.destructive, colors.contrastText],
   );
 
   const renderSessionItem = useCallback(
@@ -399,8 +399,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         renderItem={renderSessionItem}
         contentContainerStyle={
           w.filteredSessions.length === 0
-            ? { flex: 1, justifyContent: 'center', alignItems: 'center' }
-            : { paddingHorizontal: Spacing.md }
+            ? drawerStyles.emptyList
+            : drawerStyles.sessionList
         }
         ListEmptyComponent={
           <Text
@@ -441,3 +441,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     </YStack>
   );
 }
+
+const drawerStyles = StyleSheet.create({
+  emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  sessionList: { paddingHorizontal: Spacing.md },
+});

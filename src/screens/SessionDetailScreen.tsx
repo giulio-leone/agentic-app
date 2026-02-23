@@ -188,7 +188,25 @@ export function SessionDetailScreen() {
     setPromptText('');
   }, [servers, promptText, chatMessages, startTest, setPromptText]);
 
-  // ── TTS ──
+  const handleCloseSearch = useCallback(
+    () => { toggleChatSearch(); resetSearch(); },
+    [toggleChatSearch, resetSearch],
+  );
+
+  const handleOpenModelPicker = useCallback(() => setModelPickerVisible(true), []);
+
+  const handleToggleAB = useCallback(() => {
+    if (abState.active) { clearTest(); }
+    else { setAbPickerVisible(true); }
+  }, [abState.active, clearTest]);
+
+  const handleOpenTerminal = useCallback(() => setTerminalVisible(true), [setTerminalVisible]);
+
+  const handleOpenScreenWatcher = useCallback(() => setScreenWatcherVisible(true), [setScreenWatcherVisible]);
+
+  const handleConsensusLongPress = useCallback(() => setConsensusSheetVisible(true), []);
+
+
   const { handleSpeak, isSpeakingMessage } = useChatSpeech();
 
   // ── STT ──
@@ -265,7 +283,7 @@ export function SessionDetailScreen() {
         </SwipeableMessage>
       );
     },
-    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds, setEditText],
+    [handleSpeak, handleLongPress, handleSwipeReply, isStreaming, editingMessageId, editText, colors, handleEditSubmit, handleEditCancel, handleOpenArtifact, searchMatchSet, bookmarkedMessageIds, setEditText, isSpeakingMessage],
   );
 
   // Stable extraData to minimize full FlatList re-renders
@@ -309,7 +327,7 @@ export function SessionDetailScreen() {
         visible={chatSearchVisible}
         query={searchQuery}
         onChangeQuery={setSearchQuery}
-        onClose={() => { toggleChatSearch(); resetSearch(); }}
+        onClose={handleCloseSearch}
         matchCount={searchMatches.length}
         currentMatch={currentMatchIdx}
         onPrev={handleSearchPrev}
@@ -386,13 +404,10 @@ export function SessionDetailScreen() {
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}
         onOpenTemplates={openTemplates}
-        onOpenModelPicker={() => setModelPickerVisible(true)}
+        onOpenModelPicker={handleOpenModelPicker}
         currentModelLabel={currentModelLabel}
         providerIcon={providerIcon}
-        onToggleAB={() => {
-          if (abState.active) { clearTest(); }
-          else { setAbPickerVisible(true); }
-        }}
+        onToggleAB={handleToggleAB}
         abActive={abState.active}
         onToggleVoice={voiceAvailable ? toggleVoice : undefined}
         isListening={isListening}
@@ -400,14 +415,14 @@ export function SessionDetailScreen() {
         searchActive={chatSearchVisible}
         onExport={handleExportChat}
         hasMessages={chatMessages.length > 0}
-        onOpenTerminal={() => setTerminalVisible(true)}
+        onOpenTerminal={handleOpenTerminal}
         terminalActive={terminalVisible}
-        onOpenScreenWatcher={() => setScreenWatcherVisible(true)}
+        onOpenScreenWatcher={handleOpenScreenWatcher}
         screenWatcherActive={isWatching}
         onToggleAgent={toggleAgentMode}
         agentActive={agentModeEnabled}
         onToggleConsensus={toggleConsensusMode}
-        onConsensusLongPress={() => setConsensusSheetVisible(true)}
+        onConsensusLongPress={handleConsensusLongPress}
         consensusActive={consensusModeEnabled}
       />
 

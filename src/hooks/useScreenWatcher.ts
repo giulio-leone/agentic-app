@@ -11,6 +11,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import { ScreenWatcherService } from '../services/ScreenWatcherService';
 import { useAppStore } from '../stores/appStore';
+import {
+  useChatMessages, useIsStreaming, useAutoStartVisionDetect,
+  useScreenWatcherVisible, useIsWatching, useWatcherStatus,
+  useCaptureCount, useIsAutoMode, useZoomLevel, useCustomPrompt,
+  useIsRemoteLLMEnabled, useMotionThreshold, useStableThreshold,
+  useScreenWatcherActions, useSessionActions,
+} from '../stores/selectors';
 import type { SmartCameraViewHandle } from '../components/camera/SmartCameraView';
 import type { Attachment } from '../acp/models/types';
 
@@ -55,23 +62,28 @@ export function useScreenWatcher() {
   const lastCaptureTime = useRef<number>(0);
   const hasAutoStarted = useRef(false);
 
+  // Granular state selectors — each only re-renders when its own value changes
+  const screenWatcherVisible = useScreenWatcherVisible();
+  const isWatching = useIsWatching();
+  const watcherStatus = useWatcherStatus();
+  const captureCount = useCaptureCount();
+  const isAutoMode = useIsAutoMode();
+  const zoomLevel = useZoomLevel();
+  const customPrompt = useCustomPrompt();
+  const isRemoteLLMEnabled = useIsRemoteLLMEnabled();
+  const motionThreshold = useMotionThreshold();
+  const stableThreshold = useStableThreshold();
+  const isStreaming = useIsStreaming();
+  const chatMessages = useChatMessages();
+  const autoStartVisionDetect = useAutoStartVisionDetect();
+
   const {
-    screenWatcherVisible, setScreenWatcherVisible,
-    isWatching, setWatching,
-    watcherStatus, setWatcherStatus,
-    captureCount, incrementCapture,
-    isAutoMode, setAutoMode,
-    zoomLevel, setZoomLevel,
-    customPrompt, setCustomPrompt,
-    isRemoteLLMEnabled, setRemoteLLMEnabled,
-    setWatcherProcessing,
-    sendPrompt,
-    isStreaming,
-    chatMessages,
-    motionThreshold, stableThreshold,
-    setMotionThreshold, setStableThreshold,
-    autoStartVisionDetect,
-  } = useAppStore();
+    setScreenWatcherVisible, setWatching, setWatcherStatus,
+    incrementCapture, setAutoMode, setZoomLevel, setCustomPrompt,
+    setRemoteLLMEnabled, setWatcherProcessing, setMotionThreshold, setStableThreshold,
+  } = useScreenWatcherActions();
+
+  const { sendPrompt } = useSessionActions();
 
   // Latest assistant message
   const latestAssistantMessage = useMemo(() => {
