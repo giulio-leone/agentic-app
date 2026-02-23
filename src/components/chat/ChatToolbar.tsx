@@ -1,10 +1,10 @@
 /**
  * ChatToolbar — compact horizontal action bar above the composer.
- * Consolidates: server selector, templates, A/B testing, voice, search, export, canvas.
+ * Consolidates: server selector, templates, A/B testing, voice, search, export.
  */
 
-import React from 'react';
-import { ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { ScrollView, TouchableOpacity, StyleSheet, Animated, View } from 'react-native';
 import { XStack, Text } from 'tamagui';
 import {
   PenLine,
@@ -12,10 +12,9 @@ import {
   Mic,
   Search,
   Share2,
-  Layers,
-  Server,
 } from 'lucide-react-native';
-import { FontSize, Spacing, Radius, type ThemeColors } from '../../utils/theme';
+import * as Haptics from 'expo-haptics';
+import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { getServerColor } from '../../utils/serverColors';
 import type { ACPServerConfiguration } from '../../acp/models/types';
 
@@ -108,19 +107,24 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   return (
     <XStack
       paddingHorizontal={Spacing.sm}
-      paddingVertical={4}
+      paddingVertical={5}
       alignItems="center"
-      gap={Spacing.xs}
+      gap={4}
+      borderTopWidth={StyleSheet.hairlineWidth}
+      borderTopColor={colors.separator}
     >
       {/* Server chip — always first */}
       {servers.length >= 2 && (
-        <ServerChip
-          servers={servers}
-          selected={selectedServer}
-          accent={serverAccent}
-          colors={colors}
-          onSelect={onSelectServer}
-        />
+        <>
+          <ServerChip
+            servers={servers}
+            selected={selectedServer}
+            accent={serverAccent}
+            colors={colors}
+            onSelect={onSelectServer}
+          />
+          <Separator color={colors.separator} />
+        </>
       )}
 
       <ScrollView
@@ -128,15 +132,27 @@ export const ChatToolbar = React.memo(function ChatToolbar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {actions.map(action => (
-          <ToolbarButton key={action.id} action={action} colors={colors} />
+        {actions.map((action, i) => (
+          <React.Fragment key={action.id}>
+            <ToolbarButton action={action} colors={colors} />
+            {i < actions.length - 1 && action.id === 'ab' && (
+              <Separator color={colors.separator} />
+            )}
+          </React.Fragment>
         ))}
       </ScrollView>
     </XStack>
   );
 });
 
-/** Single toolbar icon button */
+/** Thin vertical separator between action groups */
+const Separator = React.memo(function Separator({ color }: { color: string }) {
+  return (
+    <View style={[styles.separator, { backgroundColor: color }]} />
+  );
+});
+
+/** Animated toolbar icon button with press scale + haptic */
 const ToolbarButton = React.memo(function ToolbarButton({
   action,
   colors,
@@ -144,31 +160,60 @@ const ToolbarButton = React.memo(function ToolbarButton({
   action: ToolbarAction;
   colors: ThemeColors;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 6,
+    }).start();
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    action.onPress();
+  }, [action]);
+
   return (
-    <TouchableOpacity
-      onPress={action.onPress}
-      disabled={action.disabled}
-      activeOpacity={0.6}
-      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-      accessibilityLabel={action.label}
-      accessibilityRole="button"
-      accessibilityState={{ selected: action.active, disabled: action.disabled }}
-      style={[
-        styles.button,
-        action.active && { backgroundColor: `${colors.primary}15` },
-        action.disabled && { opacity: 0.4 },
-      ]}
-    >
-      {action.icon}
-      <Text
-        fontSize={11}
-        fontWeight={action.active ? '600' : '400'}
-        color={action.active ? colors.primary : colors.textSecondary}
-        numberOfLines={1}
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <TouchableOpacity
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={action.disabled}
+        activeOpacity={0.7}
+        hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
+        accessibilityLabel={action.label}
+        accessibilityRole="button"
+        accessibilityState={{ selected: action.active, disabled: action.disabled }}
+        style={[
+          styles.button,
+          action.active && { backgroundColor: `${colors.primary}18` },
+          action.disabled && { opacity: 0.35 },
+        ]}
       >
-        {action.label}
-      </Text>
-    </TouchableOpacity>
+        {action.icon}
+        <Text
+          fontSize={11}
+          fontWeight={action.active ? '600' : '400'}
+          color={action.active ? colors.primary : colors.textSecondary}
+          numberOfLines={1}
+        >
+          {action.label}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 });
 
@@ -225,6 +270,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    paddingRight: 4,
   },
   button: {
     flexDirection: 'row',
@@ -233,5 +279,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 14,
+  },
+  separator: {
+    width: StyleSheet.hairlineWidth,
+    height: 18,
+    marginHorizontal: 4,
+    opacity: 0.5,
   },
 });
