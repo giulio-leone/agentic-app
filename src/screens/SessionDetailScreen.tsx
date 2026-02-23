@@ -314,7 +314,8 @@ export function SessionDetailScreen() {
     if (!isStreaming) return 0;
     const last = chatMessages[chatMessages.length - 1];
     if (!last?.isStreaming || !last.content) return 0;
-    return Math.ceil(last.content.split(/\s+/).length * 1.33);
+    // O(1) estimate: ~5 chars per word, ~1.33 tokens per word
+    return Math.ceil((last.content.length / 5) * 1.33);
   }, [isStreaming, chatMessages]);
 
   const containerStyle = useMemo(
