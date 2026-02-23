@@ -7,7 +7,7 @@ import { ActivityIndicator, TouchableOpacity, StyleSheet, useWindowDimensions, P
 import { XStack, Text, YStack } from 'tamagui';
 import { Menu } from 'lucide-react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, DrawerActions } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
@@ -51,13 +51,13 @@ function ScreenFallback() {
   );
 }
 
-function LazyAddServer(props: any) {
+function LazyAddServer(props: NativeStackScreenProps<RootStackParamList, 'AddServer'>) {
   return <Suspense fallback={<ScreenFallback />}><AddServerScreen {...props} /></Suspense>;
 }
-function LazyQuickSetup(props: any) {
+function LazyQuickSetup(props: NativeStackScreenProps<RootStackParamList, 'QuickSetup'>) {
   return <Suspense fallback={<ScreenFallback />}><QuickSetupScreen {...props} /></Suspense>;
 }
-function LazySettings(props: any) {
+function LazySettings(props: NativeStackScreenProps<RootStackParamList, 'Settings'>) {
   return <Suspense fallback={<ScreenFallback />}><SettingsScreen {...props} /></Suspense>;
 }
 

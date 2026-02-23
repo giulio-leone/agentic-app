@@ -13,9 +13,11 @@ import { SessionStorage } from '../../storage/SessionStorage';
 import { isAppInBackground, notifyResponseComplete } from '../../services/notifications';
 import { setAiAbortController } from '../storePrivate';
 
+import type { AppState, AppActions } from '../stores/appStore';
+
 export interface StreamContext {
-  set: (partial: any) => void;
-  get: () => any;
+  set: (partial: Partial<AppState> | ((s: AppState & AppActions) => Partial<AppState>)) => void;
+  get: () => AppState & AppActions;
   chatStorageId: () => string | null;
 }
 
@@ -68,9 +70,9 @@ export function startAIStream(
 ) {
   const assistantId = uuidv4();
   const forceAgentMode = ctx.get().agentModeEnabled;
-  const server = ctx.get().servers.find((s: any) => s.id === ctx.get().selectedServerId);
+  const server = ctx.get().servers.find((s) => s.id === ctx.get().selectedServerId);
 
-  ctx.set((s: any) => ({
+  ctx.set((s) => ({
     chatMessages: [...s.chatMessages, {
       id: assistantId,
       role: 'assistant' as const,
@@ -88,7 +90,7 @@ export function startAIStream(
   const isConsensusMode = ctx.get().consensusModeEnabled;
 
   const onChunk = (chunk: string) => {
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => ({
         ...m, content: m.content + chunk,
       })),
@@ -103,7 +105,7 @@ export function startAIStream(
       ? stopReason : 'unknown';
     const finalContent = finalMessage?.content.trim() ?? '';
 
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => ({
         ...m,
         content: finalContent.length === 0
@@ -135,7 +137,7 @@ export function startAIStream(
   const onError = (error: Error) => {
     setAiAbortController(null);
     ctx.get().appendLog(`✗ AI stream error: ${error.message}`);
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: [
         ...s.chatMessages.filter((m: ChatMessage) => m.id !== assistantId),
         { id: uuidv4(), role: 'system', content: `⚠️ Error: ${error.message}`, timestamp: new Date().toISOString() },
@@ -146,7 +148,7 @@ export function startAIStream(
   };
 
   const onReasoning = (chunk: string) => {
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => ({
         ...m, reasoning: (m.reasoning ?? '') + chunk,
       })),
@@ -154,7 +156,7 @@ export function startAIStream(
   };
 
   const onToolCall = (toolName: string, args: string) => {
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => {
         const segs = m.segments ?? [];
         const last = segs[segs.length - 1];
@@ -172,7 +174,7 @@ export function startAIStream(
   };
 
   const onToolResult = (toolName: string, result: string) => {
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => {
         let matched = false;
         const segments = (m.segments ?? []).map((seg: MessageSegment) => {
@@ -188,14 +190,14 @@ export function startAIStream(
     }));
   };
 
-  const onAgentEvent = (event: { type: string; data: any }) => {
+  const onAgentEvent = (event: { type: string; data: Record<string, unknown> }) => {
     const label = agentEventLabel(event.type, event.data);
     if (!label) return;
     const segment: MessageSegment = {
       type: 'agentEvent', eventType: event.type, label,
       detail: typeof event.data === 'object' ? JSON.stringify(event.data) : undefined,
     };
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => ({
         ...m, segments: [...(m.segments ?? []), segment],
       })),
@@ -203,7 +205,7 @@ export function startAIStream(
   };
 
   const onConsensusUpdate = (details: ConsensusDetails) => {
-    ctx.set((s: any) => ({
+    ctx.set((s) => ({
       chatMessages: updateMessageById(s.chatMessages, assistantId, (m: ChatMessage) => ({
         ...m, consensusDetails: details,
       })),

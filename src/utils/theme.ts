@@ -237,9 +237,9 @@ export function useTheme(): Theme {
   let fontScale = 1.0;
   try {
     const { useAppStore } = require('../stores/appStore');
-    themeMode = useAppStore((s: any) => s.themeMode) ?? 'system';
-    accentColor = useAppStore((s: any) => s.accentColor) ?? 'green';
-    fontScale = useAppStore((s: any) => s.fontScale) ?? 1.0;
+    themeMode = useAppStore((s: { themeMode: typeof themeMode }) => s.themeMode) ?? 'system';
+    accentColor = useAppStore((s: { accentColor: AccentColorKey }) => s.accentColor) ?? 'green';
+    fontScale = useAppStore((s: { fontScale: number }) => s.fontScale) ?? 1.0;
   } catch { /* store not ready yet */ }
 
   return useMemo(() => {

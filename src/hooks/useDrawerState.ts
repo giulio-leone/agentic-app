@@ -8,7 +8,7 @@ import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../stores/appStore';
-import { ACPConnectionState, SessionSummary, ServerType } from '../acp/models/types';
+import { ACPConnectionState, SessionSummary, ServerType, ACPServerConfiguration } from '../acp/models/types';
 import { getProviderInfo } from '../ai/providers';
 import { groupSessionsByDate } from '../utils/sessionUtils';
 import { MCPConnectionState } from '../mcp/types';
@@ -88,7 +88,7 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
     ]);
   }, [deleteSession]);
 
-  const handleServerLongPress = useCallback((server: any) => {
+  const handleServerLongPress = useCallback((server: ACPServerConfiguration) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(server.name || server.host, undefined, [
       { text: 'Edit', onPress: () => rootNav.navigate('QuickSetup', { editingServer: server }) },
