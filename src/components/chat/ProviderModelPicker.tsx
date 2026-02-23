@@ -7,7 +7,6 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   TouchableOpacity,
   StyleSheet,
-  Modal,
   FlatList,
   TextInput,
   ActivityIndicator,
@@ -15,7 +14,6 @@ import {
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Check, Eye, Brain, Wrench } from 'lucide-react-native';
-import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { ServerType } from '../../acp/models/types';
 import type { ACPServerConfiguration } from '../../acp/models/types';
@@ -23,6 +21,8 @@ import { getProviderInfo } from '../../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { getCachedModels } from '../../ai/ModelCache';
 import { getApiKey } from '../../storage/SecureStorage';
+
+import { BottomSheetModal } from './BottomSheetModal';
 
 interface Props {
   visible: boolean;
@@ -172,24 +172,16 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   }, [config?.modelId, activeProviderId, selectedServerId, colors, selectModel]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <YStack flex={1} justifyContent="flex-end" backgroundColor="rgba(0,0,0,0.4)">
-        <YStack
-          borderTopLeftRadius={Radius.lg}
-          borderTopRightRadius={Radius.lg}
-          maxHeight="80%"
-          paddingBottom={40}
-          backgroundColor={colors.surface}
-        >
-          {/* Header */}
-          <XStack justifyContent="space-between" alignItems="center" padding={Spacing.md}>
-            <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
-              Select Provider & Model
-            </Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text fontSize={FontSize.body} fontWeight="500" color={colors.primary}>Done</Text>
-            </TouchableOpacity>
-          </XStack>
+    <BottomSheetModal visible={visible} onClose={onClose} backgroundColor={colors.surface}>
+      {/* Header */}
+      <XStack justifyContent="space-between" alignItems="center" padding={Spacing.md}>
+        <Text fontSize={FontSize.headline} fontWeight="600" color={colors.text}>
+          Select Provider & Model
+        </Text>
+        <TouchableOpacity onPress={onClose}>
+          <Text fontSize={FontSize.body} fontWeight="500" color={colors.primary}>Done</Text>
+        </TouchableOpacity>
+      </XStack>
 
           {/* Provider tabs */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
@@ -274,9 +266,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
               }}
             />
           </YStack>
-        </YStack>
-      </YStack>
-    </Modal>
+    </BottomSheetModal>
   );
 });
 
