@@ -101,14 +101,8 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
         const lastMotionTime = useSharedValue(0);
         const isStabilizing = useSharedValue(false);
 
-        const logStateJS = Worklets.createRunOnJS((diff: number, motion: boolean, stabilizing: boolean, trigger: boolean) => {
-            if (__DEV__) {
-                if (trigger) {
-                    console.log(`[SmartCameraView] TRIGGER EVENT! diff=${diff.toFixed(2)}`);
-                } else if (motion) {
-                    console.log(`[SmartCameraView] MOTION DETECTED! diff=${diff.toFixed(2)}`);
-                }
-            }
+        const logStateJS = Worklets.createRunOnJS((_diff: number, _motion: boolean, _stabilizing: boolean, _trigger: boolean) => {
+            // Intentionally silent in production. Enable via Flipper or local patch for debugging.
         });
 
         const frameProcessor = useFrameProcessor((frame) => {

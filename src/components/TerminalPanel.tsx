@@ -93,7 +93,7 @@ const XTERM_HTML = `
         if (msg.type === 'clear') { term.clear(); term.reset(); }
         if (msg.type === 'info') term.writeln('\\x1b[36m' + msg.text + '\\x1b[0m');
         if (msg.type === 'error') term.writeln('\\x1b[31m' + msg.text + '\\x1b[0m');
-      } catch {}
+      } catch { /* malformed JSON from RN bridge — safe to ignore */ }
     }
     window.addEventListener('message', handleMsg);
     document.addEventListener('message', handleMsg);
@@ -180,7 +180,7 @@ const GHOSTTY_HTML = `
         if (msg.type === 'clear') { term.clear(); term.reset(); }
         if (msg.type === 'info') term.writeln('\\x1b[36m' + msg.text + '\\x1b[0m');
         if (msg.type === 'error') term.writeln('\\x1b[31m' + msg.text + '\\x1b[0m');
-      } catch {}
+      } catch { /* malformed JSON from RN bridge — safe to ignore */ }
     }
     window.addEventListener('message', handleMsg);
     document.addEventListener('message', handleMsg);
