@@ -60,18 +60,29 @@ export interface AIProviderConfig {
   webSearchEnabled?: boolean;
 }
 
+// ── Unified Provider + Model Selection ──────────────────────────
+
+/** Cross-provider model reference. Used in consensus and as default selection. */
+export interface ProviderModelSelection {
+  serverId: string;
+  providerType: AIProviderType;
+  modelId: string;
+}
+
 // ── Consensus Mode Configuration ─────────────────────────────────
 
 export interface ConsensusAgentConfig {
   id: string;
   role: string;           // e.g. "Optimistic Analyst"
   instructions: string;
-  modelId?: string;       // override per-agent model; undefined = use shared
+  modelId?: string;       // legacy: override per-agent model; undefined = use shared
+  provider?: ProviderModelSelection; // cross-provider override
 }
 
 export interface ConsensusConfig {
   agents: ConsensusAgentConfig[];
-  reviewerModelId?: string;   // undefined = use server's default model
+  reviewerModelId?: string;   // legacy: undefined = use server's default model
+  reviewerProvider?: ProviderModelSelection; // cross-provider reviewer
   useSharedModel: boolean;    // true = all agents + reviewer use the same model
 }
 

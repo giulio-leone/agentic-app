@@ -17,7 +17,6 @@ import { YStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
-import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { SkeletonMessage } from '../components/chat/SkeletonMessage';
 import { MessageActionMenu } from '../components/chat/MessageActionMenu';
@@ -25,6 +24,7 @@ import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
 import { ChatToolbar } from '../components/chat/ChatToolbar';
+import { ProviderModelPicker } from '../components/chat/ProviderModelPicker';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { ABModelPicker } from '../components/chat/ABModelPicker';
@@ -51,6 +51,7 @@ import {
   useSessionActions, useChatActions, useServerActions,
 } from '../stores/selectors';
 import { useAppStore } from '../stores/appStore';
+import { getProviderInfo } from '../ai/providers';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -85,11 +86,26 @@ export function SessionDetailScreen() {
   const setScreenWatcherVisible = useAppStore(s => s.setScreenWatcherVisible);
   const terminalVisible = useAppStore(s => s.terminalVisible);
   const setTerminalVisible = useAppStore(s => s.setTerminalVisible);
+  const updateServer = useAppStore(s => s.updateServer);
   const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
+
+  // Provider•Model label for toolbar chip
+  const currentModelLabel = React.useMemo(() => {
+    if (!isAIProvider || !selectedServer?.aiProviderConfig) return '';
+    const cfg = selectedServer.aiProviderConfig;
+    return cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
+  }, [isAIProvider, selectedServer?.aiProviderConfig?.modelId]);
+
+  const providerIcon = React.useMemo(() => {
+    if (!isAIProvider || !selectedServer?.aiProviderConfig) return null;
+    const Icon = getProviderInfo(selectedServer.aiProviderConfig.providerType).icon;
+    return <Icon size={12} color={colors.textSecondary} />;
+  }, [isAIProvider, selectedServer?.aiProviderConfig?.providerType, colors.textSecondary]);
 
   // ── Custom hooks ──
   const {
@@ -347,10 +363,6 @@ export function SessionDetailScreen() {
         </YStack>
       )}
 
-      {isAIProvider && selectedServer && (
-        <ModelPickerBar server={selectedServer} />
-      )}
-
       {quotedMessage && (
         <QuotedMessageBar message={quotedMessage} onClear={clearQuote} colors={colors} />
       )}
@@ -361,6 +373,9 @@ export function SessionDetailScreen() {
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}
         onOpenTemplates={openTemplates}
+        onOpenModelPicker={() => setModelPickerVisible(true)}
+        currentModelLabel={currentModelLabel}
+        providerIcon={providerIcon}
         onToggleAB={() => {
           if (abState.active) { clearTest(); }
           else { setAbPickerVisible(true); }
@@ -452,6 +467,16 @@ export function SessionDetailScreen() {
       <ConsensusConfigSheet
         visible={consensusSheetVisible}
         onClose={() => setConsensusSheetVisible(false)}
+      />
+
+      <ProviderModelPicker
+        visible={modelPickerVisible}
+        onClose={() => setModelPickerVisible(false)}
+        servers={servers}
+        selectedServerId={selectedServerId}
+        onSelectServer={selectServer}
+        onUpdateServer={updateServer}
+        colors={colors}
       />
     </KeyboardAvoidingView>
   );

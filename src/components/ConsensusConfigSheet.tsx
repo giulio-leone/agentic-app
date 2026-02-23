@@ -15,79 +15,23 @@ import {
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Plus, Minus, X, ChevronDown } from 'lucide-react-native';
 import { useAppStore } from '../stores/appStore';
-import { FontSize, Spacing, Radius, useTheme, type ThemeColors } from '../utils/theme';
-import type { ConsensusAgentConfig, ConsensusConfig } from '../ai/types';
+import { FontSize, Spacing, Radius, useTheme } from '../utils/theme';
+import type { ConsensusAgentConfig, ConsensusConfig, ProviderModelSelection } from '../ai/types';
 import { DEFAULT_CONSENSUS_AGENTS } from '../ai/types';
+import { ServerType } from '../acp/models/types';
+import { getProviderInfo } from '../ai/providers';
+import { ProviderModelPicker } from './chat/ProviderModelPicker';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  fetchedModels?: Array<{ id: string; name?: string }>;
 }
 
-function ModelPicker({ value, models, onChange, colors, label }: {
-  value: string | undefined;
-  models: Array<{ id: string; name?: string }>;
-  onChange: (modelId: string | undefined) => void;
-  colors: ThemeColors;
-  label: string;
-}) {
-  const [showPicker, setShowPicker] = useState(false);
-  const displayName = value ? (value.split('/').pop() ?? value) : 'Default (server model)';
-  const pickerBtnStyle = {
-    flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
-    padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
-    borderColor: colors.separator, backgroundColor: colors.codeBackground,
-  };
-  const optionStyle = { padding: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.separator };
-
-  return (
-    <YStack>
-      <Text fontSize={FontSize.caption} color={colors.textTertiary} marginBottom={2}>{label}</Text>
-      <TouchableOpacity
-        style={pickerBtnStyle}
-        onPress={() => setShowPicker(!showPicker)}
-      >
-        <Text fontSize={FontSize.footnote} color={colors.text} flex={1} numberOfLines={1}>
-          {displayName}
-        </Text>
-        <ChevronDown size={14} color={colors.textTertiary} />
-      </TouchableOpacity>
-      {showPicker && (
-        <YStack borderWidth={1} borderColor={colors.separator} borderRadius={Radius.sm}
-          backgroundColor={colors.cardBackground} marginTop={2} maxHeight={200}>
-          <ScrollView>
-            <TouchableOpacity
-              style={optionStyle}
-              onPress={() => { onChange(undefined); setShowPicker(false); }}
-            >
-              <Text fontSize={FontSize.footnote} color={!value ? colors.primary : colors.text} fontWeight={!value ? '600' : '400'}>
-                Default (server model)
-              </Text>
-            </TouchableOpacity>
-            {models.map(m => (
-              <TouchableOpacity
-                key={m.id}
-                style={optionStyle}
-                onPress={() => { onChange(m.id); setShowPicker(false); }}
-              >
-                <Text fontSize={FontSize.footnote} color={value === m.id ? colors.primary : colors.text}
-                  fontWeight={value === m.id ? '600' : '400'} numberOfLines={1}>
-                  {m.name ?? m.id.split('/').pop() ?? m.id}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </YStack>
-      )}
-    </YStack>
-  );
-}
-
-export function ConsensusConfigSheet({ visible, onClose, fetchedModels = [] }: Props) {
+export function ConsensusConfigSheet({ visible, onClose }: Props) {
   const { colors } = useTheme();
-  const { consensusConfig, updateConsensusConfig } = useAppStore();
+  const { consensusConfig, updateConsensusConfig, servers, selectedServerId, selectServer, updateServer } = useAppStore();
   const [localConfig, setLocalConfig] = useState<ConsensusConfig>({ ...consensusConfig });
+  const [pickerTarget, setPickerTarget] = useState<string | null>(null); // agent id or '__reviewer__'
 
   const addAgent = useCallback(() => {
     const idx = localConfig.agents.length;
@@ -123,6 +67,36 @@ export function ConsensusConfigSheet({ visible, onClose, fetchedModels = [] }: P
     };
     setLocalConfig(defaultCfg);
   }, []);
+
+  // Build a display label for a ProviderModelSelection
+  const providerLabel = useCallback((sel?: ProviderModelSelection) => {
+    if (!sel) return 'Default (server model)';
+    const info = getProviderInfo(sel.providerType);
+    const modelShort = sel.modelId.split('/').pop() ?? sel.modelId;
+    return `${info.name} • ${modelShort}`;
+  }, []);
+
+  // When the ProviderModelPicker selects a model, we intercept onSelectServer/onUpdateServer
+  // to capture the selection into localConfig instead of changing the global state.
+  const handlePickerSelect = useCallback((serverId: string) => {
+    // Find the server to get providerType + modelId
+    const srv = servers.find(s => s.id === serverId);
+    if (!srv?.aiProviderConfig) return;
+    const selection: ProviderModelSelection = {
+      serverId,
+      providerType: srv.aiProviderConfig.providerType,
+      modelId: srv.aiProviderConfig.modelId,
+    };
+    if (pickerTarget === '__reviewer__') {
+      setLocalConfig(c => ({ ...c, reviewerProvider: selection, reviewerModelId: selection.modelId }));
+    } else if (pickerTarget) {
+      setLocalConfig(c => ({
+        ...c,
+        agents: c.agents.map(a => a.id === pickerTarget ? { ...a, provider: selection, modelId: selection.modelId } : a),
+      }));
+    }
+    setPickerTarget(null);
+  }, [servers, pickerTarget]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -175,13 +149,20 @@ export function ConsensusConfigSheet({ visible, onClose, fetchedModels = [] }: P
             {/* Reviewer model (shown when not shared) */}
             {!localConfig.useSharedModel && (
               <YStack marginBottom={Spacing.md}>
-                <ModelPicker
-                  value={localConfig.reviewerModelId}
-                  models={fetchedModels}
-                  onChange={(v) => setLocalConfig(c => ({ ...c, reviewerModelId: v }))}
-                  colors={colors}
-                  label="Reviewer Model"
-                />
+                <Text fontSize={FontSize.caption} color={colors.textTertiary} marginBottom={2}>Reviewer Model</Text>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
+                    borderColor: colors.separator, backgroundColor: colors.codeBackground,
+                  }}
+                  onPress={() => setPickerTarget('__reviewer__')}
+                >
+                  <Text fontSize={FontSize.footnote} color={colors.text} flex={1} numberOfLines={1}>
+                    {providerLabel(localConfig.reviewerProvider)}
+                  </Text>
+                  <ChevronDown size={14} color={colors.textTertiary} />
+                </TouchableOpacity>
               </YStack>
             )}
 
@@ -252,13 +233,22 @@ export function ConsensusConfigSheet({ visible, onClose, fetchedModels = [] }: P
                 />
                 {!localConfig.useSharedModel && (
                   <YStack marginTop={Spacing.xs}>
-                    <ModelPicker
-                      value={agent.modelId}
-                      models={fetchedModels}
-                      onChange={(v) => updateAgent(agent.id, { modelId: v })}
-                      colors={colors}
-                      label={`Model for ${agent.role}`}
-                    />
+                    <Text fontSize={FontSize.caption} color={colors.textTertiary} marginBottom={2}>
+                      Model for {agent.role}
+                    </Text>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                        padding: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1,
+                        borderColor: colors.separator, backgroundColor: colors.surface,
+                      }}
+                      onPress={() => setPickerTarget(agent.id)}
+                    >
+                      <Text fontSize={FontSize.footnote} color={colors.text} flex={1} numberOfLines={1}>
+                        {providerLabel(agent.provider)}
+                      </Text>
+                      <ChevronDown size={14} color={colors.textTertiary} />
+                    </TouchableOpacity>
                   </YStack>
                 )}
               </YStack>
@@ -288,6 +278,17 @@ export function ConsensusConfigSheet({ visible, onClose, fetchedModels = [] }: P
           </XStack>
         </YStack>
       </KeyboardAvoidingView>
+
+      {/* Cross-provider model picker — opens on top of consensus sheet */}
+      <ProviderModelPicker
+        visible={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        servers={servers}
+        selectedServerId={selectedServerId}
+        onSelectServer={handlePickerSelect}
+        onUpdateServer={updateServer}
+        colors={colors}
+      />
     </Modal>
   );
 }
