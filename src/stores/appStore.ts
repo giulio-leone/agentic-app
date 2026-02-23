@@ -60,6 +60,7 @@ export interface AppState {
   accentColor: import('../utils/theme').AccentColorKey;
   fontScale: number; // 0.8 to 1.4
   hapticsEnabled: boolean;
+  terminalEngine: 'xterm' | 'ghostty';
 
   // Screen Watcher
   isWatching: boolean;
@@ -130,6 +131,7 @@ export interface AppActions {
   setFontScale: (scale: number) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   clearAppCache: () => Promise<void>;
+  setTerminalEngine: (engine: 'xterm' | 'ghostty') => void;
   appendLog: (log: string) => void;
   clearLogs: () => void;
 

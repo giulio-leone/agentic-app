@@ -6,8 +6,8 @@ import { DEFAULT_CONSENSUS_CONFIG, type ConsensusConfig } from '../../ai/types';
 const CONSENSUS_CONFIG_KEY = '@agentic/consensusConfig';
 const THEME_MODE_KEY = '@agentic/themeMode';
 
-export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect' | 'themeMode' | 'accentColor' | 'fontScale' | 'hapticsEnabled'>
-  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect' | 'setThemeMode' | 'setAccentColor' | 'setFontScale' | 'setHapticsEnabled' | 'clearAppCache'>;
+export type SettingsSlice = Pick<AppState, 'devModeEnabled' | 'developerLogs' | 'agentModeEnabled' | 'consensusModeEnabled' | 'consensusConfig' | 'yoloModeEnabled' | 'autoStartVisionDetect' | 'themeMode' | 'accentColor' | 'fontScale' | 'hapticsEnabled' | 'terminalEngine'>
+  & Pick<AppActions, 'toggleDevMode' | 'appendLog' | 'clearLogs' | 'toggleAgentMode' | 'toggleConsensusMode' | 'updateConsensusConfig' | 'toggleYoloMode' | 'toggleAutoStartVisionDetect' | 'setThemeMode' | 'setAccentColor' | 'setFontScale' | 'setHapticsEnabled' | 'clearAppCache' | 'setTerminalEngine'>;
 
 export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], SettingsSlice> = (set, get) => {
   // Hydrate consensus config from AsyncStorage on slice creation
@@ -41,6 +41,11 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
     if (raw !== null) set({ hapticsEnabled: raw === 'true' });
   });
 
+  // Hydrate terminal engine
+  AsyncStorage.getItem('@agentic/terminalEngine').then(raw => {
+    if (raw === 'xterm' || raw === 'ghostty') set({ terminalEngine: raw });
+  });
+
   return {
   // State
   devModeEnabled: false,
@@ -54,6 +59,7 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
   accentColor: 'green' as import('../../utils/theme').AccentColorKey,
   fontScale: 1.0,
   hapticsEnabled: true,
+  terminalEngine: 'xterm' as 'xterm' | 'ghostty',
 
   // Actions
 
@@ -114,6 +120,11 @@ export const createSettingsSlice: StateCreator<AppState & AppActions, [], [], Se
     } catch (e) {
       console.warn('[AsyncStorage] Clear cache failed:', e);
     }
+  },
+
+  setTerminalEngine: (engine) => {
+    set({ terminalEngine: engine });
+    AsyncStorage.setItem('@agentic/terminalEngine', engine).catch(e => console.warn('[AsyncStorage] Save terminalEngine failed:', e));
   },
 
   appendLog: (log) => {
