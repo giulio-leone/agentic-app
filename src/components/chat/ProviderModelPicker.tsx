@@ -210,9 +210,12 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
                       },
                     ]}
                   >
-                    <Text fontSize={13} fontWeight={isActive ? '600' : '400'} color={isActive ? colors.primary : colors.textSecondary}>
-                      {info?.name ?? provider.name}
-                    </Text>
+                    <XStack alignItems="center" gap={4}>
+                      {info && (() => { const Icon = info.icon; return <Icon size={13} color={isActive ? colors.primary : colors.textSecondary} />; })()}
+                      <Text fontSize={13} fontWeight={isActive ? '600' : '400'} color={isActive ? colors.primary : colors.textSecondary}>
+                        {info?.name ?? provider.name}
+                      </Text>
+                    </XStack>
                   </TouchableOpacity>
                 );
               })}

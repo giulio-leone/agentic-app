@@ -43,6 +43,7 @@ interface Props {
   onOpenTemplates: () => void;
   onOpenModelPicker: () => void;
   currentModelLabel: string;
+  providerIcon: React.ReactNode;
   onToggleAB: () => void;
   abActive: boolean;
   onToggleVoice?: () => void;
@@ -73,6 +74,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   onOpenTemplates,
   onOpenModelPicker,
   currentModelLabel,
+  providerIcon,
   onToggleAB,
   abActive,
   onToggleVoice,
@@ -192,16 +194,21 @@ export const ChatToolbar = React.memo(function ChatToolbar({
         onPress={onOpenModelPicker}
         activeOpacity={0.7}
         style={{
+          flexDirection: 'row',
+          alignItems: 'center',
           borderRadius: 12,
           paddingHorizontal: 8,
           paddingVertical: 4,
           backgroundColor: colors.codeBackground,
-          maxWidth: 160,
+          maxWidth: 180,
+          gap: 3,
         }}
       >
-        <Text fontSize={11} fontWeight="500" color={colors.textSecondary} numberOfLines={1}>
+        {providerIcon ? providerIcon : null}
+        <Text fontSize={11} fontWeight="600" color={colors.text} numberOfLines={1} style={{ flexShrink: 1 }}>
           {currentModelLabel || 'Model'}
         </Text>
+        <Text fontSize={9} color={colors.textTertiary}>▾</Text>
       </TouchableOpacity>
       <Separator color={colors.separator} />
 

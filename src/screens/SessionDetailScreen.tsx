@@ -52,6 +52,7 @@ import {
   useSessionActions, useChatActions, useServerActions,
 } from '../stores/selectors';
 import { useAppStore } from '../stores/appStore';
+import { getProviderInfo } from '../ai/providers';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -98,9 +99,14 @@ export function SessionDetailScreen() {
   const currentModelLabel = React.useMemo(() => {
     if (!isAIProvider || !selectedServer?.aiProviderConfig) return '';
     const cfg = selectedServer.aiProviderConfig;
-    const modelShort = cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
-    return modelShort;
+    return cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
   }, [isAIProvider, selectedServer?.aiProviderConfig?.modelId]);
+
+  const providerIcon = React.useMemo(() => {
+    if (!isAIProvider || !selectedServer?.aiProviderConfig) return null;
+    const Icon = getProviderInfo(selectedServer.aiProviderConfig.providerType).icon;
+    return <Icon size={12} color={colors.textSecondary} />;
+  }, [isAIProvider, selectedServer?.aiProviderConfig?.providerType, colors.textSecondary]);
 
   // ── Custom hooks ──
   const {
@@ -374,6 +380,7 @@ export function SessionDetailScreen() {
         onOpenTemplates={openTemplates}
         onOpenModelPicker={() => setModelPickerVisible(true)}
         currentModelLabel={currentModelLabel}
+        providerIcon={providerIcon}
         onToggleAB={() => {
           if (abState.active) { clearTest(); }
           else { setAbPickerVisible(true); }
