@@ -23,7 +23,12 @@ interface Props {
 
 const TRIGGER_THRESHOLD = 60;
 
-function LeftAction(_progress: SharedValue<number>, drag: SharedValue<number>, colors: ThemeColors) {
+interface LeftActionProps {
+  drag: SharedValue<number>;
+  colors: ThemeColors;
+}
+
+const LeftAction = React.memo(function LeftAction({ drag, colors }: LeftActionProps) {
   const animStyle = useAnimatedStyle(() => ({
     opacity: Math.min(drag.value / TRIGGER_THRESHOLD, 1),
     transform: [{ scale: Math.min(drag.value / TRIGGER_THRESHOLD, 1) }],
@@ -36,7 +41,7 @@ function LeftAction(_progress: SharedValue<number>, drag: SharedValue<number>, c
       </Animated.View>
     </View>
   );
-}
+});
 
 export const SwipeableMessage = React.memo(function SwipeableMessage({
   children,
@@ -63,7 +68,7 @@ export const SwipeableMessage = React.memo(function SwipeableMessage({
   }, []);
 
   const renderLeft = useCallback(
-    (progress: SharedValue<number>, drag: SharedValue<number>) => LeftAction(progress, drag, colors),
+    (_progress: SharedValue<number>, drag: SharedValue<number>) => <LeftAction drag={drag} colors={colors} />,
     [colors],
   );
 

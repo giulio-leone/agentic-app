@@ -45,7 +45,7 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
     );
   }, [sessions, searchQuery]);
 
-  const groupedSessions = groupSessionsByDate(filteredSessions);
+  const groupedSessions = useMemo(() => groupSessionsByDate(filteredSessions), [filteredSessions]);
 
   // MCP tools summary
   const mcpSummary = useMemo(() => {
