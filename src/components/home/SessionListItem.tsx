@@ -34,7 +34,7 @@ function timeAgo(dateStr: string): string {
 
 const DELETE_THRESHOLD = 80;
 
-function RenderRightActions(_progress: SharedValue<number>, drag: SharedValue<number>) {
+const RenderRightActions = React.memo(function RenderRightActions({ drag }: { drag: SharedValue<number> }) {
   const animStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, Math.abs(drag.value) / DELETE_THRESHOLD),
     transform: [{ scale: Math.min(1, Math.abs(drag.value) / DELETE_THRESHOLD) }],
@@ -47,7 +47,7 @@ function RenderRightActions(_progress: SharedValue<number>, drag: SharedValue<nu
       </Animated.View>
     </View>
   );
-}
+});
 
 export const SessionListItem = React.memo(function SessionListItem({
   session, isSelected, onPress, onDelete, colors,
@@ -62,11 +62,16 @@ export const SessionListItem = React.memo(function SessionListItem({
     }
   }, [onDelete, session.id]);
 
+  const renderRight = useCallback(
+    (_progress: SharedValue<number>, drag: SharedValue<number>) => <RenderRightActions drag={drag} />,
+    [],
+  );
+
   return (
     <Animated.View entering={FadeIn.duration(200)}>
       <ReanimatedSwipeable
         ref={swipeRef}
-        renderRightActions={RenderRightActions}
+        renderRightActions={renderRight}
         rightThreshold={DELETE_THRESHOLD}
         onSwipeableOpen={handleSwipeOpen}
         overshootRight={false}

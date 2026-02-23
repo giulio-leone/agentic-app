@@ -107,7 +107,7 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
 
         const logStateJSRef = useRef<ReturnType<typeof Worklets.createRunOnJS> | null>(null);
         if (logStateJSRef.current === null) {
-            logStateJSRef.current = Worklets.createRunOnJS((_diff: number, _motion: boolean, _stabilizing: boolean, _trigger: boolean) => {
+            logStateJSRef.current = Worklets.createRunOnJS((..._args: unknown[]) => {
                 // Intentionally silent in production. Enable via Flipper or local patch for debugging.
             });
         }
@@ -142,20 +142,20 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
                     if (Date.now() - lastMotionTime.value > 200) {
                         isStabilizing.value = false;
                         triggerFired = true;
-                        onSceneChangedJSRef.current();
+                        onSceneChangedJSRef.current!();
                     }
                 } else {
                     // Safety catch: if we somehow missed the initial motion spike but the camera has been stable for a long time (e.g., 2.5 seconds) since last capture activity
                     if (Date.now() - lastMotionTime.value > 2500) {
                         lastMotionTime.value = Date.now(); // reset timer
                         triggerFired = true;
-                        onSceneChangedJSRef.current();
+                        onSceneChangedJSRef.current!();
                     }
                 }
             }
 
             if (motionDetected || triggerFired) {
-                logStateJSRef.current(diff, motionDetected, isStabilizing.value, triggerFired);
+                logStateJSRef.current!(diff, motionDetected, isStabilizing.value, triggerFired);
             }
         }, [enableAutoDetection, motionThreshold, stableThreshold]);
 

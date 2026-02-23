@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { YStack, XStack, Text } from 'tamagui';
 import { Sparkles, Volume1, Volume2, Bookmark } from 'lucide-react-native';
-import { ChatMessage } from '../acp/models/types';
+import { ChatMessage, MessageSegment } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { HIT_SLOP_8 } from '../utils/sharedStyles';
@@ -72,6 +72,13 @@ const styles = StyleSheet.create({
   ttsButton: { padding: 4 },
   systemBubble: { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
 });
+
+/** Check isComplete on last segment (only toolCall segments have it) */
+function getLastSegmentComplete(segments: MessageSegment[] | undefined): boolean | undefined {
+  if (!segments || segments.length === 0) return undefined;
+  const last = segments[segments.length - 1];
+  return last.type === 'toolCall' ? last.isComplete : undefined;
+}
 
 export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isSpeaking, onLongPress, onOpenArtifact, highlighted, bookmarked }: Props) {
   const { ds, colors } = useDesignSystem();
@@ -220,8 +227,7 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.isSpeaking === nextProps.isSpeaking &&
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
     prevProps.message.segments?.length === nextProps.message.segments?.length &&
-    prevProps.message.segments?.[prevProps.message.segments.length - 1]?.isComplete ===
-      nextProps.message.segments?.[nextProps.message.segments.length - 1]?.isComplete &&
+    getLastSegmentComplete(prevProps.message.segments) === getLastSegmentComplete(nextProps.message.segments) &&
     prevProps.highlighted === nextProps.highlighted &&
     prevProps.bookmarked === nextProps.bookmarked &&
     prevProps.message.serverId === nextProps.message.serverId &&

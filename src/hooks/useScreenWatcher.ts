@@ -87,8 +87,10 @@ export function useScreenWatcher() {
 
   // Latest assistant message
   const latestAssistantMessage = useMemo(() => {
-    const reversed = [...chatMessages].reverse();
-    return reversed.find((m) => m.role === 'assistant');
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      if (chatMessages[i].role === 'assistant') return chatMessages[i];
+    }
+    return undefined;
   }, [chatMessages]);
 
   // ── Animations ──
