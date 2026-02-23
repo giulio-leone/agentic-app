@@ -210,7 +210,7 @@ export function SessionDetailScreen() {
   const handleCloseConsensusSheet = useCallback(() => setConsensusSheetVisible(false), []);
   const handleCloseModelPicker = useCallback(() => setModelPickerVisible(false), []);
 
-  const { handleSpeak, isSpeakingMessage } = useChatSpeech();
+  const { handleSpeak, isSpeakingMessage, speakingMessageId } = useChatSpeech();
 
   // ── STT ──
   const onTranscript = useCallback((text: string) => setPromptText(text), [setPromptText]);
@@ -293,8 +293,8 @@ export function SessionDetailScreen() {
 
   // Stable extraData to minimize full FlatList re-renders
   const extraData = useMemo(
-    () => ({ isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds }),
-    [isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds],
+    () => ({ isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds, speakingMessageId }),
+    [isStreaming, editingMessageId, searchMatchSet, bookmarkedMessageIds, speakingMessageId],
   );
 
   const renderEmpty = useCallback(
