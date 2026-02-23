@@ -23,6 +23,7 @@ import { ALL_PROVIDERS } from '../ai/providers';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { useAddServerForm } from '../hooks/useAddServerForm';
+import { sharedStyles } from '../utils/sharedStyles';
 
 export const AddServerScreen = React.memo(function AddServerScreen() {
   const { colors } = useDesignSystem();
@@ -38,7 +39,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        style={{ flex: 1 }}
+        style={sharedStyles.flex1}
         contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.lg, paddingBottom: Math.max(insets.bottom, Spacing.lg) + Spacing.lg }}
         keyboardShouldPersistTaps="handled"
       >

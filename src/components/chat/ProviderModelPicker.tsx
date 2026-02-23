@@ -318,7 +318,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
               </YStack>
             }
             showsVerticalScrollIndicator
-            style={{ flex: 1 }}
+            style={sharedStyles.flex1}
             contentContainerStyle={sharedStyles.listContentPadBottom40}
             removeClippedSubviews
           />

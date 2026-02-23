@@ -27,6 +27,7 @@ import { MCPServerRow } from './settings/MCPServerRow';
 import { AddMCPServerForm } from './settings/AddMCPServerForm';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import type { Artifact } from '../acp/models/types';
+import { sharedStyles } from '../utils/sharedStyles';
 
 const TEST_ARTIFACTS: Artifact[] = [
   {
@@ -250,7 +251,7 @@ export function SettingsScreen() {
         </Text>
         <XStack alignItems="center" gap={Spacing.sm}>
           <Text fontSize={11} color="$textTertiary">A</Text>
-          <View style={{ flex: 1 }}>
+          <View style={sharedStyles.flex1}>
             <Slider
               minimumValue={0.8}
               maximumValue={1.4}

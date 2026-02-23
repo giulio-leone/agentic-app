@@ -24,7 +24,7 @@ import { SessionSummary, ServerType, ACPServerConfiguration, ACPConnectionState 
 import { useDesignSystem } from '../../utils/designSystem';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
-import { HIT_SLOP_8 } from '../../utils/sharedStyles';
+import { HIT_SLOP_8, sharedStyles } from '../../utils/sharedStyles';
 import { getProviderInfo } from '../../ai/providers';
 import { useDrawerState } from '../../hooks/useDrawerState';
 import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
@@ -32,8 +32,8 @@ import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
 interface ServerChipProps {
   server: ACPServerConfiguration;
   isSelected: boolean;
-  onPress: () => void;
-  onLongPress: () => void;
+  onPressServer: (id: string) => void;
+  onLongPressServer: (server: ACPServerConfiguration) => void;
   colors: ThemeColors;
   connectionState: ACPConnectionState;
   isInitialized: boolean;
@@ -42,12 +42,14 @@ interface ServerChipProps {
 const ServerChip = React.memo(function ServerChip({
   server,
   isSelected,
-  onPress,
-  onLongPress,
+  onPressServer,
+  onLongPressServer,
   colors,
   connectionState,
   isInitialized,
 }: ServerChipProps) {
+  const handlePress = useCallback(() => onPressServer(server.id), [onPressServer, server.id]);
+  const handleLongPress = useCallback(() => onLongPressServer(server), [onLongPressServer, server]);
   const isAIProvider = server.serverType === ServerType.AIProvider;
   let ProviderIcon: React.ComponentType<{ size?: number; color?: string; style?: object }> | null = null;
   if (isAIProvider && server.aiProviderConfig?.providerType) {
@@ -66,8 +68,8 @@ const ServerChip = React.memo(function ServerChip({
   return (
     <TouchableOpacity
       style={chipStyle}
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
       activeOpacity={0.7}
       accessibilityLabel={`Server: ${server.name || server.host}`}
       accessibilityRole="button"
@@ -261,8 +263,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
                 key={server.id}
                 server={server}
                 isSelected={server.id === w.selectedServerId}
-                onPress={() => w.handleServerPress(server.id)}
-                onLongPress={() => w.handleServerLongPress(server)}
+                onPressServer={w.handleServerPress}
+                onLongPressServer={w.handleServerLongPress}
                 colors={colors}
                 connectionState={w.connectionState}
                 isInitialized={w.isInitialized}
@@ -444,7 +446,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           <RefreshControl refreshing={false} onRefresh={w.loadSessions} tintColor={colors.sidebarText} />
         }
         showsVerticalScrollIndicator={false}
-        style={{ flex: 1 }}
+        style={sharedStyles.flex1}
         maxToRenderPerBatch={15}
         updateCellsBatchingPeriod={50}
         getItemLayout={ITEM_LAYOUT_60}

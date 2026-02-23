@@ -73,6 +73,14 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
     [onSuggestion],
   );
 
+  const chipStyles = useMemo(
+    () => chipAnims.map(anim => ({
+      opacity: anim,
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+    })),
+    [], // chipAnims is from useRef, stable
+  );
+
   return (
     <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
       <YStack alignItems="center" gap={Spacing.md} paddingHorizontal={Spacing.xxl}>
@@ -95,7 +103,7 @@ export const ChatEmptyState = React.memo(function ChatEmptyState({
         {isConnected && (
           <YStack gap={Spacing.xs} marginTop={Spacing.md} width="100%" maxWidth={320}>
             {SUGGESTION_CHIPS.map((chip, i) => (
-              <Animated.View key={chip.text} style={{ opacity: chipAnims[i], transform: [{ translateY: chipAnims[i].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
+              <Animated.View key={chip.text} style={chipStyles[i]}>
                 <Pressable
                   onPress={pressHandlers[i]}
                   style={({ pressed }) => ({

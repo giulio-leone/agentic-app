@@ -26,6 +26,7 @@ import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
 import { ITEM_LAYOUT_60, keyExtractorById } from '../utils/listUtils';
+import { sharedStyles } from '../utils/sharedStyles';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -246,7 +247,7 @@ export function HomeScreen() {
               refreshControl={
                 <RefreshControl refreshing={false} onRefresh={loadSessions} />
               }
-              style={{ flex: 1 }}
+              style={sharedStyles.flex1}
               getItemLayout={ITEM_LAYOUT_60}
               removeClippedSubviews
             />

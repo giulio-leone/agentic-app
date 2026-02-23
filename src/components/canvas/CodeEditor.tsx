@@ -13,6 +13,7 @@ import { CodeBlock } from '../CodeBlock';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   content: string;
@@ -75,7 +76,7 @@ export const CodeEditor = React.memo(function CodeEditor({ content, language, co
 
       {/* Content */}
       {isEditing ? (
-        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView style={sharedStyles.flex1} keyboardShouldPersistTaps="handled">
           <TextInput
             ref={inputRef}
             value={editText}
@@ -96,7 +97,7 @@ export const CodeEditor = React.memo(function CodeEditor({ content, language, co
           />
         </ScrollView>
       ) : (
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={sharedStyles.flex1}>
           <CodeBlock code={content} language={language} />
         </ScrollView>
       )}

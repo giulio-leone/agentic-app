@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { getServerColor } from '../../utils/serverColors';
 import type { ACPServerConfiguration } from '../../acp/models/types';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface ToolbarAction {
   id: string;
@@ -186,7 +187,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
           style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30`, flex: 1 }]}
         >
           {providerIcon ?? null}
-          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
+          <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={sharedStyles.flex1}>
             {currentModelLabel || 'Select model'}
           </Text>
           <Text fontSize={10} color={colors.primary} style={{ opacity: 0.6 }}>▾</Text>

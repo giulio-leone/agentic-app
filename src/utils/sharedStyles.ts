@@ -10,6 +10,7 @@ import { StyleSheet } from 'react-native';
 import { Spacing, Radius } from './theme';
 
 export const sharedStyles = StyleSheet.create({
+  flex1: { flex: 1 },
   formInput: {
     borderRadius: Radius.md,
     borderWidth: StyleSheet.hairlineWidth,

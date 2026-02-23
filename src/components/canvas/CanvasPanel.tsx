@@ -29,6 +29,7 @@ import { MermaidRenderer } from './MermaidRenderer';
 import { CodeEditor } from './CodeEditor';
 import { ImageRenderer } from './ImageRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   visible: boolean;
@@ -159,7 +160,7 @@ export const CanvasPanel = React.memo(function CanvasPanel({ visible, artifact, 
                 onContentChange={onUpdateContent ? handleContentChange : undefined}
               />
             ) : artifact.type === 'csv' ? (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.md }}>
+              <ScrollView style={sharedStyles.flex1} contentContainerStyle={{ padding: Spacing.md }}>
                 <CsvTable content={artifact.content} colors={colors} />
               </ScrollView>
             ) : (
