@@ -154,10 +154,11 @@ export function useScreenWatcher() {
   useEffect(() => {
     if (!hasAutoStarted.current && autoStartVisionDetect && !isWatching) {
       hasAutoStarted.current = true;
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setScreenWatcherVisible(true);
         handleToggle();
       }, 500);
+      return () => clearTimeout(timer);
     }
   }, [autoStartVisionDetect, isWatching, setScreenWatcherVisible, handleToggle]);
 
