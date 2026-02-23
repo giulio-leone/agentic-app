@@ -17,7 +17,6 @@ import { YStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
-import { ModelPickerBar } from '../components/ModelPickerBar';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { SkeletonMessage } from '../components/chat/SkeletonMessage';
 import { MessageActionMenu } from '../components/chat/MessageActionMenu';
@@ -362,10 +361,6 @@ export function SessionDetailScreen() {
                   : `Stopped: ${stopReason}`}
           </Text>
         </YStack>
-      )}
-
-      {isAIProvider && selectedServer && (
-        <ModelPickerBar server={selectedServer} />
       )}
 
       {quotedMessage && (
