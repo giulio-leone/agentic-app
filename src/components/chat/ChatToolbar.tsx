@@ -1,6 +1,7 @@
 /**
  * ChatToolbar — compact horizontal action bar above the composer.
- * Consolidates: server selector, templates, A/B testing, voice, search, export.
+ * Consolidates all chat actions: server, templates, A/B, voice, search,
+ * export, terminal, screen watcher, agent mode, consensus.
  */
 
 import React, { useCallback, useRef } from 'react';
@@ -12,6 +13,10 @@ import {
   Mic,
   Search,
   Share2,
+  Terminal as TerminalIcon,
+  Eye,
+  Bot,
+  Scale,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
@@ -25,6 +30,7 @@ interface ToolbarAction {
   active?: boolean;
   disabled?: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
 }
 
 interface Props {
@@ -33,7 +39,7 @@ interface Props {
   servers: ACPServerConfiguration[];
   selectedServerId: string | null;
   onSelectServer: (id: string) => void;
-  /** Actions */
+  /** Chat actions */
   onOpenTemplates: () => void;
   onToggleAB: () => void;
   abActive: boolean;
@@ -43,6 +49,16 @@ interface Props {
   searchActive: boolean;
   onExport: () => void;
   hasMessages: boolean;
+  /** Feature toggles (moved from header) */
+  onOpenTerminal: () => void;
+  terminalActive: boolean;
+  onOpenScreenWatcher: () => void;
+  screenWatcherActive: boolean;
+  onToggleAgent: () => void;
+  agentActive: boolean;
+  onToggleConsensus: () => void;
+  onConsensusLongPress: () => void;
+  consensusActive: boolean;
 }
 
 const ICON_SIZE = 16;
@@ -61,11 +77,21 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   searchActive,
   onExport,
   hasMessages,
+  onOpenTerminal,
+  terminalActive,
+  onOpenScreenWatcher,
+  screenWatcherActive,
+  onToggleAgent,
+  agentActive,
+  onToggleConsensus,
+  onConsensusLongPress,
+  consensusActive,
 }: Props) {
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const serverAccent = selectedServerId ? getServerColor(selectedServerId) : colors.primary;
 
   const actions: ToolbarAction[] = [
+    // ── Chat actions ──
     {
       id: 'templates',
       icon: <PenLine size={ICON_SIZE} color={colors.textSecondary} />,
@@ -102,6 +128,36 @@ export const ChatToolbar = React.memo(function ChatToolbar({
       disabled: !hasMessages,
       onPress: onExport,
     },
+    // ── Feature toggles (from header) ──
+    {
+      id: 'terminal',
+      icon: <TerminalIcon size={ICON_SIZE} color={terminalActive ? colors.primary : colors.textSecondary} />,
+      label: 'Term',
+      active: terminalActive,
+      onPress: onOpenTerminal,
+    },
+    {
+      id: 'watcher',
+      icon: <Eye size={ICON_SIZE} color={screenWatcherActive ? colors.destructive || '#EF4444' : colors.textSecondary} />,
+      label: 'Watch',
+      active: screenWatcherActive,
+      onPress: onOpenScreenWatcher,
+    },
+    {
+      id: 'agent',
+      icon: <Bot size={ICON_SIZE} color={agentActive ? colors.primary : colors.textSecondary} />,
+      label: 'Agent',
+      active: agentActive,
+      onPress: onToggleAgent,
+    },
+    {
+      id: 'consensus',
+      icon: <Scale size={ICON_SIZE} color={consensusActive ? colors.primary : colors.textSecondary} />,
+      label: 'Consensus',
+      active: consensusActive,
+      onPress: onToggleConsensus,
+      onLongPress: onConsensusLongPress,
+    },
   ];
 
   return (
@@ -135,7 +191,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
         {actions.map((action, i) => (
           <React.Fragment key={action.id}>
             <ToolbarButton action={action} colors={colors} />
-            {i < actions.length - 1 && action.id === 'ab' && (
+            {(action.id === 'ab' || action.id === 'export') && i < actions.length - 1 && (
               <Separator color={colors.separator} />
             )}
           </React.Fragment>
@@ -189,6 +245,8 @@ const ToolbarButton = React.memo(function ToolbarButton({
     <Animated.View style={{ transform: [{ scale }] }}>
       <TouchableOpacity
         onPress={handlePress}
+        onLongPress={action.onLongPress}
+        delayLongPress={400}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={action.disabled}

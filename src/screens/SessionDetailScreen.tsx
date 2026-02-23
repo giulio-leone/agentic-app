@@ -34,6 +34,7 @@ import { ChatEmptyState } from '../components/chat/ChatEmptyState';
 import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
 import { InlineEditView } from '../components/chat/InlineEditView';
 import { QuotedMessageBar } from '../components/chat/QuotedMessageBar';
+import { ConsensusConfigSheet } from '../components/ConsensusConfigSheet';
 import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing } from '../utils/theme';
@@ -49,6 +50,7 @@ import {
   useBookmarkedMessageIds,
   useSessionActions, useChatActions, useServerActions,
 } from '../stores/selectors';
+import { useAppStore } from '../stores/appStore';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -73,6 +75,17 @@ export function SessionDetailScreen() {
   const { sendPrompt, cancelPrompt, setPromptText, loadSessionMessages } = useSessionActions();
   const { editMessage, deleteMessage, regenerateMessage, toggleBookmark, loadBookmarks, toggleChatSearch } = useChatActions();
   const { selectServer, connect } = useServerActions();
+
+  // Feature toggles (moved from header to toolbar)
+  const agentModeEnabled = useAppStore(s => s.agentModeEnabled);
+  const toggleAgentMode = useAppStore(s => s.toggleAgentMode);
+  const consensusModeEnabled = useAppStore(s => s.consensusModeEnabled);
+  const toggleConsensusMode = useAppStore(s => s.toggleConsensusMode);
+  const isWatching = useAppStore(s => s.isWatching);
+  const setScreenWatcherVisible = useAppStore(s => s.setScreenWatcherVisible);
+  const terminalVisible = useAppStore(s => s.terminalVisible);
+  const setTerminalVisible = useAppStore(s => s.setTerminalVisible);
+  const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
@@ -359,6 +372,15 @@ export function SessionDetailScreen() {
         searchActive={chatSearchVisible}
         onExport={handleExportChat}
         hasMessages={chatMessages.length > 0}
+        onOpenTerminal={() => setTerminalVisible(true)}
+        terminalActive={terminalVisible}
+        onOpenScreenWatcher={() => setScreenWatcherVisible(true)}
+        screenWatcherActive={isWatching}
+        onToggleAgent={toggleAgentMode}
+        agentActive={agentModeEnabled}
+        onToggleConsensus={toggleConsensusMode}
+        onConsensusLongPress={() => setConsensusSheetVisible(true)}
+        consensusActive={consensusModeEnabled}
       />
 
       <View style={{ position: 'relative' }}>
@@ -426,6 +448,11 @@ export function SessionDetailScreen() {
           />
         </Modal>
       )}
+
+      <ConsensusConfigSheet
+        visible={consensusSheetVisible}
+        onClose={() => setConsensusSheetVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

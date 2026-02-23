@@ -19,7 +19,6 @@ import { HeaderActions } from './components/navigation/HeaderActions';
 const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').then(m => ({ default: m.AddServerScreen })));
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
-import { ConsensusConfigSheet } from './components/ConsensusConfigSheet';
 import { TerminalPanel } from './components/TerminalPanel';
 import { ACPServerConfiguration } from './acp/models/types';
 import { useDesignSystem, layout } from './utils/designSystem';
@@ -90,9 +89,7 @@ function GlassHeader({ children, tint }: { children: React.ReactNode; tint: 'lig
 function DrawerNavigator() {
   const { colors, dark } = useDesignSystem();
   const { width } = useWindowDimensions();
-  const { createSession, isInitialized, agentModeEnabled, toggleAgentMode, consensusModeEnabled, toggleConsensusMode } = useAppStore();
-  const { screenWatcherVisible, setScreenWatcherVisible, isWatching, toggleChatSearch, terminalVisible, setTerminalVisible } = useAppStore();
-  const [consensusSheetVisible, setConsensusSheetVisible] = useState(false);
+  const { createSession, isInitialized } = useAppStore();
 
   return (
     <>
@@ -142,17 +139,7 @@ function DrawerNavigator() {
               <HeaderActions
                 colors={colors}
                 isInitialized={isInitialized}
-                agentModeEnabled={agentModeEnabled}
-                consensusModeEnabled={consensusModeEnabled}
-                isWatching={isWatching}
-                terminalVisible={terminalVisible}
-                toggleChatSearch={toggleChatSearch}
-                toggleAgentMode={toggleAgentMode}
-                toggleConsensusMode={toggleConsensusMode}
-                onConsensusLongPress={() => setConsensusSheetVisible(true)}
                 onCreateSession={() => { if (isInitialized) createSession(); }}
-                onOpenScreenWatcher={() => setScreenWatcherVisible(true)}
-                onOpenTerminal={() => setTerminalVisible(true)}
               />
             ),
           })}
@@ -160,10 +147,6 @@ function DrawerNavigator() {
       </Drawer.Navigator>
       <ScreenWatcherPanel />
       <TerminalPanel />
-      <ConsensusConfigSheet
-        visible={consensusSheetVisible}
-        onClose={() => setConsensusSheetVisible(false)}
-      />
     </>
   );
 }
