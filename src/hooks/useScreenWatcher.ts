@@ -5,7 +5,7 @@
 
 import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
-import { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, cancelAnimation } from 'react-native-reanimated';
 import { v4 as uuidv4 } from 'uuid';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
@@ -102,8 +102,10 @@ export function useScreenWatcher() {
         -1, true,
       );
     } else {
+      cancelAnimation(pulse);
       pulse.value = 1;
     }
+    return () => cancelAnimation(pulse);
   }, [isWatching, pulse]);
 
   const pulseStyle = useAnimatedStyle(() => ({

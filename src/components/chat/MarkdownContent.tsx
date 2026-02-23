@@ -34,6 +34,10 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
 
   // Extract image URLs from markdown ![alt](url) patterns
   const parts = useMemo(() => {
+    // Short-circuit: skip regex if no image syntax present
+    if (!content.includes('![')) {
+      return [{ type: 'text' as const, text: content }];
+    }
     const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     const result: Array<{ type: 'text'; text: string } | { type: 'image'; url: string; alt: string }> = [];
     let lastIndex = 0;
