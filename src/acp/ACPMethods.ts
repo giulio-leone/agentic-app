@@ -17,4 +17,6 @@ export const ACPMethods = {
   terminalInput: 'terminal/input',
   terminalResize: 'terminal/resize',
   terminalClose: 'terminal/close',
+  // Filesystem
+  fsList: 'fs/list',
 } as const;

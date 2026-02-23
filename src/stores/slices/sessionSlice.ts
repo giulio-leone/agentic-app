@@ -89,7 +89,9 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     try {
       get().appendLog('→ session/new');
       const response = await _service.createSession({
-        cwd: cwd || server.workingDirectory,
+        cwd: get().selectedCwd || cwd || server.workingDirectory,
+        model: get().selectedBridgeModel ?? undefined,
+        reasoningEffort: get().selectedReasoningEffort ?? undefined,
       });
       const result = response.result as Record<string, JSONValue> | undefined;
       const sessionId = (result?.id as string) ?? (result?.sessionId as string);

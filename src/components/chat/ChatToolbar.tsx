@@ -17,6 +17,7 @@ import {
   Eye,
   Bot,
   Scale,
+  FolderOpen,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
@@ -41,7 +42,10 @@ interface Props {
   onSelectServer: (id: string) => void;
   onOpenTemplates: () => void;
   onOpenModelPicker: () => void;
+  onLongPressModelPicker?: () => void;
+  onOpenDirectoryPicker?: () => void;
   currentModelLabel: string;
+  currentCwdLabel?: string | null;
   providerIcon: React.ReactNode;
   onToggleAB: () => void;
   abActive: boolean;
@@ -71,7 +75,10 @@ export const ChatToolbar = React.memo(function ChatToolbar({
   onSelectServer,
   onOpenTemplates,
   onOpenModelPicker,
+  onLongPressModelPicker,
+  onOpenDirectoryPicker,
   currentModelLabel,
+  currentCwdLabel,
   providerIcon,
   onToggleAB,
   abActive,
@@ -173,18 +180,13 @@ export const ChatToolbar = React.memo(function ChatToolbar({
       borderTopColor={colors.separator}
     >
       {/* Row 1 — Model + Server */}
-      <XStack
-        alignItems="center"
-        paddingHorizontal={Spacing.sm}
-        paddingTop={6}
-        paddingBottom={4}
-        gap={Spacing.sm}
-      >
+      <View style={styles.chipRow}>
         {/* Model chip — hero element, flex takes remaining space */}
         <TouchableOpacity
           onPress={onOpenModelPicker}
+          onLongPress={onLongPressModelPicker}
           activeOpacity={0.7}
-          style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30`, flex: 1 }]}
+          style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30`, flex: 1, flexShrink: 1 }]}
         >
           {providerIcon ?? null}
           <Text fontSize={14} fontWeight="500" color={colors.primary} numberOfLines={1} ellipsizeMode="tail" style={sharedStyles.flex1}>
@@ -192,6 +194,21 @@ export const ChatToolbar = React.memo(function ChatToolbar({
           </Text>
           <Text fontSize={10} color={colors.primary} style={{ opacity: 0.6 }}>▾</Text>
         </TouchableOpacity>
+
+        {/* Directory chip — visible when bridge connected */}
+        {onOpenDirectoryPicker && (
+          <TouchableOpacity
+            onPress={() => { console.warn('[DIR] Chip tapped'); onOpenDirectoryPicker(); }}
+            activeOpacity={0.7}
+            hitSlop={8}
+            style={[styles.modelChip, { backgroundColor: `${colors.textTertiary}10`, borderColor: `${colors.textTertiary}30`, minWidth: 80 }]}
+          >
+            <FolderOpen size={14} color={colors.textSecondary} />
+            <Text fontSize={13} fontWeight="500" color={colors.textSecondary} numberOfLines={1}>
+              {currentCwdLabel || 'Set dir'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Server chip — right side, does not shrink */}
         {servers.length >= 2 && (
@@ -203,7 +220,7 @@ export const ChatToolbar = React.memo(function ChatToolbar({
             onSelect={onSelectServer}
           />
         )}
-      </XStack>
+      </View>
 
       {/* Row 2 — Action icons */}
       <ScrollView
@@ -324,6 +341,14 @@ const ServerChip = React.memo(function ServerChip({
 });
 
 const styles = StyleSheet.create({
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingTop: 6,
+    paddingBottom: 4,
+    gap: Spacing.sm,
+  },
   scrollContent: {
     flexDirection: 'row',
     alignItems: 'center',

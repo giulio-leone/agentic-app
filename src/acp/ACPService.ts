@@ -156,6 +156,12 @@ export class ACPService {
     return this.sendRequest(ACPMethods.terminalClose, { id } as JSONValue);
   }
 
+  // ── Filesystem methods ──
+
+  async fsList(path?: string): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.fsList, (path ? { path } : {}) as JSONValue);
+  }
+
   sendRawMessage(message: ACPWireMessage): void {
     this.transport.send(message);
   }

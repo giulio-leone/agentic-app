@@ -71,7 +71,7 @@ export class BridgeManager extends EventEmitter {
     if (config.cwd) args.push('--cwd', config.cwd);
     if (!config.copilot) args.push('--no-copilot');
     if (config.codex) args.push('--codex');
-    if (config.model) args.push('--model', config.model);
+    if (config.model) args.push('--model', config.model.trim());
     if (config.reasoningEffort) args.push('--reasoning-effort', config.reasoningEffort);
     if (config.codexModel) args.push('--codex-model', config.codexModel);
     if (config.codexPath) args.push('--codex-path', config.codexPath);

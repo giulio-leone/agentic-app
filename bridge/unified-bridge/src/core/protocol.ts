@@ -9,6 +9,9 @@
  */
 
 import type { Socket } from 'net';
+import { readdir, stat } from 'fs/promises';
+import { join } from 'path';
+import { homedir } from 'os';
 import type {
   JSONRPCRequest,
   AgentProfile,
@@ -55,6 +58,7 @@ export function createProtocolHandler(
 
   async function handle(msg: JSONRPCRequest): Promise<void> {
     const { method, id, params } = msg;
+    console.log(`[protocol] ← ${method} (id=${id})`);
 
     try {
       switch (method) {
@@ -107,6 +111,11 @@ export function createProtocolHandler(
           handleTerminalClose(id, params ?? {});
           break;
 
+        // ── Filesystem methods ──
+        case 'fs/list':
+          await handleFsList(id, params ?? {});
+          break;
+
         default:
           sendError(socket, id, -32601, `Method not found: ${method}`);
       }
@@ -147,7 +156,14 @@ export function createProtocolHandler(
       providers: providerNames,
     };
 
-    sendResponse(socket, id, { agentInfo: profile });
+    sendResponse(socket, id, {
+      serverInfo: { name: profile.name, version: profile.version },
+      capabilities: profile.capabilities,
+      modes: profile.modes,
+      models: allModels,
+      providers: providerNames,
+      reasoningEffortLevels: ['low', 'medium', 'high', 'xhigh'],
+    });
   }
 
   async function handleModelsList(id: string | number): Promise<void> {
@@ -192,9 +208,10 @@ export function createProtocolHandler(
 
     // CopilotProvider needs socket reference for tools
     const isCopilot = provider.id === 'copilot';
+    const reasoningEffort = params?.reasoningEffort as string | undefined;
     const session = isCopilot
       ? await (provider as CopilotProvider).createSession(
-          { model: requestedModel, cwd: params?.cwd as string },
+          { model: requestedModel, cwd: params?.cwd as string, reasoningEffort },
           socket
         )
       : await provider.createSession({
@@ -395,6 +412,33 @@ export function createProtocolHandler(
     };
     terminalManager.on('data', onData);
     terminalManager.on('exit', onExit);
+  }
+
+  // ── Filesystem handlers ──
+
+  async function handleFsList(id: string | number, params: Record<string, unknown>): Promise<void> {
+    const targetPath = (params.path as string) || homedir();
+    try {
+      const entries = await readdir(targetPath);
+      const results: Array<{ name: string; path: string; isDirectory: boolean }> = [];
+      for (const name of entries) {
+        if (name.startsWith('.')) continue; // skip hidden
+        try {
+          const fullPath = join(targetPath, name);
+          const s = await stat(fullPath);
+          results.push({ name, path: fullPath, isDirectory: s.isDirectory() });
+        } catch { /* skip inaccessible */ }
+      }
+      // Sort: directories first, then alphabetical
+      results.sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      sendResponse(socket, id, { path: targetPath, entries: results });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      sendError(socket, id, -32000, `fs/list failed: ${message}`);
+    }
   }
 
   return { handle, cleanup };

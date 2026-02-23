@@ -33,7 +33,20 @@ export class CopilotSessionManager {
       ...(workingDirectory ? { workingDirectory } : {}),
       ...(reasoningEffort ? { reasoningEffort } : {}),
     };
-    const session = await client.createSession(sessionOpts as Parameters<CopilotClient['createSession']>[0]);
+
+    let session: CopilotSession;
+    try {
+      session = await client.createSession(sessionOpts as Parameters<CopilotClient['createSession']>[0]);
+    } catch (err) {
+      // Retry without reasoning effort if model doesn't support it
+      if (reasoningEffort && String(err).includes('reasoning effort')) {
+        console.log(`[copilot] Model ${model} doesn't support reasoning effort, retrying without`);
+        delete sessionOpts.reasoningEffort;
+        session = await client.createSession(sessionOpts as Parameters<CopilotClient['createSession']>[0]);
+      } else {
+        throw err;
+      }
+    }
 
     this.sessions.set(sessionId, {
       session,
