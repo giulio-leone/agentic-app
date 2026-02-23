@@ -32,4 +32,9 @@ export const sharedStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.md,
   },
+  separatorCard: {
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+  },
 });

@@ -11,6 +11,7 @@ import { StyleSheet } from 'react-native';
 import type { MessageSegment } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { sharedStyles } from '../../utils/sharedStyles';
 import { codeBlockRules } from './codeBlockRules';
 
 const segStyles = StyleSheet.create({
@@ -44,7 +45,7 @@ export const SegmentView = React.memo(function SegmentView({ segment, colors, is
       const showCount = total > 1;
       return (
         <TouchableOpacity
-          style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, marginVertical: 4, borderColor: colors.separator }}
+          style={[sharedStyles.separatorCard, { marginVertical: 4, borderColor: colors.separator }]}
           onPress={() => setExpanded(!expanded)}
           activeOpacity={0.7}
         >

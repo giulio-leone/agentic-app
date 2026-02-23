@@ -8,6 +8,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import { Brain } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 interface Props {
   reasoning: string;
@@ -22,7 +23,7 @@ export const ReasoningView = React.memo(function ReasoningView({ reasoning, colo
 
   return (
     <TouchableOpacity
-      style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, marginBottom: Spacing.xs, borderColor: colors.separator, backgroundColor: colors.codeBackground }}
+      style={[sharedStyles.separatorCard, { marginBottom: Spacing.xs, borderColor: colors.separator, backgroundColor: colors.codeBackground }]}
       onPress={() => setExpanded(!expanded)}
       activeOpacity={0.7}
     >

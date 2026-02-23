@@ -10,6 +10,7 @@ import { Code, Globe, Palette, BarChart3, Table, FileText, Image, Paperclip, typ
 import type { Artifact, ArtifactType } from '../../acp/models/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
+import { sharedStyles } from '../../utils/sharedStyles';
 
 const ARTIFACT_ICONS: Record<ArtifactType, LucideIcon> = {
   code: Code,
@@ -40,7 +41,7 @@ export const ArtifactCard = React.memo(function ArtifactCard({
 
   return (
     <TouchableOpacity
-      style={{ borderWidth: 1, borderRadius: Radius.sm, padding: Spacing.sm, overflow: 'hidden', borderColor: colors.separator, backgroundColor: colors.codeBackground }}
+      style={[sharedStyles.separatorCard, { overflow: 'hidden', borderColor: colors.separator, backgroundColor: colors.codeBackground }]}
       onPress={handleToggle}
       activeOpacity={0.7}
     >

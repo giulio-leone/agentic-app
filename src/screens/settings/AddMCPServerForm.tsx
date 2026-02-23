@@ -2,7 +2,7 @@
  * AddMCPServerForm — form to add a new MCP server with auth configuration.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TouchableOpacity,
   TextInput,
@@ -61,7 +61,7 @@ export function AddMCPServerForm({ colors, onAdd, onCancel }: AddMCPServerFormPr
     }
   };
 
-  const inputStyle = {
+  const inputStyle = useMemo(() => ({
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 8,
     paddingHorizontal: Spacing.md,
@@ -70,7 +70,7 @@ export function AddMCPServerForm({ colors, onAdd, onCancel }: AddMCPServerFormPr
     color: colors.text,
     borderColor: colors.separator,
     backgroundColor: colors.systemGray6,
-  };
+  }), [colors.text, colors.separator, colors.systemGray6]);
 
   return (
     <YStack borderWidth={StyleSheet.hairlineWidth} borderColor="$separator" borderRadius={Radius.sm} padding={Spacing.md} gap={Spacing.sm}>
