@@ -189,26 +189,17 @@ export const ChatToolbar = React.memo(function ChatToolbar({
         </>
       )}
 
-      {/* Provider•Model chip */}
+      {/* Model chip — prominent, tappable */}
       <TouchableOpacity
         onPress={onOpenModelPicker}
         activeOpacity={0.7}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderRadius: 12,
-          paddingHorizontal: 8,
-          paddingVertical: 4,
-          backgroundColor: colors.codeBackground,
-          maxWidth: 180,
-          gap: 3,
-        }}
+        style={[styles.modelChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}
       >
         {providerIcon ? providerIcon : null}
-        <Text fontSize={11} fontWeight="600" color={colors.text} numberOfLines={1} style={{ flexShrink: 1 }}>
-          {currentModelLabel || 'Model'}
+        <Text fontSize={13} fontWeight="500" color={colors.primary} numberOfLines={1} style={{ flexShrink: 1 }}>
+          {currentModelLabel || 'Select model'}
         </Text>
-        <Text fontSize={9} color={colors.textTertiary}>▾</Text>
+        <Text fontSize={10} color={colors.primary} style={{ opacity: 0.6 }}>▾</Text>
       </TouchableOpacity>
       <Separator color={colors.separator} />
 
@@ -358,6 +349,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     paddingRight: 4,
+  },
+  modelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: 200,
+    gap: 4,
+    borderWidth: 1,
   },
   button: {
     flexDirection: 'row',
