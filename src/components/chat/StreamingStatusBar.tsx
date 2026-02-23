@@ -57,12 +57,12 @@ export const StreamingStatusBar = React.memo(function StreamingStatusBar({
     return () => spin.stop();
   }, [visible, spinAnim]);
 
-  if (!visible) return null;
-
   const rotate = useMemo(
     () => spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
     [spinAnim],
   );
+
+  if (!visible) return null;
 
   return (
     <Animated.View style={{ opacity: fadeAnim }}>

@@ -26,21 +26,25 @@ export function useScrollToBottom({ chatMessages, isStreaming }: UseScrollToBott
   const [unreadCount, setUnreadCount] = useState(0);
   const fabOpacity = useRef(new Animated.Value(0)).current;
 
+  const showFabRef = useRef(false);
+
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
       const nearBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
       isNearBottom.current = nearBottom;
       if (nearBottom) {
+        showFabRef.current = false;
         setShowFab(false);
         setUnreadCount(0);
         Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
-      } else if (!showFab && chatMessages.length > 0) {
+      } else if (!showFabRef.current && chatMessages.length > 0) {
+        showFabRef.current = true;
         setShowFab(true);
         Animated.timing(fabOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       }
     },
-    [showFab, chatMessages.length, fabOpacity],
+    [chatMessages.length, fabOpacity],
   );
 
   // Auto-scroll on new messages when near bottom
@@ -73,6 +77,7 @@ export function useScrollToBottom({ chatMessages, isStreaming }: UseScrollToBott
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
     isNearBottom.current = true;
+    showFabRef.current = false;
     setShowFab(false);
     setUnreadCount(0);
     Animated.timing(fabOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();

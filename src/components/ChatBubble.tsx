@@ -220,6 +220,8 @@ export const ChatBubble = React.memo(function ChatBubble({ message, onSpeak, isS
     prevProps.isSpeaking === nextProps.isSpeaking &&
     prevProps.message.attachments?.length === nextProps.message.attachments?.length &&
     prevProps.message.segments?.length === nextProps.message.segments?.length &&
+    prevProps.message.segments?.[prevProps.message.segments.length - 1]?.isComplete ===
+      nextProps.message.segments?.[nextProps.message.segments.length - 1]?.isComplete &&
     prevProps.highlighted === nextProps.highlighted &&
     prevProps.bookmarked === nextProps.bookmarked &&
     prevProps.message.serverId === nextProps.message.serverId &&
