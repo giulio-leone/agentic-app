@@ -11,11 +11,9 @@ import {
   StyleSheet,
   RefreshControl,
   View,
-  TouchableOpacity,
   Modal,
 } from 'react-native';
-import { YStack, XStack, Text } from 'tamagui';
-import { PenLine, GitCompareArrows } from 'lucide-react-native';
+import { YStack, Text } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
@@ -26,7 +24,7 @@ import { MessageActionMenu } from '../components/chat/MessageActionMenu';
 import { ScrollToBottomFab } from '../components/chat/ScrollToBottomFab';
 import { SwipeableMessage } from '../components/chat/SwipeableMessage';
 import { ChatSearchBar } from '../components/chat/ChatSearchBar';
-import { ServerChipSelector } from '../components/chat/ServerChipSelector';
+import { ChatToolbar } from '../components/chat/ChatToolbar';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import { TemplatePickerSheet } from '../components/chat/TemplatePickerSheet';
 import { ABModelPicker } from '../components/chat/ABModelPicker';
@@ -344,11 +342,23 @@ export function SessionDetailScreen() {
         <QuotedMessageBar message={quotedMessage} onClear={clearQuote} colors={colors} />
       )}
 
-      <ServerChipSelector
-        servers={servers}
-        selectedId={selectedServerId}
-        onSelect={selectServer}
+      <ChatToolbar
         colors={colors}
+        servers={servers}
+        selectedServerId={selectedServerId}
+        onSelectServer={selectServer}
+        onOpenTemplates={openTemplates}
+        onToggleAB={() => {
+          if (abState.active) { clearTest(); }
+          else { setAbPickerVisible(true); }
+        }}
+        abActive={abState.active}
+        onToggleVoice={voiceAvailable ? toggleVoice : undefined}
+        isListening={isListening}
+        onToggleSearch={toggleChatSearch}
+        searchActive={chatSearchVisible}
+        onExport={handleExportChat}
+        hasMessages={chatMessages.length > 0}
       />
 
       <View style={{ position: 'relative' }}>
@@ -360,41 +370,16 @@ export function SessionDetailScreen() {
         />
       </View>
 
-      <XStack alignItems="flex-end">
-        <TouchableOpacity
-          onPress={openTemplates}
-          style={{ paddingLeft: Spacing.md, paddingBottom: Spacing.lg }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="Open prompt templates"
-          accessibilityRole="button"
-        >
-          <PenLine size={18} color={colors.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            if (abState.active) { clearTest(); }
-            else { setAbPickerVisible(true); }
-          }}
-          style={{ paddingLeft: Spacing.xs, paddingBottom: Spacing.lg }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="A/B model comparison"
-          accessibilityRole="button"
-        >
-          <GitCompareArrows size={18} color={abState.active ? colors.primary : colors.textTertiary} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <MessageComposer
-            value={promptText}
-            onChangeText={setPromptText}
-            onSend={handleSend}
-            onCancel={cancelPrompt}
-            isStreaming={isStreaming}
-            isDisabled={!isConnected}
-            isListening={isListening}
-            onToggleVoice={voiceAvailable ? toggleVoice : undefined}
-          />
-        </View>
-      </XStack>
+      <MessageComposer
+        value={promptText}
+        onChangeText={setPromptText}
+        onSend={handleSend}
+        onCancel={cancelPrompt}
+        isStreaming={isStreaming}
+        isDisabled={!isConnected}
+        isListening={isListening}
+        onToggleVoice={voiceAvailable ? toggleVoice : undefined}
+      />
 
       <MessageActionMenu
         visible={!!actionMenuMessage}
