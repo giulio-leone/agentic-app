@@ -81,7 +81,8 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
         }
 
         if (state.selectedServerId && state.selectedSessionId) {
-          SessionStorage.saveMessages(messages, state.selectedServerId, state.selectedSessionId);
+          SessionStorage.saveMessages(messages, state.selectedServerId, state.selectedSessionId)
+            .catch(e => state.appendLog?.(`✗ Save messages failed: ${e.message}`));
         }
       }
 

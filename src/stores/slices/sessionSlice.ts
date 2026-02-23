@@ -134,8 +134,9 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
           cwd: session?.cwd,
         });
         if (get().chatMessages.length > 0) return;
-      } catch {
+      } catch (e: any) {
         // loadSession not supported or failed
+        get().appendLog(`⚠ loadSession failed: ${e?.message ?? 'unknown'}`);
       }
 
       // Try local storage
