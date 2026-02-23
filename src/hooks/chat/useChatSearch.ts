@@ -11,12 +11,14 @@ interface UseChatSearchOptions {
   flatListRef: RefObject<FlatList<ChatMessage> | null>;
 }
 
+const EMPTY_MATCHES: number[] = [];
+
 export function useChatSearch({ chatMessages, flatListRef }: UseChatSearchOptions) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
 
   const searchMatches = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!searchQuery.trim()) return EMPTY_MATCHES;
     const q = searchQuery.toLowerCase();
     return chatMessages
       .map((m, i) => (m.content.toLowerCase().includes(q) ? i : -1))

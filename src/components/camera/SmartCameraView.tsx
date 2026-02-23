@@ -94,7 +94,10 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
         // This utilizes our custom native vision-camera-plugin (SceneDetector) 
         // to perform real-time pixel diffing between consecutive frames directly in C++/Kotlin/Swift.
         // It provides the average difference value to JS without the overhead of passing image buffers.
-        const onSceneChangedJSRef = useRef(Worklets.createRunOnJS(() => { onSceneChanged?.(); }));
+        const onSceneChangedJSRef = useRef<ReturnType<typeof Worklets.createRunOnJS> | null>(null);
+        if (onSceneChangedJSRef.current === null) {
+            onSceneChangedJSRef.current = Worklets.createRunOnJS(() => { onSceneChanged?.(); });
+        }
         useEffect(() => {
             onSceneChangedJSRef.current = Worklets.createRunOnJS(() => { onSceneChanged?.(); });
         }, [onSceneChanged]);
@@ -102,9 +105,12 @@ export const SmartCameraView = forwardRef<SmartCameraViewHandle, SmartCameraView
         const lastMotionTime = useSharedValue(0);
         const isStabilizing = useSharedValue(false);
 
-        const logStateJSRef = useRef(Worklets.createRunOnJS((_diff: number, _motion: boolean, _stabilizing: boolean, _trigger: boolean) => {
-            // Intentionally silent in production. Enable via Flipper or local patch for debugging.
-        }));
+        const logStateJSRef = useRef<ReturnType<typeof Worklets.createRunOnJS> | null>(null);
+        if (logStateJSRef.current === null) {
+            logStateJSRef.current = Worklets.createRunOnJS((_diff: number, _motion: boolean, _stabilizing: boolean, _trigger: boolean) => {
+                // Intentionally silent in production. Enable via Flipper or local patch for debugging.
+            });
+        }
 
         const frameProcessor = useFrameProcessor((frame) => {
             'worklet';
