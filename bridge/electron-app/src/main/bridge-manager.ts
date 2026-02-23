@@ -1,7 +1,8 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { app } from 'electron';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,6 +13,7 @@ export interface BridgeConfig {
   copilot: boolean;
   codex: boolean;
   model: string;
+  reasoningEffort: 'low' | 'medium' | 'high' | '';
   codexModel: string;
   codexPath: string;
 }
@@ -22,6 +24,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   copilot: true,
   codex: false,
   model: 'gpt-4.1',
+  reasoningEffort: '',
   codexModel: 'codex-mini',
   codexPath: 'codex',
 };
@@ -48,21 +51,46 @@ export class BridgeManager extends EventEmitter {
     if (this.process) this.stop();
 
     this.setStatus('starting');
-    const bridgePath = resolve(__dirname, '../../../unified-bridge/src/index.ts');
 
-    const args = ['--import', 'tsx', bridgePath, '--port', String(config.port)];
+    // Resolve bridge path: packaged (extraResources) vs dev (monorepo)
+    const isDev = !app.isPackaged;
+    const bridgePath = isDev
+      ? resolve(__dirname, '../../../unified-bridge/src/index.ts')
+      : join(process.resourcesPath!, 'bridge', 'bridge.mjs');
+
+    const nodePtyDir = isDev
+      ? undefined
+      : join(process.resourcesPath!, 'bridge', 'node_modules');
+
+    let args: string[];
+    if (isDev) {
+      args = ['--import', 'tsx', bridgePath, '--port', String(config.port)];
+    } else {
+      args = [bridgePath, '--port', String(config.port)];
+    }
     if (config.cwd) args.push('--cwd', config.cwd);
     if (!config.copilot) args.push('--no-copilot');
     if (config.codex) args.push('--codex');
     if (config.model) args.push('--model', config.model);
+    if (config.reasoningEffort) args.push('--reasoning-effort', config.reasoningEffort);
     if (config.codexModel) args.push('--codex-model', config.codexModel);
     if (config.codexPath) args.push('--codex-path', config.codexPath);
 
     this.appendLog(`[bridge] Starting: node ${args.join(' ')}`);
 
+    const env = { ...process.env };
+    // In packaged mode, help Node find native modules (node-pty)
+    if (nodePtyDir) {
+      env.NODE_PATH = nodePtyDir;
+    }
+
+    const spawnCwd = isDev
+      ? resolve(__dirname, '../../../unified-bridge')
+      : config.cwd;
+
     this.process = spawn('node', args, {
-      cwd: config.cwd,
-      env: { ...process.env },
+      cwd: spawnCwd,
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 

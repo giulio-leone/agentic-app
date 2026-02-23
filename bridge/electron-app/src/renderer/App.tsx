@@ -10,6 +10,7 @@ interface BridgeConfig {
   copilot: boolean;
   codex: boolean;
   model: string;
+  reasoningEffort: 'low' | 'medium' | 'high' | '';
   codexModel: string;
   codexPath: string;
 }

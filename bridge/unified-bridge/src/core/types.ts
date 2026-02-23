@@ -187,6 +187,8 @@ export interface ProviderConfig {
   type: 'copilot' | 'codex';
   enabled: boolean;
   model?: string;
+  /** Reasoning effort for supported models (low, medium, high) */
+  reasoningEffort?: 'low' | 'medium' | 'high';
   /** Copilot-specific: path to CLI binary */
   cliPath?: string;
   /** Codex-specific: path to codex binary */

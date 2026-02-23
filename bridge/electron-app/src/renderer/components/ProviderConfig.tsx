@@ -6,6 +6,7 @@ interface BridgeConfig {
   copilot: boolean;
   codex: boolean;
   model: string;
+  reasoningEffort: 'low' | 'medium' | 'high' | '';
   codexModel: string;
   codexPath: string;
 }
@@ -32,15 +33,30 @@ export const ProviderConfig = React.memo(function ProviderConfig({ config, onUpd
           />
         </label>
         {config.copilot && (
-          <div className="ml-6">
-            <label className="text-xs text-gray-400 block mb-1">Model</label>
-            <input
-              type="text"
-              className="w-full bg-surface border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:border-accent focus:outline-none"
-              value={config.model}
-              onChange={(e) => onUpdate({ model: e.target.value })}
-              placeholder="gpt-4.1"
-            />
+          <div className="ml-6 space-y-2">
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Model</label>
+              <input
+                type="text"
+                className="w-full bg-surface border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:border-accent focus:outline-none"
+                value={config.model}
+                onChange={(e) => onUpdate({ model: e.target.value })}
+                placeholder="gpt-4.1"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Reasoning Effort</label>
+              <select
+                className="w-full bg-surface border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:border-accent focus:outline-none"
+                value={config.reasoningEffort}
+                onChange={(e) => onUpdate({ reasoningEffort: e.target.value as BridgeConfig['reasoningEffort'] })}
+              >
+                <option value="">Default</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
