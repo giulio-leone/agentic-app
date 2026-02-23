@@ -1,6 +1,6 @@
 {
   "name": "agmentern",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "main": "index.ts",
   "scripts": {
     "postinstall": "patch-package",
