@@ -28,6 +28,24 @@ interface TmuxSession {
   attached: boolean;
 }
 
+/**
+ * Shared message handler logic for RN↔WebView bridge.
+ * Injected into both xterm and ghostty HTML templates.
+ */
+const HANDLE_MSG_JS = `
+    function handleMsg(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'write') term.write(msg.data);
+        if (msg.type === 'clear') { term.clear(); term.reset(); }
+        if (msg.type === 'info') term.writeln('\\x1b[36m' + msg.text + '\\x1b[0m');
+        if (msg.type === 'error') term.writeln('\\x1b[31m' + msg.text + '\\x1b[0m');
+      } catch { /* malformed JSON from RN bridge — safe to ignore */ }
+    }
+    window.addEventListener('message', handleMsg);
+    document.addEventListener('message', handleMsg);
+`;
+
 const XTERM_HTML = `
 <!DOCTYPE html>
 <html>
@@ -85,18 +103,7 @@ const XTERM_HTML = `
       }));
     }).observe(document.getElementById('terminal'));
 
-    // Handle messages from React Native
-    function handleMsg(e) {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'write') term.write(msg.data);
-        if (msg.type === 'clear') { term.clear(); term.reset(); }
-        if (msg.type === 'info') term.writeln('\\x1b[36m' + msg.text + '\\x1b[0m');
-        if (msg.type === 'error') term.writeln('\\x1b[31m' + msg.text + '\\x1b[0m');
-      } catch { /* malformed JSON from RN bridge — safe to ignore */ }
-    }
-    window.addEventListener('message', handleMsg);
-    document.addEventListener('message', handleMsg);
+    ${HANDLE_MSG_JS}
 
     term.writeln('\\x1b[1;36m╔══════════════════════════════════════╗\\x1b[0m');
     term.writeln('\\x1b[1;36m║   Agentic Remote Terminal            ║\\x1b[0m');
@@ -173,17 +180,7 @@ const GHOSTTY_HTML = `
       }));
     }).observe(document.getElementById('terminal'));
 
-    function handleMsg(e) {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'write') term.write(msg.data);
-        if (msg.type === 'clear') { term.clear(); term.reset(); }
-        if (msg.type === 'info') term.writeln('\\x1b[36m' + msg.text + '\\x1b[0m');
-        if (msg.type === 'error') term.writeln('\\x1b[31m' + msg.text + '\\x1b[0m');
-      } catch { /* malformed JSON from RN bridge — safe to ignore */ }
-    }
-    window.addEventListener('message', handleMsg);
-    document.addEventListener('message', handleMsg);
+    ${HANDLE_MSG_JS}
 
     term.writeln('\\x1b[1;35m╔══════════════════════════════════════╗\\x1b[0m');
     term.writeln('\\x1b[1;35m║   Agentic Terminal (Ghostty)         ║\\x1b[0m');
