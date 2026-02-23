@@ -67,10 +67,10 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
     <>
       {parts.map((part, i) => {
         if (part.type === 'text' && part.text.trim()) {
-          return <Markdown key={i} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
+          return <Markdown key={`t-${i}-${part.text.length}`} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
         }
         if (part.type === 'image') {
-          return <InlineImage key={i} url={part.url} alt={part.alt} colors={colors} />;
+          return <InlineImage key={`i-${i}-${part.url}`} url={part.url} alt={part.alt} colors={colors} />;
         }
         return null;
       })}

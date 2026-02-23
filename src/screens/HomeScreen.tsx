@@ -14,6 +14,11 @@ import { YStack, XStack, Text } from 'tamagui';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../stores/appStore';
+import {
+  useServers, useSelectedServerId, useConnectionState, useIsInitialized,
+  useAgentInfo, useSessions, useSelectedSessionId, useConnectionError,
+  useServerActions, useSessionActions,
+} from '../stores/selectors';
 import { ServerListItem } from '../components/home/ServerListItem';
 import { SessionListItem } from '../components/home/SessionListItem';
 import { ACPConnectionState, SessionSummary } from '../acp/models/types';
@@ -26,24 +31,17 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 export function HomeScreen() {
   const navigation = useNavigation<NavProp>();
   const { colors } = useDesignSystem();
-  const {
-    servers,
-    selectedServerId,
-    connectionState,
-    isInitialized,
-    agentInfo,
-    sessions,
-    selectedSessionId,
-    connectionError,
-    loadServers,
-    selectServer,
-    connect,
-    disconnect,
-    createSession,
-    selectSession,
-    deleteSession,
-    loadSessions,
-  } = useAppStore();
+
+  const servers = useServers();
+  const selectedServerId = useSelectedServerId();
+  const connectionState = useConnectionState();
+  const isInitialized = useIsInitialized();
+  const agentInfo = useAgentInfo();
+  const sessions = useSessions();
+  const selectedSessionId = useSelectedSessionId();
+  const connectionError = useConnectionError();
+  const { loadServers, selectServer, connect, disconnect } = useServerActions();
+  const { createSession, selectSession, deleteSession, loadSessions } = useSessionActions();
 
   useEffect(() => {
     loadServers();

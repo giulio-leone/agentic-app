@@ -94,6 +94,7 @@ export class ACPClient implements ACPTransport {
       this.ws.close();
       this.ws = null;
     }
+    this.buffer = '';
     this.setState(ACPConnectionState.Disconnected);
   }
 

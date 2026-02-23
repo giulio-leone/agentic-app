@@ -15,6 +15,7 @@ import {
 import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Plus, Minus, X, ChevronDown } from 'lucide-react-native';
 import { useAppStore } from '../stores/appStore';
+import { useServers, useSelectedServerId, useServerActions } from '../stores/selectors';
 import { FontSize, Spacing, Radius, useTheme } from '../utils/theme';
 import type { ConsensusAgentConfig, ConsensusConfig, ProviderModelSelection } from '../ai/types';
 import { DEFAULT_CONSENSUS_AGENTS } from '../ai/types';
@@ -29,7 +30,11 @@ interface Props {
 
 export function ConsensusConfigSheet({ visible, onClose }: Props) {
   const { colors } = useTheme();
-  const { consensusConfig, updateConsensusConfig, servers, selectedServerId, selectServer, updateServer } = useAppStore();
+  const consensusConfig = useAppStore(s => s.consensusConfig);
+  const updateConsensusConfig = useAppStore(s => s.updateConsensusConfig);
+  const servers = useServers();
+  const selectedServerId = useSelectedServerId();
+  const { selectServer, updateServer } = useServerActions();
   const [localConfig, setLocalConfig] = useState<ConsensusConfig>({ ...consensusConfig });
   const [pickerTarget, setPickerTarget] = useState<string | null>(null); // agent id or '__reviewer__'
 
