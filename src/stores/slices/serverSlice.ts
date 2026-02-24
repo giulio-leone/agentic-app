@@ -176,7 +176,6 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   // ── Copilot PTY interaction ──
-  activePtySessionId: null,
 
   spawnCopilotCli: async (cwd: string, args?: string[]) => {
     if (!_service) return null;

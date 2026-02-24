@@ -108,8 +108,9 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
             const newMsgs = [...state.chatMessages];
             const lastMsg = newMsgs[newMsgs.length - 1];
             if (lastMsg && lastMsg.role === 'assistant' && lastMsg.id === `pty-stream-${ptyId}`) {
-              lastMsg.content += p.data;
-              set({ chatMessages: [...newMsgs] });
+              const updated = { ...lastMsg, content: lastMsg.content + p.data };
+              newMsgs[newMsgs.length - 1] = updated;
+              set({ chatMessages: newMsgs });
             } else {
               newMsgs.push({
                 id: `pty-stream-${ptyId}`,
