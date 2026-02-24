@@ -189,7 +189,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       }
       const response = await _service.copilotSpawn(cwd, args);
       const result = response.result as Record<string, unknown> | undefined;
-      if (result?.id) {
+      if (result?.id && typeof result.id === 'string') {
         const ptyId = result.id as string;
         set({ activePtySessionId: ptyId, ptyOwnerCliSessionId: cliSessionId ?? null });
         get().appendLog(`✓ Copilot CLI spawned: ${ptyId} (PID ${result.pid})`);
