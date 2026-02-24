@@ -50,18 +50,23 @@ interface CopilotProcess {
 
 function scanCopilotProcesses(): CopilotProcess[] {
   try {
+    // Match only the native binary (not the node wrapper) to avoid duplicates
     const output = execSync(
-      "ps -eo pid,tty,command | grep '[c]opilot.*--yolo\\|[c]opilot.*--acp' | head -20",
+      "ps -eo pid,tty,command | grep '[c]opilot-darwin\\|[c]opilot-linux' | head -20",
       { encoding: 'utf-8', timeout: 3000 },
     );
     const procs: CopilotProcess[] = [];
+    const seenTTYs = new Set<string>();
     for (const line of output.trim().split('\n')) {
       if (!line.trim()) continue;
       const match = line.trim().match(/^(\d+)\s+(\S+)\s+(.+)/);
       if (!match) continue;
       const pid = parseInt(match[1], 10);
-      const tty = match[2];
-      // Get cwd from lsof
+      const tty = match[2]!;
+      // Deduplicate by TTY — one session per terminal
+      if (seenTTYs.has(tty)) continue;
+      seenTTYs.add(tty);
+      // Get cwd via lsof
       let cwd = '';
       try {
         cwd = execSync(`lsof -p ${pid} -Fn 2>/dev/null | grep '^n/' | head -1 | cut -c2-`, {
@@ -100,13 +105,18 @@ export class CopilotSessionWatcher extends EventEmitter {
     const procs = scanCopilotProcesses();
     const sessions = this.readRecentSessions();
 
-    // Match processes to sessions by cwd
+    // Match processes to sessions: only the MOST RECENT session per cwd gets marked alive
+    // (multiple old sessions may share the same cwd)
+    const claimedCwds = new Set<string>();
+    // Sessions are already sorted by updated_at DESC from readRecentSessions
     for (const session of sessions) {
+      if (!session.cwd || claimedCwds.has(session.cwd)) continue;
       const proc = procs.find(p => p.cwd === session.cwd);
       if (proc) {
         session.pid = proc.pid;
         session.tty = proc.tty;
         session.isAlive = true;
+        claimedCwds.add(session.cwd);
       }
     }
 
