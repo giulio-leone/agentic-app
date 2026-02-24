@@ -63,6 +63,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   // ── Copilot CLI session discovery ──
   cliSessions: [],
   isDiscoveringCli: false,
+  activePtySessionId: null,
 
   discoverCliSessions: async () => {
     if (!_service) {
@@ -171,6 +172,51 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       await _service.copilotWatchStop();
     } catch (err) {
       get().appendLog(`copilot/watch/stop error: ${(err as Error).message}`);
+    }
+  },
+
+  // ── Copilot PTY interaction ──
+  activePtySessionId: null,
+
+  spawnCopilotCli: async (cwd: string, args?: string[]) => {
+    if (!_service) return null;
+    try {
+      const response = await _service.copilotSpawn(cwd, args);
+      const result = response.result as Record<string, unknown> | undefined;
+      if (result?.id) {
+        const ptyId = result.id as string;
+        set({ activePtySessionId: ptyId });
+        get().appendLog(`✓ Copilot CLI spawned: ${ptyId} (PID ${result.pid})`);
+        return ptyId;
+      }
+      return null;
+    } catch (err) {
+      get().appendLog(`copilot/spawn error: ${(err as Error).message}`);
+      return null;
+    }
+  },
+
+  writeToCopilotPty: async (sessionId: string, input: string) => {
+    if (!_service) return false;
+    try {
+      const response = await _service.copilotWrite(sessionId, input);
+      const result = response.result as Record<string, unknown> | undefined;
+      return !!(result?.success);
+    } catch (err) {
+      get().appendLog(`copilot/write error: ${(err as Error).message}`);
+      return false;
+    }
+  },
+
+  killCopilotPty: async (sessionId: string) => {
+    if (!_service) return;
+    try {
+      await _service.copilotKill(sessionId);
+      if (get().activePtySessionId === sessionId) {
+        set({ activePtySessionId: null });
+      }
+    } catch (err) {
+      get().appendLog(`copilot/kill error: ${(err as Error).message}`);
     }
   },
 

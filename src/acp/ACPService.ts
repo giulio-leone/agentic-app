@@ -180,6 +180,22 @@ export class ACPService {
     return this.sendRequest(ACPMethods.copilotWatchStop);
   }
 
+  async copilotSpawn(cwd: string, args?: string[]): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotSpawn, { cwd, args } as unknown as JSONValue);
+  }
+
+  async copilotWrite(sessionId: string, input: string): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotWrite, { sessionId, input } as unknown as JSONValue);
+  }
+
+  async copilotKill(sessionId: string): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotKill, { sessionId } as unknown as JSONValue);
+  }
+
+  async copilotPtyList(): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotPtyList);
+  }
+
   sendRawMessage(message: ACPWireMessage): void {
     this.transport.send(message);
   }

@@ -97,6 +97,42 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
         if (p?.id !== undefined) terminalEvents.emitExit(p.id as string, (p.code as number) ?? 0);
       }
 
+      // Copilot PTY output/exit notifications
+      if (method === 'copilot/pty/output') {
+        const p = params as Record<string, unknown> | undefined;
+        if (p?.sessionId && typeof p.data === 'string') {
+          const state = get();
+          const ptyId = p.sessionId as string;
+          // Append PTY output as assistant message (streaming)
+          if (state.activePtySessionId === ptyId || state.selectedSessionId?.endsWith(ptyId)) {
+            const newMsgs = [...state.chatMessages];
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant' && lastMsg.id === `pty-stream-${ptyId}`) {
+              lastMsg.content += p.data;
+              set({ chatMessages: [...newMsgs] });
+            } else {
+              newMsgs.push({
+                id: `pty-stream-${ptyId}`,
+                role: 'assistant',
+                content: p.data as string,
+                timestamp: new Date().toISOString(),
+              });
+              set({ chatMessages: newMsgs });
+            }
+          }
+        }
+      }
+      if (method === 'copilot/pty/exit') {
+        const p = params as Record<string, unknown> | undefined;
+        if (p?.sessionId) {
+          const ptyId = p.sessionId as string;
+          get().appendLog(`Copilot PTY exited: ${ptyId} (code ${p.code ?? 'unknown'})`);
+          if (get().activePtySessionId === ptyId) {
+            set({ activePtySessionId: null });
+          }
+        }
+      }
+
       // Copilot CLI session delta notifications
       if (method === 'copilot/delta') {
         const delta = params as Record<string, unknown> | undefined;

@@ -23,6 +23,7 @@ import { createStreamCallbacks } from './event-mapper.js';
 import type { CopilotProvider } from '../providers/copilot/adapter.js';
 import type { TerminalManager } from '../terminal/manager.js';
 import { CopilotSessionWatcher, type SessionDelta } from './session-watcher.js';
+import { CopilotPtyManager, type PtyOutputEvent } from './copilot-pty.js';
 
 // ── Helpers ──
 
@@ -134,6 +135,20 @@ export function createProtocolHandler(
           break;
         case 'copilot/watch/stop':
           handleCopilotWatchStop(id);
+          break;
+
+        // ── Copilot PTY interaction ──
+        case 'copilot/spawn':
+          handleCopilotSpawn(id, params ?? {});
+          break;
+        case 'copilot/write':
+          handleCopilotWrite(id, params ?? {});
+          break;
+        case 'copilot/kill':
+          handleCopilotKill(id, params ?? {});
+          break;
+        case 'copilot/pty/list':
+          handleCopilotPtySessions(id);
           break;
 
         default:
@@ -464,6 +479,15 @@ export function createProtocolHandler(
   // ── Copilot CLI session handlers ──
 
   const sessionWatcher = new CopilotSessionWatcher();
+  const copilotPty = new CopilotPtyManager();
+
+  // Forward PTY output as notifications
+  copilotPty.on('output', (evt: PtyOutputEvent) => {
+    send(socket, { method: 'copilot/pty/output', params: evt });
+  });
+  copilotPty.on('exit', (evt: { sessionId: string; exitCode: number }) => {
+    send(socket, { method: 'copilot/pty/exit', params: evt });
+  });
 
   function handleCopilotDiscover(id: string | number): void {
     try {
@@ -499,8 +523,47 @@ export function createProtocolHandler(
     sendResponse(socket, id, { watching: false });
   }
 
+  // ── Copilot PTY handlers ──
+
+  function handleCopilotSpawn(id: string | number, params: Record<string, unknown>): void {
+    const cwd = (params.cwd as string) || process.cwd();
+    const args = (params.args as string[]) || [];
+    try {
+      const session = copilotPty.spawn(cwd, args);
+      sendResponse(socket, id, session);
+    } catch (err) {
+      sendError(socket, id, -32000, (err as Error).message);
+    }
+  }
+
+  function handleCopilotWrite(id: string | number, params: Record<string, unknown>): void {
+    const sessionId = params.sessionId as string;
+    const input = params.input as string;
+    if (!sessionId || input == null) {
+      sendError(socket, id, -32602, 'Missing sessionId or input');
+      return;
+    }
+    const ok = copilotPty.write(sessionId, input);
+    sendResponse(socket, id, { success: ok });
+  }
+
+  function handleCopilotKill(id: string | number, params: Record<string, unknown>): void {
+    const sessionId = params.sessionId as string;
+    if (!sessionId) {
+      sendError(socket, id, -32602, 'Missing sessionId');
+      return;
+    }
+    copilotPty.dispose(sessionId);
+    sendResponse(socket, id, { killed: true });
+  }
+
+  function handleCopilotPtySessions(id: string | number): void {
+    sendResponse(socket, id, { sessions: copilotPty.listSessions() });
+  }
+
   function cleanupWatcher(): void {
     sessionWatcher.stopWatching();
+    copilotPty.disposeAll();
   }
 
   return { handle, cleanup: () => { cleanup(); cleanupWatcher(); } };
