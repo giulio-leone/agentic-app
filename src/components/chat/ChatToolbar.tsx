@@ -41,7 +41,7 @@ interface Props {
   selectedServerId: string | null;
   onSelectServer: (id: string) => void;
   onOpenTemplates: () => void;
-  onOpenModelPicker: () => void;
+  onOpenModelPicker?: () => void;
   onLongPressModelPicker?: () => void;
   onOpenDirectoryPicker?: () => void;
   currentModelLabel: string;

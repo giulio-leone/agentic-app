@@ -531,12 +531,10 @@ export function SessionDetailScreen() {
             size="$3"
             theme="active"
             backgroundColor={colors.primary}
-            color="#fff"
             fontWeight="700"
             borderRadius={12}
             onPress={handleSpawnCli}
             disabled={isSpawning}
-            icon={isSpawning ? undefined : undefined}
           >
             {isSpawning ? '⏳ Avvio...' : '▶ Avvia Copilot CLI'}
           </Button>
