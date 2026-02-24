@@ -179,7 +179,10 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   // ── Copilot PTY interaction ──
 
   spawnCopilotCli: async (cwd: string, cliSessionId?: string, args?: string[]) => {
-    if (!_service) return null;
+    if (!_service) {
+      showErrorToast('PTY: no service connected');
+      return null;
+    }
     try {
       // Dispose any existing PTY before spawning a new one
       const existingPty = get().activePtySessionId;
@@ -187,16 +190,20 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
         try { await _service.copilotKill(existingPty); } catch { /* best effort */ }
         set({ activePtySessionId: null, ptyOwnerCliSessionId: null });
       }
+      showInfoToast(`PTY: spawning in ${cwd.split('/').pop()}...`);
       const response = await _service.copilotSpawn(cwd, args);
       const result = response.result as Record<string, unknown> | undefined;
       if (result?.id && typeof result.id === 'string') {
         const ptyId = result.id as string;
         set({ activePtySessionId: ptyId, ptyOwnerCliSessionId: cliSessionId ?? null });
+        showInfoToast(`✓ Copilot CLI spawned (PID ${result.pid})`);
         get().appendLog(`✓ Copilot CLI spawned: ${ptyId} (PID ${result.pid})`);
         return ptyId;
       }
+      showErrorToast(`PTY: spawn response missing id: ${JSON.stringify(result)}`);
       return null;
     } catch (err) {
+      showErrorToast(`PTY spawn error: ${(err as Error).message}`);
       get().appendLog(`copilot/spawn error: ${(err as Error).message}`);
       return null;
     }
