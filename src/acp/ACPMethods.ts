@@ -19,4 +19,9 @@ export const ACPMethods = {
   terminalClose: 'terminal/close',
   // Filesystem
   fsList: 'fs/list',
+  // Copilot CLI session discovery
+  copilotDiscover: 'copilot/discover',
+  copilotTurns: 'copilot/sessions/turns',
+  copilotWatchStart: 'copilot/watch/start',
+  copilotWatchStop: 'copilot/watch/stop',
 } as const;

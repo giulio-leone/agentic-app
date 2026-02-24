@@ -22,6 +22,7 @@ import type { ProviderRegistry } from './provider-registry.js';
 import { createStreamCallbacks } from './event-mapper.js';
 import type { CopilotProvider } from '../providers/copilot/adapter.js';
 import type { TerminalManager } from '../terminal/manager.js';
+import { CopilotSessionWatcher, type SessionDelta } from './session-watcher.js';
 
 // ── Helpers ──
 
@@ -114,6 +115,20 @@ export function createProtocolHandler(
         // ── Filesystem methods ──
         case 'fs/list':
           await handleFsList(id, params ?? {});
+          break;
+
+        // ── Copilot CLI session discovery ──
+        case 'copilot/discover':
+          handleCopilotDiscover(id);
+          break;
+        case 'copilot/sessions/turns':
+          handleCopilotTurns(id, params ?? {});
+          break;
+        case 'copilot/watch/start':
+          handleCopilotWatchStart(id);
+          break;
+        case 'copilot/watch/stop':
+          handleCopilotWatchStop(id);
           break;
 
         default:
@@ -441,5 +456,41 @@ export function createProtocolHandler(
     }
   }
 
-  return { handle, cleanup };
+  // ── Copilot CLI session handlers ──
+
+  const sessionWatcher = new CopilotSessionWatcher();
+
+  function handleCopilotDiscover(id: string | number): void {
+    const sessions = sessionWatcher.discover();
+    sendResponse(socket, id, { sessions });
+  }
+
+  function handleCopilotTurns(id: string | number, params: Record<string, unknown>): void {
+    const sessionId = params.sessionId as string;
+    if (!sessionId) {
+      sendError(socket, id, -32602, 'Missing sessionId parameter');
+      return;
+    }
+    const turns = sessionWatcher.getSessionTurns(sessionId);
+    sendResponse(socket, id, { turns });
+  }
+
+  function handleCopilotWatchStart(id: string | number): void {
+    sessionWatcher.startWatching();
+    sessionWatcher.on('delta', (delta: SessionDelta) => {
+      send(socket, { method: 'copilot/delta', params: delta });
+    });
+    sendResponse(socket, id, { watching: true });
+  }
+
+  function handleCopilotWatchStop(id: string | number): void {
+    sessionWatcher.stopWatching();
+    sendResponse(socket, id, { watching: false });
+  }
+
+  function cleanupWatcher(): void {
+    sessionWatcher.stopWatching();
+  }
+
+  return { handle, cleanup: () => { cleanup(); cleanupWatcher(); } };
 }

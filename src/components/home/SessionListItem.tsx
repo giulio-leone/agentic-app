@@ -6,7 +6,7 @@ import { TouchableOpacity, Platform, StyleSheet, View } from 'react-native';
 import { Text, XStack } from 'tamagui';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { SharedValue, useAnimatedStyle, FadeIn } from 'react-native-reanimated';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, Terminal } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { SessionSummary } from '../../acp/models/types';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
@@ -95,23 +95,28 @@ export const SessionListItem = React.memo(function SessionListItem({
           accessibilityLabel={`Session: ${session.title || 'New Session'}`}
         >
           <XStack justifyContent="space-between" alignItems="center">
-            <Text color={colors.text} fontSize={FontSize.body} flex={1} numberOfLines={1}>
-              {session.title || 'New Session'}
-            </Text>
+            <XStack alignItems="center" flex={1} gap={6}>
+              {session.isCliSession && (
+                <Terminal size={14} color={session.isAlive ? '#34C759' : colors.textTertiary} />
+              )}
+              <Text color={colors.text} fontSize={FontSize.body} flex={1} numberOfLines={1}>
+                {session.title || 'New Session'}
+              </Text>
+            </XStack>
             {session.updatedAt && (
               <Text color={colors.textTertiary} fontSize={FontSize.caption} marginLeft={Spacing.sm}>
                 {timeAgo(session.updatedAt)}
               </Text>
             )}
           </XStack>
-          {session.cwd && (
+          {(session.description || session.cwd) && (
             <Text
               color={colors.textTertiary}
               fontSize={FontSize.caption}
               numberOfLines={1}
               marginTop={2}
             >
-              {session.cwd}
+              {session.description || session.cwd}
             </Text>
           )}
         </TouchableOpacity>

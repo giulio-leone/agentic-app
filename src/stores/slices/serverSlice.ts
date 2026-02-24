@@ -59,6 +59,84 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     }
   },
 
+  // ── Copilot CLI session discovery ──
+  cliSessions: [],
+  isDiscoveringCli: false,
+
+  discoverCliSessions: async () => {
+    if (!_service) return;
+    set({ isDiscoveringCli: true });
+    try {
+      const response = await _service.copilotDiscover();
+      const result = response.result as Record<string, unknown> | undefined;
+      if (result?.sessions) {
+        set({ cliSessions: result.sessions as AppState['cliSessions'] });
+      }
+    } catch (err) {
+      get().appendLog(`copilot/discover error: ${(err as Error).message}`);
+    } finally {
+      set({ isDiscoveringCli: false });
+    }
+  },
+
+  loadCliSessionTurns: async (sessionId: string) => {
+    if (!_service) return;
+    try {
+      const response = await _service.copilotTurns(sessionId);
+      const result = response.result as Record<string, unknown> | undefined;
+      if (!result?.turns) return;
+      const turns = result.turns as Array<{
+        sessionId: string;
+        turnIndex: number;
+        userMessage: string | null;
+        assistantResponse: string | null;
+        timestamp: string;
+      }>;
+      // Convert CLI turns to ChatMessage format
+      const messages = turns.flatMap(t => {
+        const msgs: import('../../acp/models/types').ChatMessage[] = [];
+        if (t.userMessage) {
+          msgs.push({
+            id: `cli-${sessionId}-user-${t.turnIndex}`,
+            role: 'user',
+            content: t.userMessage,
+            timestamp: t.timestamp,
+          });
+        }
+        if (t.assistantResponse) {
+          msgs.push({
+            id: `cli-${sessionId}-assistant-${t.turnIndex}`,
+            role: 'assistant',
+            content: t.assistantResponse,
+            timestamp: t.timestamp,
+          });
+        }
+        return msgs;
+      });
+      set({ chatMessages: messages });
+    } catch (err) {
+      get().appendLog(`copilot/turns error: ${(err as Error).message}`);
+    }
+  },
+
+  startCliWatch: async () => {
+    if (!_service) return;
+    try {
+      await _service.copilotWatchStart();
+    } catch (err) {
+      get().appendLog(`copilot/watch/start error: ${(err as Error).message}`);
+    }
+  },
+
+  stopCliWatch: async () => {
+    if (!_service) return;
+    try {
+      await _service.copilotWatchStop();
+    } catch (err) {
+      get().appendLog(`copilot/watch/stop error: ${(err as Error).message}`);
+    }
+  },
+
   // Actions
 
   loadServers: async () => {

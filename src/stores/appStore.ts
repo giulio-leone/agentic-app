@@ -14,6 +14,19 @@ import {
 import { ACPService } from '../acp/ACPService';
 import type { MCPServerConfig, MCPServerStatus } from '../mcp/types';
 
+/** Copilot CLI session info from bridge discovery */
+export interface CliSessionInfo {
+  id: string;
+  cwd: string | null;
+  branch: string | null;
+  summary: string | null;
+  createdAt: string;
+  updatedAt: string;
+  pid: number | null;
+  tty: string | null;
+  isAlive: boolean;
+}
+
 import { createServerSlice } from './slices/serverSlice';
 import { createSessionSlice } from './slices/sessionSlice';
 import { createChatSlice } from './slices/chatSlice';
@@ -48,6 +61,10 @@ export interface AppState {
   stopReason: string | null;
   isStreaming: boolean;
   promptText: string;
+
+  // Copilot CLI session discovery
+  cliSessions: CliSessionInfo[];
+  isDiscoveringCli: boolean;
 
   // MCP Servers
   mcpServers: MCPServerConfig[];
@@ -111,6 +128,12 @@ export interface AppActions {
   setSelectedReasoningEffort: (level: string | null) => void;
   setSelectedCwd: (path: string | null) => void;
   listDirectory: (path?: string) => Promise<{ path: string; entries: Array<{ name: string; path: string; isDirectory: boolean }> } | null>;
+
+  // Copilot CLI discovery
+  discoverCliSessions: () => Promise<void>;
+  loadCliSessionTurns: (sessionId: string) => Promise<void>;
+  startCliWatch: () => Promise<void>;
+  stopCliWatch: () => Promise<void>;
 
   // Chat
   sendPrompt: (text: string, attachments?: import('../acp/models/types').Attachment[]) => Promise<void>;
