@@ -47,15 +47,14 @@ export const DirectoryPicker = React.memo(function DirectoryPicker({
   const [loading, setLoading] = useState(false);
   const [contentReady, setContentReady] = useState(false);
 
-  // Delay content render for Fabric stability
+  // Reset contentReady when Modal closes
   useEffect(() => {
-    if (visible) {
-      const timer = requestAnimationFrame(() => setContentReady(true));
-      return () => cancelAnimationFrame(timer);
-    }
-    setContentReady(false);
-    return undefined;
+    if (!visible) setContentReady(false);
   }, [visible]);
+
+  const handleModalShow = useCallback(() => {
+    setTimeout(() => setContentReady(true), 100);
+  }, []);
 
   const loadDir = useCallback(async (path?: string) => {
     setLoading(true);
@@ -121,7 +120,7 @@ export const DirectoryPicker = React.memo(function DirectoryPicker({
   }, [colors, selectedPath, loadDir]);
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} onShow={handleModalShow}>
       <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
         <StatusBar barStyle={colors.background === '#FFFFFF' ? 'dark-content' : 'light-content'} />
 

@@ -73,15 +73,15 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   const [contentReady, setContentReady] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  // Delay content rendering until Modal is fully mounted (avoids Fabric crash)
+  // Reset contentReady when Modal closes
   useEffect(() => {
-    if (visible) {
-      const timer = requestAnimationFrame(() => setContentReady(true));
-      return () => cancelAnimationFrame(timer);
-    }
-    setContentReady(false);
-    return undefined;
+    if (!visible) setContentReady(false);
   }, [visible]);
+
+  // Triggered by Modal onShow — guarantees animation is complete before rendering
+  const handleModalShow = useCallback(() => {
+    setTimeout(() => setContentReady(true), 100);
+  }, []);
 
   // Populate models
   useEffect(() => {
@@ -255,7 +255,7 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
   }, [currentModelId, selectedServerId, selectedBridgeModel, colors, selectModel]);
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} onShow={handleModalShow}>
       <SafeAreaView style={[styles.container, { backgroundColor: colors.surface }]}>
         <StatusBar barStyle={colors.background === '#FFFFFF' ? 'dark-content' : 'light-content'} />
 
