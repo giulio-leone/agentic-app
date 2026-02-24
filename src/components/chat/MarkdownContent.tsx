@@ -11,6 +11,7 @@ import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { ArtifactList } from './ArtifactDisplay';
 import { InlineImage } from './InlineImage';
 import { codeBlockRules } from './codeBlockRules';
+import { splitContentWithChoices, CliChoiceBlock } from './CliChoiceBlock';
 
 const hairline = StyleSheet.hairlineWidth;
 
@@ -32,52 +33,51 @@ export const MarkdownContent = React.memo(function MarkdownContent({ content, co
     return false; // prevent default
   }, []);
 
+  // Split content into text + choice blocks
+  const contentParts = useMemo(() => splitContentWithChoices(content), [content]);
+  const hasChoices = contentParts.some(p => p.type === 'choices');
+
   // Extract image URLs from markdown ![alt](url) patterns
-  const parts = useMemo(() => {
-    // Short-circuit: skip regex if no image syntax present
-    if (!content.includes('![')) {
-      return [{ type: 'text' as const, text: content }];
+  const renderMarkdownText = useCallback((text: string, key?: string) => {
+    if (!text.includes('![')) {
+      return <Markdown key={key} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{text}</Markdown>;
     }
     const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
     const result: Array<{ type: 'text'; text: string } | { type: 'image'; url: string; alt: string }> = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
-
-    while ((match = imageRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        result.push({ type: 'text', text: content.slice(lastIndex, match.index) });
-      }
+    while ((match = imageRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) result.push({ type: 'text', text: text.slice(lastIndex, match.index) });
       result.push({ type: 'image', url: match[2]!, alt: match[1]! });
       lastIndex = match.index + match[0].length;
     }
-    if (lastIndex < content.length) {
-      result.push({ type: 'text', text: content.slice(lastIndex) });
-    }
-    return result;
-  }, [content]);
-
-  const hasImages = parts.length > 1 || (parts.length === 1 && parts[0]?.type === 'image');
-
-  if (!hasImages) {
+    if (lastIndex < text.length) result.push({ type: 'text', text: text.slice(lastIndex) });
     return (
       <>
-        <Markdown style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{content}</Markdown>
-        {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} onOpenArtifact={onOpenArtifact} />}
+        {result.map((part, i) => {
+          if (part.type === 'text' && part.text.trim()) {
+            return <Markdown key={`${key}-t-${i}`} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
+          }
+          if (part.type === 'image') {
+            return <InlineImage key={`${key}-i-${i}`} url={part.url} alt={part.alt} colors={colors} />;
+          }
+          return null;
+        })}
       </>
     );
-  }
+  }, [mdStyles, handleLinkPress, colors]);
 
   return (
     <>
-      {parts.map((part, i) => {
-        if (part.type === 'text' && part.text.trim()) {
-          return <Markdown key={`t-${i}`} style={mdStyles} rules={codeBlockRules} onLinkPress={handleLinkPress}>{part.text}</Markdown>;
-        }
-        if (part.type === 'image') {
-          return <InlineImage key={`i-${i}-${part.url}`} url={part.url} alt={part.alt} colors={colors} />;
-        }
-        return null;
-      })}
+      {hasChoices ? (
+        contentParts.map((part, i) =>
+          part.type === 'text'
+            ? renderMarkdownText(part.content, `cp-${i}`)
+            : <CliChoiceBlock key={`cb-${i}`} block={part.block} colors={colors} />
+        )
+      ) : (
+        renderMarkdownText(content)
+      )}
       {artifacts && artifacts.length > 0 && <ArtifactList artifacts={artifacts} colors={colors} onOpenArtifact={onOpenArtifact} />}
     </>
   );
