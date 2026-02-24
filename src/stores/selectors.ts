@@ -20,6 +20,8 @@ export const useConnectionError = () => useAppStore(s => s.connectionError);
 
 export const useSessions = () => useAppStore(s => s.sessions);
 export const useSelectedSessionId = () => useAppStore(s => s.selectedSessionId);
+export const useCliSessions = () => useAppStore(s => s.cliSessions);
+export const useIsDiscoveringCli = () => useAppStore(s => s.isDiscoveringCli);
 export const useChatMessages = () => useAppStore(s => s.chatMessages);
 export const useIsStreaming = () => useAppStore(s => s.isStreaming);
 export const usePromptText = () => useAppStore(s => s.promptText);

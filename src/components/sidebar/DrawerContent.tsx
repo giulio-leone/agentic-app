@@ -151,6 +151,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             {isActive && (
               <View style={[sessionItemStyles.activeBar, { backgroundColor: colors.primary }]} />
             )}
+            {item.isCliSession && (
+              <Terminal size={12} color={item.isAlive ? '#34C759' : colors.sidebarTextSecondary} style={{ marginRight: 6 }} />
+            )}
             <Text
               color={colors.sidebarText}
               fontSize={FontSize.footnote}
@@ -408,6 +411,26 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         marginHorizontal={Spacing.md}
         marginVertical={Spacing.md}
       />
+
+      {/* Inactive CLI toggle */}
+      {w.inactiveCliCount > 0 && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: Spacing.md + Spacing.sm,
+            paddingVertical: 4,
+            gap: 6,
+          }}
+          onPress={() => w.setShowInactiveCli(!w.showInactiveCli)}
+          activeOpacity={0.6}
+        >
+          <Terminal size={11} color={colors.sidebarTextSecondary} />
+          <Text color={colors.sidebarTextSecondary} fontSize={FontSize.caption}>
+            {w.showInactiveCli ? 'Hide' : 'Show'} {w.inactiveCliCount} inactive CLI
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Sessions list */}
       <FlatList

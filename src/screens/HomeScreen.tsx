@@ -17,11 +17,13 @@ import { Plus, Server, MessageSquare, Wifi, WifiOff } from 'lucide-react-native'
 import {
   useServers, useSelectedServerId, useConnectionState, useIsInitialized,
   useAgentInfo, useSessions, useSelectedSessionId, useConnectionError,
+  useCliSessions,
   useServerActions, useSessionActions,
 } from '../stores/selectors';
 import { ServerListItem } from '../components/home/ServerListItem';
 import { SessionListItem } from '../components/home/SessionListItem';
 import { ACPConnectionState, SessionSummary } from '../acp/models/types';
+import { useAppStore, type CliSessionInfo } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import type { RootStackParamList } from '../navigation';
@@ -40,14 +42,38 @@ export function HomeScreen() {
   const isInitialized = useIsInitialized();
   const agentInfo = useAgentInfo();
   const sessions = useSessions();
+  const cliSessions = useCliSessions();
   const selectedSessionId = useSelectedSessionId();
   const connectionError = useConnectionError();
   const { loadServers, selectServer, connect, disconnect } = useServerActions();
   const { createSession, selectSession, deleteSession, loadSessions } = useSessionActions();
+  const discoverCliSessions = useAppStore(s => s.discoverCliSessions);
 
   useEffect(() => {
     loadServers();
   }, [loadServers]);
+
+  // Discover CLI sessions when connected
+  useEffect(() => {
+    if (isInitialized) discoverCliSessions();
+  }, [isInitialized, discoverCliSessions]);
+
+  // Merge bridge sessions + CLI sessions (only alive shown by default in HomeScreen)
+  const allSessions = useMemo(() => {
+    const aliveCli: SessionSummary[] = cliSessions
+      .filter((cli: CliSessionInfo) => cli.isAlive)
+      .map((cli: CliSessionInfo) => ({
+        id: `cli:${cli.id}`,
+        title: cli.summary || cli.cwd?.split('/').pop() || 'CLI Session',
+        description: cli.branch ? `${cli.branch} • ${cli.cwd || ''}` : cli.cwd || '',
+        createdAt: cli.createdAt,
+        updatedAt: cli.updatedAt,
+        cwd: cli.cwd || undefined,
+        isCliSession: true,
+        isAlive: cli.isAlive,
+      }));
+    return [...aliveCli, ...sessions];
+  }, [sessions, cliSessions]);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isConnected = connectionState === ACPConnectionState.Connected;
@@ -75,12 +101,21 @@ export function HomeScreen() {
     createSession();
   }, [createSession]);
 
+  const loadCliSessionTurns = useAppStore(s => s.loadCliSessionTurns);
+  const startCliWatch = useAppStore(s => s.startCliWatch);
+
   const handleSessionPress = useCallback(
     (session: SessionSummary) => {
       selectSession(session.id);
+      if (session.isCliSession) {
+        // Extract original session ID from cli: prefix
+        const cliId = session.id.replace(/^cli:/, '');
+        loadCliSessionTurns(cliId);
+        startCliWatch();
+      }
       navigation.navigate('Session');
     },
-    [selectSession, navigation],
+    [selectSession, loadCliSessionTurns, startCliWatch, navigation],
   );
 
   const handleDeleteSession = useCallback(
@@ -221,18 +256,18 @@ export function HomeScreen() {
         <YStack flex={1}>
           <SectionHeader
             title="Sessions"
-            count={sessions.length}
+            count={allSessions.length}
             colors={colors}
             action={
-              isInitialized && sessions.length > 0 ? (
-                <TouchableOpacity onPress={loadSessions}>
+              isInitialized && allSessions.length > 0 ? (
+                <TouchableOpacity onPress={() => { loadSessions(); discoverCliSessions(); }}>
                   <Text color={colors.primary} fontSize={13} fontWeight="600">Refresh</Text>
                 </TouchableOpacity>
               ) : undefined
             }
           />
 
-          {sessions.length === 0 ? (
+          {allSessions.length === 0 ? (
             <EmptyState
               icon={<MessageSquare size={32} color={colors.textTertiary} />}
               title={isInitialized ? 'No sessions yet' : 'Connect to see sessions'}
@@ -241,7 +276,7 @@ export function HomeScreen() {
             />
           ) : (
             <FlatList
-              data={sessions}
+              data={allSessions}
               keyExtractor={keyExtractorById}
               renderItem={renderSessionItem}
               refreshControl={

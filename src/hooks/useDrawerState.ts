@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useServers, useSelectedServerId, useConnectionState, useIsInitialized, useAgentInfo, useSessions, useSelectedSessionId, useConnectionError, useMCPStatuses, useServerActions, useSessionActions } from '../stores/selectors';
+import { useAppStore, type CliSessionInfo } from '../stores/appStore';
 import { ACPConnectionState, SessionSummary, ServerType, ACPServerConfiguration } from '../acp/models/types';
 import { getProviderInfo } from '../ai/providers';
 import { groupSessionsByDate } from '../utils/sessionUtils';
@@ -25,6 +26,7 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
   const isInitialized = useIsInitialized();
   const agentInfo = useAgentInfo();
   const sessions = useSessions();
+  const cliSessions = useAppStore(s => s.cliSessions);
   const selectedSessionId = useSelectedSessionId();
   const connectionError = useConnectionError();
   const mcpStatuses = useMCPStatuses();
@@ -34,16 +36,41 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isConnected = connectionState === ACPConnectionState.Connected;
 
+  // CLI session filter
+  const [showInactiveCli, setShowInactiveCli] = useState(false);
+
+  // Merge CLI sessions into session list
+  const allSessions = useMemo(() => {
+    const cliAsSummary: SessionSummary[] = cliSessions.map((cli: CliSessionInfo) => ({
+      id: `cli:${cli.id}`,
+      title: cli.summary || cli.cwd?.split('/').pop() || 'CLI Session',
+      description: cli.branch ? `${cli.branch} • ${cli.cwd || ''}` : cli.cwd || '',
+      createdAt: cli.createdAt,
+      updatedAt: cli.updatedAt,
+      cwd: cli.cwd || undefined,
+      isCliSession: true,
+      isAlive: cli.isAlive,
+    }));
+    const alive = cliAsSummary.filter(s => s.isAlive);
+    const inactive = cliAsSummary.filter(s => !s.isAlive);
+    return [...alive, ...(showInactiveCli ? inactive : []), ...sessions];
+  }, [sessions, cliSessions, showInactiveCli]);
+
+  const inactiveCliCount = useMemo(
+    () => cliSessions.filter((c: CliSessionInfo) => !c.isAlive).length,
+    [cliSessions],
+  );
+
   // Search
   const [searchQuery, setSearchQuery] = useState('');
   const filteredSessions = useMemo(() => {
-    if (!searchQuery.trim()) return sessions;
+    if (!searchQuery.trim()) return allSessions;
     const q = searchQuery.toLowerCase();
-    return sessions.filter(s =>
+    return allSessions.filter(s =>
       (s.title || '').toLowerCase().includes(q) ||
       s.id.toLowerCase().includes(q)
     );
-  }, [sessions, searchQuery]);
+  }, [allSessions, searchQuery]);
 
   const groupedSessions = useMemo(() => groupSessionsByDate(filteredSessions), [filteredSessions]);
 
@@ -71,10 +98,18 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
     createSession().then(() => drawerNav.closeDrawer());
   }, [createSession, drawerNav]);
 
+  const loadCliSessionTurns = useAppStore(s => s.loadCliSessionTurns);
+  const startCliWatch = useAppStore(s => s.startCliWatch);
+
   const handleSessionPress = useCallback((session: SessionSummary) => {
     selectSession(session.id);
+    if (session.isCliSession) {
+      const cliId = session.id.replace(/^cli:/, '');
+      loadCliSessionTurns(cliId);
+      startCliWatch();
+    }
     drawerNav.closeDrawer();
-  }, [selectSession, drawerNav]);
+  }, [selectSession, loadCliSessionTurns, startCliWatch, drawerNav]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
     Alert.alert('Delete Session', 'Are you sure?', [
@@ -121,6 +156,8 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
     filteredSessions,
     groupedSessions,
     mcpSummary,
+    showInactiveCli, setShowInactiveCli,
+    inactiveCliCount,
     // Handlers
     handleServerPress,
     handleConnect,

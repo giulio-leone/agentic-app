@@ -34,8 +34,13 @@ export interface ACPServerConfiguration {
 export interface SessionSummary {
   id: string;
   title?: string;
+  description?: string;
   cwd?: string;
-  updatedAt?: string; // ISO date string
+  createdAt?: string;
+  updatedAt?: string;
+  // CLI session fields
+  isCliSession?: boolean;
+  isAlive?: boolean;
 }
 
 export interface AgentCapabilities {

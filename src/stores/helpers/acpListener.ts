@@ -96,6 +96,46 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
         const p = params as Record<string, unknown> | undefined;
         if (p?.id !== undefined) terminalEvents.emitExit(p.id as string, (p.code as number) ?? 0);
       }
+
+      // Copilot CLI session delta notifications
+      if (method === 'copilot/delta') {
+        const delta = params as Record<string, unknown> | undefined;
+        if (delta?.type === 'new_turn' && delta.turn) {
+          const turn = delta.turn as {
+            sessionId: string;
+            turnIndex: number;
+            userMessage: string | null;
+            assistantResponse: string | null;
+            timestamp: string;
+          };
+          const state = get();
+          // If viewing this CLI session, append messages
+          if (state.selectedSessionId === `cli:${turn.sessionId}`) {
+            const newMsgs = [...state.chatMessages];
+            if (turn.userMessage) {
+              newMsgs.push({
+                id: `cli-${turn.sessionId}-user-${turn.turnIndex}`,
+                role: 'user',
+                content: turn.userMessage,
+                timestamp: turn.timestamp,
+              });
+            }
+            if (turn.assistantResponse) {
+              newMsgs.push({
+                id: `cli-${turn.sessionId}-assistant-${turn.turnIndex}`,
+                role: 'assistant',
+                content: turn.assistantResponse,
+                timestamp: turn.timestamp,
+              });
+            }
+            set({ chatMessages: newMsgs });
+          }
+          // Refresh CLI sessions list
+          get().discoverCliSessions();
+        } else if (delta?.type === 'session_updated' || delta?.type === 'new_session') {
+          get().discoverCliSessions();
+        }
+      }
     },
     onMessage: (message) => {
       if (get().devModeEnabled) {

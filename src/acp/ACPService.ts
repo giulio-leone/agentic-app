@@ -162,6 +162,24 @@ export class ACPService {
     return this.sendRequest(ACPMethods.fsList, (path ? { path } : {}) as JSONValue);
   }
 
+  // ── Copilot CLI session discovery ──
+
+  async copilotDiscover(): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotDiscover);
+  }
+
+  async copilotTurns(sessionId: string): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotTurns, { sessionId } as unknown as JSONValue);
+  }
+
+  async copilotWatchStart(): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotWatchStart);
+  }
+
+  async copilotWatchStop(): Promise<JSONRPCResponse> {
+    return this.sendRequest(ACPMethods.copilotWatchStop);
+  }
+
   sendRawMessage(message: ACPWireMessage): void {
     this.transport.send(message);
   }
