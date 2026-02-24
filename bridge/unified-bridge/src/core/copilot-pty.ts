@@ -9,7 +9,7 @@
 
 import * as pty from 'node-pty';
 import { EventEmitter } from 'events';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, realpathSync } from 'fs';
 import { execSync } from 'child_process';
 
 // ── Types ──
@@ -39,9 +39,15 @@ export class CopilotPtyManager extends EventEmitter {
     const copilotPath = this.findCopilotBinary();
     const id = `pty-copilot-${this.nextId++}`;
     const defaultArgs = ['--yolo'];
-    const allArgs = [...defaultArgs, ...args];
 
-    const term = pty.spawn(copilotPath, allArgs, {
+    // If copilot is a Node.js script (symlink to .js), spawn via node
+    const resolvedPath = this.resolveScript(copilotPath);
+    const command = resolvedPath.useNode ? process.execPath : resolvedPath.path;
+    const allArgs = resolvedPath.useNode
+      ? [resolvedPath.path, ...defaultArgs, ...args]
+      : [...defaultArgs, ...args];
+
+    const term = pty.spawn(command, allArgs, {
       name: 'xterm-256color',
       cols: 120,
       rows: 40,
@@ -118,7 +124,6 @@ export class CopilotPtyManager extends EventEmitter {
   // ── Private ──
 
   private findCopilotBinary(): string {
-    // Try known paths
     const candidates = [
       `${process.env.HOME}/.npm-global/bin/copilot`,
       '/usr/local/bin/copilot',
@@ -127,11 +132,26 @@ export class CopilotPtyManager extends EventEmitter {
     for (const p of candidates) {
       if (existsSync(p)) return p;
     }
-    // Try which
     try {
       return execSync('which copilot', { encoding: 'utf-8', timeout: 2000 }).trim();
     } catch {
       throw new Error('Copilot CLI binary not found');
     }
+  }
+
+  /** Resolve symlinks and detect Node.js scripts that need `node` prefix */
+  private resolveScript(binPath: string): { path: string; useNode: boolean } {
+    try {
+      const resolved = realpathSync(binPath);
+      if (resolved.endsWith('.js') || resolved.endsWith('.mjs')) {
+        return { path: resolved, useNode: true };
+      }
+      // Check shebang for scripts without .js extension
+      const head = readFileSync(resolved, { encoding: 'utf-8', flag: 'r' }).slice(0, 128);
+      if (head.startsWith('#!/usr/bin/env node') || head.startsWith('#!/usr/bin/node')) {
+        return { path: resolved, useNode: true };
+      }
+    } catch { /* fall through to direct execution */ }
+    return { path: binPath, useNode: false };
   }
 }
