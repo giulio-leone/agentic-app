@@ -312,11 +312,13 @@ export class CopilotSessionWatcher extends EventEmitter {
 
     // Check for updated sessions
     const latestUpdate = this.getLatestUpdate();
+    if (!this.db) return;
     if (latestUpdate !== this.lastSessionUpdate) {
+      const oldCursor = this.lastSessionUpdate;
       this.lastSessionUpdate = latestUpdate;
       const updatedSessions = this.db.prepare(
         'SELECT id, cwd, branch, summary, created_at, updated_at FROM sessions WHERE updated_at > ? ORDER BY updated_at DESC',
-      ).all(this.lastSessionUpdate) as Array<{
+      ).all(oldCursor) as Array<{
         id: string;
         cwd: string | null;
         branch: string | null;
