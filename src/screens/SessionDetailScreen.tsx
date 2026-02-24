@@ -110,11 +110,12 @@ export function SessionDetailScreen() {
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
   const isCliSession = !!selectedSessionId?.startsWith('cli:');
   const activePtySessionId = useAppStore(s => s.activePtySessionId);
+  const ptyOwnerCliSessionId = useAppStore(s => s.ptyOwnerCliSessionId);
   const writeToCopilotPty = useAppStore(s => s.writeToCopilotPty);
   const spawnCopilotCli = useAppStore(s => s.spawnCopilotCli);
   const killCopilotPty = useAppStore(s => s.killCopilotPty);
   const cliSessions = useAppStore(s => s.cliSessions);
-  const isPtySession = isCliSession && !!activePtySessionId;
+  const isPtySession = isCliSession && !!activePtySessionId && selectedSessionId === `cli:${ptyOwnerCliSessionId}`;
   const selectedCliSession = isCliSession
     ? cliSessions.find(s => selectedSessionId === `cli:${s.id}`)
     : undefined;
@@ -207,9 +208,10 @@ export function SessionDetailScreen() {
   const [isSpawning, setIsSpawning] = useState(false);
   const handleSpawnCli = useCallback(async () => {
     const cwd = selectedCliSession?.cwd || '/tmp';
+    const cliId = selectedCliSession?.id;
     setIsSpawning(true);
     try {
-      await spawnCopilotCli(cwd);
+      await spawnCopilotCli(cwd, cliId);
     } finally {
       setIsSpawning(false);
     }

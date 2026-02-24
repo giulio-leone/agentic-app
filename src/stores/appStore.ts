@@ -66,6 +66,7 @@ export interface AppState {
   cliSessions: CliSessionInfo[];
   isDiscoveringCli: boolean;
   activePtySessionId: string | null;
+  ptyOwnerCliSessionId: string | null;
 
   // MCP Servers
   mcpServers: MCPServerConfig[];
@@ -137,7 +138,7 @@ export interface AppActions {
   stopCliWatch: () => Promise<void>;
 
   // Copilot PTY interaction
-  spawnCopilotCli: (cwd: string, args?: string[]) => Promise<string | null>;
+  spawnCopilotCli: (cwd: string, cliSessionId?: string, args?: string[]) => Promise<string | null>;
   writeToCopilotPty: (sessionId: string, input: string) => Promise<boolean>;
   killCopilotPty: (sessionId: string) => Promise<void>;
   activePtySessionId: string | null;

@@ -64,6 +64,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   cliSessions: [],
   isDiscoveringCli: false,
   activePtySessionId: null,
+  ptyOwnerCliSessionId: null as string | null,
 
   discoverCliSessions: async () => {
     if (!_service) {
@@ -177,14 +178,14 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
   // ── Copilot PTY interaction ──
 
-  spawnCopilotCli: async (cwd: string, args?: string[]) => {
+  spawnCopilotCli: async (cwd: string, cliSessionId?: string, args?: string[]) => {
     if (!_service) return null;
     try {
       const response = await _service.copilotSpawn(cwd, args);
       const result = response.result as Record<string, unknown> | undefined;
       if (result?.id) {
         const ptyId = result.id as string;
-        set({ activePtySessionId: ptyId });
+        set({ activePtySessionId: ptyId, ptyOwnerCliSessionId: cliSessionId ?? null });
         get().appendLog(`✓ Copilot CLI spawned: ${ptyId} (PID ${result.pid})`);
         return ptyId;
       }
@@ -212,7 +213,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     try {
       await _service.copilotKill(sessionId);
       if (get().activePtySessionId === sessionId) {
-        set({ activePtySessionId: null });
+        set({ activePtySessionId: null, ptyOwnerCliSessionId: null });
       }
     } catch (err) {
       get().appendLog(`copilot/kill error: ${(err as Error).message}`);
