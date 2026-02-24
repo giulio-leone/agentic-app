@@ -36,6 +36,9 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isConnected = connectionState === ACPConnectionState.Connected;
 
+  // CLI session filter
+  const [showInactiveCli, setShowInactiveCli] = useState(false);
+
   // Merge CLI sessions into session list
   const allSessions = useMemo(() => {
     const cliAsSummary: SessionSummary[] = cliSessions.map((cli: CliSessionInfo) => ({
@@ -48,11 +51,15 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
       isCliSession: true,
       isAlive: cli.isAlive,
     }));
-    // Alive CLI first, then inactive CLI, then bridge sessions
     const alive = cliAsSummary.filter(s => s.isAlive);
     const inactive = cliAsSummary.filter(s => !s.isAlive);
-    return [...alive, ...inactive, ...sessions];
-  }, [sessions, cliSessions]);
+    return [...alive, ...(showInactiveCli ? inactive : []), ...sessions];
+  }, [sessions, cliSessions, showInactiveCli]);
+
+  const inactiveCliCount = useMemo(
+    () => cliSessions.filter((c: CliSessionInfo) => !c.isAlive).length,
+    [cliSessions],
+  );
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,6 +156,8 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
     filteredSessions,
     groupedSessions,
     mcpSummary,
+    showInactiveCli, setShowInactiveCli,
+    inactiveCliCount,
     // Handlers
     handleServerPress,
     handleConnect,

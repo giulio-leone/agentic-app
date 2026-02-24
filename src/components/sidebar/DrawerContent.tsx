@@ -412,6 +412,26 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         marginVertical={Spacing.md}
       />
 
+      {/* Inactive CLI toggle */}
+      {w.inactiveCliCount > 0 && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: Spacing.md + Spacing.sm,
+            paddingVertical: 4,
+            gap: 6,
+          }}
+          onPress={() => w.setShowInactiveCli(!w.showInactiveCli)}
+          activeOpacity={0.6}
+        >
+          <Terminal size={11} color={colors.sidebarTextSecondary} />
+          <Text color={colors.sidebarTextSecondary} fontSize={FontSize.caption}>
+            {w.showInactiveCli ? 'Hide' : 'Show'} {w.inactiveCliCount} inactive CLI
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Sessions list */}
       <FlatList
         data={w.filteredSessions}
