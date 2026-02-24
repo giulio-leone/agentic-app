@@ -17,6 +17,7 @@ import {
 } from '../storePrivate';
 import type { ACPServerConfiguration } from '../../acp/models/types';
 import { createACPListener, clearRetry } from '../helpers/acpListener';
+import { showInfoToast, showErrorToast } from '../../utils/toast';
 
 /** Detect AI provider servers, including legacy entries without serverType. */
 const isAIServer = (s?: ACPServerConfiguration) =>
@@ -64,16 +65,26 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   isDiscoveringCli: false,
 
   discoverCliSessions: async () => {
-    if (!_service) return;
+    if (!_service) {
+      get().appendLog('copilot/discover: no service');
+      showErrorToast('CLI Discovery', 'No service');
+      return;
+    }
     set({ isDiscoveringCli: true });
     try {
       const response = await _service.copilotDiscover();
       const result = response.result as Record<string, unknown> | undefined;
       if (result?.sessions) {
-        set({ cliSessions: result.sessions as AppState['cliSessions'] });
+        const sessions = result.sessions as AppState['cliSessions'];
+        set({ cliSessions: sessions });
+        showInfoToast('CLI Discovery', `${sessions.length} sessions found`);
+      } else {
+        showErrorToast('CLI Discovery', `No sessions in response: ${JSON.stringify(response).slice(0, 100)}`);
       }
     } catch (err) {
-      get().appendLog(`copilot/discover error: ${(err as Error).message}`);
+      const msg = (err as Error).message;
+      get().appendLog(`copilot/discover error: ${msg}`);
+      showErrorToast('CLI Discovery', msg);
     } finally {
       set({ isDiscoveringCli: false });
     }
@@ -396,6 +407,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
         }
 
         get().loadSessions();
+        get().discoverCliSessions();
       } else {
         set({ isInitialized: true });
       }

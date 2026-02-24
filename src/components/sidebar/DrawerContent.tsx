@@ -151,6 +151,9 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             {isActive && (
               <View style={[sessionItemStyles.activeBar, { backgroundColor: colors.primary }]} />
             )}
+            {item.isCliSession && (
+              <Terminal size={12} color={item.isAlive ? '#34C759' : colors.sidebarTextSecondary} style={{ marginRight: 6 }} />
+            )}
             <Text
               color={colors.sidebarText}
               fontSize={FontSize.footnote}

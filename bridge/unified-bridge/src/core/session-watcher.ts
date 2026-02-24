@@ -113,10 +113,12 @@ export class CopilotSessionWatcher extends EventEmitter {
     return sessions;
   }
 
-  /** Get turns for a specific session */
+  /** Get turns for a specific session. Falls back to checkpoints if no turns exist. */
   getSessionTurns(sessionId: string): CliTurn[] {
     this.ensureDb();
     if (!this.db) return [];
+
+    // Try turns table first
     const rows = this.db.prepare(
       'SELECT session_id, turn_index, user_message, assistant_response, timestamp FROM turns WHERE session_id = ? ORDER BY turn_index',
     ).all(sessionId) as Array<{
@@ -126,13 +128,48 @@ export class CopilotSessionWatcher extends EventEmitter {
       assistant_response: string | null;
       timestamp: string;
     }>;
-    return rows.map(r => ({
-      sessionId: r.session_id,
-      turnIndex: r.turn_index,
-      userMessage: r.user_message,
-      assistantResponse: r.assistant_response,
-      timestamp: r.timestamp,
-    }));
+
+    if (rows.length > 0) {
+      return rows.map(r => ({
+        sessionId: r.session_id,
+        turnIndex: r.turn_index,
+        userMessage: r.user_message,
+        assistantResponse: r.assistant_response,
+        timestamp: r.timestamp,
+      }));
+    }
+
+    // Fallback: synthesize turns from checkpoints (overview + history + work_done)
+    const checkpoints = this.db.prepare(
+      'SELECT checkpoint_number, title, overview, history, work_done FROM checkpoints WHERE session_id = ? ORDER BY checkpoint_number',
+    ).all(sessionId) as Array<{
+      checkpoint_number: number;
+      title: string;
+      overview: string | null;
+      history: string | null;
+      work_done: string | null;
+    }>;
+
+    if (checkpoints.length === 0) return [];
+
+    // Get session timestamp
+    const session = this.db.prepare('SELECT created_at FROM sessions WHERE id = ?').get(sessionId) as { created_at: string } | undefined;
+    const ts = session?.created_at ?? new Date().toISOString();
+
+    return checkpoints.map((cp, i) => {
+      const parts: string[] = [];
+      if (cp.overview) parts.push(cp.overview);
+      if (cp.history) parts.push(`\n**History:**\n${cp.history}`);
+      if (cp.work_done) parts.push(`\n**Work Done:**\n${cp.work_done}`);
+
+      return {
+        sessionId,
+        turnIndex: i,
+        userMessage: null,
+        assistantResponse: `## Checkpoint ${cp.checkpoint_number}: ${cp.title}\n\n${parts.join('\n')}`,
+        timestamp: ts,
+      };
+    });
   }
 
   /** Start watching for changes */
@@ -175,9 +212,14 @@ export class CopilotSessionWatcher extends EventEmitter {
   // ── Private ──
 
   private ensureDb(): void {
-    if (this.db) return;
+    // Close and reopen each time to get fresh WAL snapshot
+    if (this.db) {
+      try { this.db.close(); } catch { /* ignore */ }
+      this.db = null;
+    }
     if (!existsSync(this.dbPath)) return;
-    this.db = new Database(this.dbPath, { readonly: true, fileMustExist: true });
+    // Must NOT be readonly to read uncommitted WAL data from other processes
+    this.db = new Database(this.dbPath, { readonly: false, fileMustExist: true });
     this.db.pragma('journal_mode = WAL');
   }
 

@@ -27,8 +27,13 @@ import { CopilotSessionWatcher, type SessionDelta } from './session-watcher.js';
 // ── Helpers ──
 
 function send(socket: Socket, msg: Record<string, unknown>): void {
-  if (!socket.writable) return;
-  socket.write(JSON.stringify({ jsonrpc: '2.0', ...msg }) + '\n');
+  if (!socket.writable) {
+    console.warn('[protocol] send: socket not writable');
+    return;
+  }
+  const payload = JSON.stringify({ jsonrpc: '2.0', ...msg });
+  console.log(`[protocol] → response id=${msg.id ?? 'notify'} (${payload.length} bytes)`);
+  socket.write(payload + '\n');
 }
 
 function sendResponse(socket: Socket, id: string | number, result: unknown): void {
@@ -461,8 +466,14 @@ export function createProtocolHandler(
   const sessionWatcher = new CopilotSessionWatcher();
 
   function handleCopilotDiscover(id: string | number): void {
-    const sessions = sessionWatcher.discover();
-    sendResponse(socket, id, { sessions });
+    try {
+      const sessions = sessionWatcher.discover();
+      console.log(`[protocol] copilot/discover → ${sessions.length} sessions`);
+      sendResponse(socket, id, { sessions });
+    } catch (err) {
+      console.error(`[protocol] copilot/discover error:`, (err as Error).message);
+      sendError(socket, id, -32603, (err as Error).message);
+    }
   }
 
   function handleCopilotTurns(id: string | number, params: Record<string, unknown>): void {
