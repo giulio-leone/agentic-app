@@ -62,6 +62,7 @@ function scanCopilotProcesses(): CopilotProcess[] {
       const match = line.trim().match(/^(\d+)\s+(\S+)\s+(.+)/);
       if (!match) continue;
       const pid = parseInt(match[1], 10);
+      if (!Number.isInteger(pid) || pid <= 0) continue;
       const tty = match[2]!;
       // Deduplicate by TTY — one session per terminal
       if (seenTTYs.has(tty)) continue;

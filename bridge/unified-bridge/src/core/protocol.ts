@@ -511,6 +511,7 @@ export function createProtocolHandler(
   }
 
   function handleCopilotWatchStart(id: string | number): void {
+    sessionWatcher.removeAllListeners('delta');
     sessionWatcher.startWatching();
     sessionWatcher.on('delta', (delta: SessionDelta) => {
       send(socket, { method: 'copilot/delta', params: delta });
@@ -519,6 +520,7 @@ export function createProtocolHandler(
   }
 
   function handleCopilotWatchStop(id: string | number): void {
+    sessionWatcher.removeAllListeners('delta');
     sessionWatcher.stopWatching();
     sendResponse(socket, id, { watching: false });
   }

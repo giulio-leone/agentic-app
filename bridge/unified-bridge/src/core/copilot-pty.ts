@@ -70,7 +70,7 @@ export class CopilotPtyManager extends EventEmitter {
 
     this.sessions.set(id, { pty: term, info });
     console.log(`[pty] Spawned copilot (PID ${term.pid}) in ${cwd}`);
-    return info;
+    return { ...info };
   }
 
   /** Write input to a PTY session */
@@ -99,12 +99,13 @@ export class CopilotPtyManager extends EventEmitter {
 
   /** Get info about a specific session */
   getSession(sessionId: string): CopilotPtySession | undefined {
-    return this.sessions.get(sessionId)?.info;
+    const info = this.sessions.get(sessionId)?.info;
+    return info ? { ...info } : undefined;
   }
 
   /** List all active PTY sessions */
   listSessions(): CopilotPtySession[] {
-    return Array.from(this.sessions.values()).map(s => s.info);
+    return Array.from(this.sessions.values()).map(s => ({ ...s.info }));
   }
 
   /** Dispose all sessions */
