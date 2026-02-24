@@ -108,6 +108,7 @@ export function SessionDetailScreen() {
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
+  const isCliSession = !!selectedSessionId?.startsWith('cli:');
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
 
   // Provider•Model label for toolbar chip
@@ -443,10 +444,10 @@ export function SessionDetailScreen() {
         selectedServerId={selectedServerId}
         onSelectServer={selectServer}
         onOpenTemplates={openTemplates}
-        onOpenModelPicker={handleOpenModelPicker}
-        onLongPressModelPicker={handleLongPressModelPicker}
-        onOpenDirectoryPicker={bridgeModels.length > 0 ? () => { console.warn('[DIR] Opening directory picker'); setDirectoryPickerVisible(true); } : undefined}
-        currentModelLabel={currentModelLabel}
+        onOpenModelPicker={isCliSession ? undefined : handleOpenModelPicker}
+        onLongPressModelPicker={isCliSession ? undefined : handleLongPressModelPicker}
+        onOpenDirectoryPicker={!isCliSession && bridgeModels.length > 0 ? () => { console.warn('[DIR] Opening directory picker'); setDirectoryPickerVisible(true); } : undefined}
+        currentModelLabel={isCliSession ? '🖥 CLI' : currentModelLabel}
         currentCwdLabel={selectedCwd ? selectedCwd.split('/').pop() : null}
         providerIcon={providerIcon}
         onToggleAB={handleToggleAB}
@@ -478,14 +479,15 @@ export function SessionDetailScreen() {
       </View>
 
       <MessageComposer
-        value={promptText}
+        value={isCliSession ? '' : promptText}
         onChangeText={setPromptText}
         onSend={handleSend}
         onCancel={cancelPrompt}
         isStreaming={isStreaming}
-        isDisabled={!isConnected}
+        isDisabled={!isConnected || isCliSession}
         isListening={isListening}
         onToggleVoice={voiceAvailable ? toggleVoice : undefined}
+        placeholder={isCliSession ? 'CLI session — sola lettura' : undefined}
       />
 
       <MessageActionMenu
