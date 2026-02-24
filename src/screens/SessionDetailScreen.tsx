@@ -13,7 +13,7 @@ import {
   View,
   Modal,
 } from 'react-native';
-import { YStack, Text } from 'tamagui';
+import { YStack, XStack, Text, Button } from 'tamagui';
 import * as Haptics from 'expo-haptics';
 import { ChatBubble } from '../components/ChatBubble';
 import { MessageComposer } from '../components/MessageComposer';
@@ -110,9 +110,15 @@ export function SessionDetailScreen() {
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
   const isCliSession = !!selectedSessionId?.startsWith('cli:');
   const activePtySessionId = useAppStore(s => s.activePtySessionId);
+  const ptyOwnerCliSessionId = useAppStore(s => s.ptyOwnerCliSessionId);
   const writeToCopilotPty = useAppStore(s => s.writeToCopilotPty);
   const spawnCopilotCli = useAppStore(s => s.spawnCopilotCli);
-  const isPtySession = isCliSession && !!activePtySessionId;
+  const killCopilotPty = useAppStore(s => s.killCopilotPty);
+  const cliSessions = useAppStore(s => s.cliSessions);
+  const isPtySession = isCliSession && !!activePtySessionId && selectedSessionId === `cli:${ptyOwnerCliSessionId}`;
+  const selectedCliSession = isCliSession
+    ? cliSessions.find(s => selectedSessionId === `cli:${s.id}`)
+    : undefined;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
 
   // Provider•Model label for toolbar chip
@@ -198,6 +204,22 @@ export function SessionDetailScreen() {
       sendPrompt(text, attachments);
     }
   }, [isPtySession, activePtySessionId, writeToCopilotPty, sendPrompt]);
+
+  const [isSpawning, setIsSpawning] = useState(false);
+  const handleSpawnCli = useCallback(async () => {
+    const cwd = selectedCliSession?.cwd || '/tmp';
+    const cliId = selectedCliSession?.id;
+    setIsSpawning(true);
+    try {
+      await spawnCopilotCli(cwd, cliId);
+    } finally {
+      setIsSpawning(false);
+    }
+  }, [selectedCliSession, spawnCopilotCli]);
+
+  const handleStopCli = useCallback(async () => {
+    if (activePtySessionId) await killCopilotPty(activePtySessionId);
+  }, [activePtySessionId, killCopilotPty]);
 
   const {
     quotedMessage,
@@ -498,6 +520,45 @@ export function SessionDetailScreen() {
           colors={colors}
         />
       </View>
+
+      {isCliSession && !isPtySession && isConnected && (
+        <XStack
+          paddingHorizontal={Spacing.md}
+          paddingVertical={Spacing.sm}
+          gap={Spacing.sm}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Button
+            size="$3"
+            theme="active"
+            backgroundColor={colors.primary}
+            fontWeight="700"
+            borderRadius={12}
+            onPress={handleSpawnCli}
+            disabled={isSpawning}
+          >
+            {isSpawning ? '⏳ Avvio...' : '▶ Avvia Copilot CLI'}
+          </Button>
+        </XStack>
+      )}
+
+      {isPtySession && (
+        <XStack
+          paddingHorizontal={Spacing.md}
+          paddingVertical={Spacing.xs}
+          gap={Spacing.sm}
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Text fontSize={FontSize.caption} color={colors.primary} fontWeight="600">
+            🟢 PTY attivo
+          </Text>
+          <Button size="$2" theme="red" borderRadius={8} onPress={handleStopCli}>
+            ⏹ Stop
+          </Button>
+        </XStack>
+      )}
 
       <MessageComposer
         value={isCliSession && !isPtySession ? '' : promptText}

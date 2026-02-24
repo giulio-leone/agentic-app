@@ -129,7 +129,7 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
           const ptyId = p.sessionId as string;
           get().appendLog(`Copilot PTY exited: ${ptyId} (code ${p.exitCode ?? 'unknown'})`);
           if (get().activePtySessionId === ptyId) {
-            set({ activePtySessionId: null });
+            set({ activePtySessionId: null, ptyOwnerCliSessionId: null });
           }
         }
       }
