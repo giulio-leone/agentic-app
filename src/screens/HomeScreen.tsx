@@ -58,20 +58,21 @@ export function HomeScreen() {
     if (isInitialized) discoverCliSessions();
   }, [isInitialized, discoverCliSessions]);
 
-  // Merge bridge sessions + CLI sessions into a unified list
+  // Merge bridge sessions + CLI sessions (only alive shown by default in HomeScreen)
   const allSessions = useMemo(() => {
-    const cliAsSummary: SessionSummary[] = cliSessions.map((cli: CliSessionInfo) => ({
-      id: `cli:${cli.id}`,
-      title: cli.summary || cli.cwd?.split('/').pop() || 'CLI Session',
-      description: cli.branch ? `${cli.branch} • ${cli.cwd || ''}` : cli.cwd || '',
-      createdAt: cli.createdAt,
-      updatedAt: cli.updatedAt,
-      cwd: cli.cwd || undefined,
-      isCliSession: true,
-      isAlive: cli.isAlive,
-    }));
-    // CLI sessions first (they're live), then bridge sessions
-    return [...cliAsSummary, ...sessions];
+    const aliveCli: SessionSummary[] = cliSessions
+      .filter((cli: CliSessionInfo) => cli.isAlive)
+      .map((cli: CliSessionInfo) => ({
+        id: `cli:${cli.id}`,
+        title: cli.summary || cli.cwd?.split('/').pop() || 'CLI Session',
+        description: cli.branch ? `${cli.branch} • ${cli.cwd || ''}` : cli.cwd || '',
+        createdAt: cli.createdAt,
+        updatedAt: cli.updatedAt,
+        cwd: cli.cwd || undefined,
+        isCliSession: true,
+        isAlive: cli.isAlive,
+      }));
+    return [...aliveCli, ...sessions];
   }, [sessions, cliSessions]);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
