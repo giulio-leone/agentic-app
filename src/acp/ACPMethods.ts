@@ -24,4 +24,9 @@ export const ACPMethods = {
   copilotTurns: 'copilot/sessions/turns',
   copilotWatchStart: 'copilot/watch/start',
   copilotWatchStop: 'copilot/watch/stop',
+  // Copilot PTY interaction
+  copilotSpawn: 'copilot/spawn',
+  copilotWrite: 'copilot/write',
+  copilotKill: 'copilot/kill',
+  copilotPtyList: 'copilot/pty/list',
 } as const;

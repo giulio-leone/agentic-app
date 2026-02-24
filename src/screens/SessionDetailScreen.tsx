@@ -109,6 +109,10 @@ export function SessionDetailScreen() {
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
   const isCliSession = !!selectedSessionId?.startsWith('cli:');
+  const activePtySessionId = useAppStore(s => s.activePtySessionId);
+  const writeToCopilotPty = useAppStore(s => s.writeToCopilotPty);
+  const spawnCopilotCli = useAppStore(s => s.spawnCopilotCli);
+  const isPtySession = isCliSession && !!activePtySessionId;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
 
   // Provider•Model label for toolbar chip
@@ -178,6 +182,23 @@ export function SessionDetailScreen() {
     toggleBookmark,
   });
 
+  // Wrap sendPrompt: if PTY active, route to PTY stdin + show user message locally
+  const ptyAwareSendPrompt = useCallback(async (text: string, attachments?: import('../acp/models/types').Attachment[]) => {
+    if (isPtySession && activePtySessionId) {
+      useAppStore.setState(state => ({
+        chatMessages: [...state.chatMessages, {
+          id: `pty-user-${Date.now()}`,
+          role: 'user' as const,
+          content: text,
+          timestamp: new Date().toISOString(),
+        }],
+      }));
+      await writeToCopilotPty(activePtySessionId, text + '\n');
+    } else {
+      sendPrompt(text, attachments);
+    }
+  }, [isPtySession, activePtySessionId, writeToCopilotPty, sendPrompt]);
+
   const {
     quotedMessage,
     templateSheetVisible,
@@ -190,7 +211,7 @@ export function SessionDetailScreen() {
     openTemplates,
     closeTemplates,
     builtInTemplates,
-  } = useComposition({ promptText, setPromptText, sendPrompt, markNearBottom });
+  } = useComposition({ promptText, setPromptText, sendPrompt: ptyAwareSendPrompt, markNearBottom });
 
   // ── A/B Testing ──
   const { abState, startTest, cancelTest, clearTest } = useABTesting();
@@ -479,15 +500,15 @@ export function SessionDetailScreen() {
       </View>
 
       <MessageComposer
-        value={isCliSession ? '' : promptText}
+        value={isCliSession && !isPtySession ? '' : promptText}
         onChangeText={setPromptText}
         onSend={handleSend}
         onCancel={cancelPrompt}
         isStreaming={isStreaming}
-        isDisabled={!isConnected || isCliSession}
+        isDisabled={!isConnected || (isCliSession && !isPtySession)}
         isListening={isListening}
         onToggleVoice={voiceAvailable ? toggleVoice : undefined}
-        placeholder={isCliSession ? 'CLI session — sola lettura' : undefined}
+        placeholder={isCliSession && !isPtySession ? 'CLI session — avvia PTY per interagire' : isPtySession ? 'Invia prompt a Copilot CLI...' : undefined}
       />
 
       <MessageActionMenu
