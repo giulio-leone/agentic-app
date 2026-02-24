@@ -127,6 +127,9 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
       isStreaming: false,
     });
 
+    // CLI sessions are loaded via loadCliSessionTurns — skip ACP/local flows
+    if (id?.startsWith('cli:')) return;
+
     // For ACP servers, try server-side session replay first
     if (_service && id) {
       const session = get().sessions.find(s => s.id === id);

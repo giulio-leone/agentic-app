@@ -92,10 +92,25 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
   loadCliSessionTurns: async (sessionId: string) => {
     if (!_service) return;
+    // Show loading state
+    set({ chatMessages: [{
+      id: `cli-loading-${sessionId}`,
+      role: 'system' as const,
+      content: '⏳ Caricamento sessione CLI...',
+      timestamp: new Date().toISOString(),
+    }] });
     try {
       const response = await _service.copilotTurns(sessionId);
       const result = response.result as Record<string, unknown> | undefined;
-      if (!result?.turns) return;
+      if (!result?.turns) {
+        set({ chatMessages: [{
+          id: `cli-empty-${sessionId}`,
+          role: 'system' as const,
+          content: '📋 Sessione CLI senza contenuto ancora — attendi nuovi turn.',
+          timestamp: new Date().toISOString(),
+        }] });
+        return;
+      }
       const turns = result.turns as Array<{
         sessionId: string;
         turnIndex: number;
@@ -124,9 +139,20 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
         }
         return msgs;
       });
-      set({ chatMessages: messages });
+      set({ chatMessages: messages.length > 0 ? messages : [{
+        id: `cli-empty-${sessionId}`,
+        role: 'system' as const,
+        content: '📋 Sessione CLI senza messaggi — solo checkpoint disponibili.',
+        timestamp: new Date().toISOString(),
+      }] });
     } catch (err) {
       get().appendLog(`copilot/turns error: ${(err as Error).message}`);
+      set({ chatMessages: [{
+        id: `cli-error-${sessionId}`,
+        role: 'system' as const,
+        content: `❌ Errore caricamento: ${(err as Error).message}`,
+        timestamp: new Date().toISOString(),
+      }] });
     }
   },
 
