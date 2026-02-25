@@ -124,7 +124,7 @@ export class CopilotSessionWatcher extends EventEmitter {
     return sessions;
   }
 
-  /** Get turns for a specific session. Falls back to checkpoints if no turns exist. */
+  /** Get turns for a specific session. Falls back to events.jsonl → checkpoints. */
   getSessionTurns(sessionId: string): CliTurn[] {
     this.ensureDb();
     if (!this.db) return [];
@@ -150,7 +150,14 @@ export class CopilotSessionWatcher extends EventEmitter {
       }));
     }
 
-    // Fallback: synthesize turns from checkpoints (overview + history + work_done)
+    // Fallback: read from events.jsonl (actual conversation data)
+    const eventsPath = join(homedir(), '.copilot', 'session-state', sessionId, 'events.jsonl');
+    if (existsSync(eventsPath)) {
+      const jsonlTurns = this.parseEventsJsonl(sessionId, eventsPath);
+      if (jsonlTurns.length > 0) return jsonlTurns;
+    }
+
+    // Last fallback: synthesize turns from checkpoints
     const checkpoints = this.db.prepare(
       'SELECT checkpoint_number, title, overview, history, work_done FROM checkpoints WHERE session_id = ? ORDER BY checkpoint_number',
     ).all(sessionId) as Array<{
@@ -163,7 +170,6 @@ export class CopilotSessionWatcher extends EventEmitter {
 
     if (checkpoints.length === 0) return [];
 
-    // Get session timestamp
     const session = this.db.prepare('SELECT created_at FROM sessions WHERE id = ?').get(sessionId) as { created_at: string } | undefined;
     const ts = session?.created_at ?? new Date().toISOString();
 
@@ -181,6 +187,60 @@ export class CopilotSessionWatcher extends EventEmitter {
         timestamp: ts,
       };
     });
+  }
+
+  /** Parse events.jsonl into CliTurn[] — groups user.message + assistant.message pairs */
+  private parseEventsJsonl(sessionId: string, filePath: string): CliTurn[] {
+    try {
+      const { readFileSync } = require('fs');
+      const content = readFileSync(filePath, 'utf-8');
+      const lines = content.split('\n').filter((l: string) => l.trim());
+
+      const turns: CliTurn[] = [];
+      let turnIndex = 0;
+      let currentUserMessage: string | null = null;
+      let currentAssistantParts: string[] = [];
+      let currentTimestamp = '';
+
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line);
+          if (event.type === 'user.message') {
+            // Flush previous turn if exists
+            if (currentUserMessage || currentAssistantParts.length > 0) {
+              turns.push({
+                sessionId,
+                turnIndex: turnIndex++,
+                userMessage: currentUserMessage,
+                assistantResponse: currentAssistantParts.join('') || null,
+                timestamp: currentTimestamp || event.timestamp,
+              });
+            }
+            currentUserMessage = event.data?.content ?? '';
+            currentAssistantParts = [];
+            currentTimestamp = event.timestamp;
+          } else if (event.type === 'assistant.message') {
+            const content = event.data?.content ?? '';
+            if (content) currentAssistantParts.push(content);
+          }
+        } catch { /* skip malformed lines */ }
+      }
+
+      // Flush last turn
+      if (currentUserMessage || currentAssistantParts.length > 0) {
+        turns.push({
+          sessionId,
+          turnIndex: turnIndex++,
+          userMessage: currentUserMessage,
+          assistantResponse: currentAssistantParts.join('') || null,
+          timestamp: currentTimestamp,
+        });
+      }
+
+      return turns;
+    } catch {
+      return [];
+    }
   }
 
   /** Start watching for changes */
