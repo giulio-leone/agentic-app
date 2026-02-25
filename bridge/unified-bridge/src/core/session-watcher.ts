@@ -133,7 +133,6 @@ export class CopilotSessionWatcher extends EventEmitter {
     const eventsPath = join(homedir(), '.copilot', 'session-state', sessionId, 'events.jsonl');
     if (existsSync(eventsPath)) {
       const jsonlTurns = this.parseEventsJsonl(sessionId, eventsPath);
-      console.log(`[watcher] events.jsonl for ${sessionId}: ${jsonlTurns.length} turns`);
       if (jsonlTurns.length > 0) return jsonlTurns;
     }
 
