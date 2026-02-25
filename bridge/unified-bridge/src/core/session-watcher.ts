@@ -205,9 +205,14 @@ export class CopilotSessionWatcher extends EventEmitter {
       for (const line of lines) {
         try {
           const event = JSON.parse(line);
+          const data = event.data ?? {};
+
+          // Skip subagent events (nested tool calls)
+          if (data.parentToolCallId) continue;
+
           if (event.type === 'user.message') {
-            // Flush previous turn if exists
-            if (currentUserMessage || currentAssistantParts.length > 0) {
+            // Flush previous turn
+            if (currentUserMessage !== null || currentAssistantParts.length > 0) {
               turns.push({
                 sessionId,
                 turnIndex: turnIndex++,
@@ -216,18 +221,32 @@ export class CopilotSessionWatcher extends EventEmitter {
                 timestamp: currentTimestamp || event.timestamp,
               });
             }
-            currentUserMessage = event.data?.content ?? '';
+            currentUserMessage = data.content ?? '';
             currentAssistantParts = [];
             currentTimestamp = event.timestamp;
           } else if (event.type === 'assistant.message') {
-            const content = event.data?.content ?? '';
-            if (content) currentAssistantParts.push(content);
+            const text = data.content ?? '';
+            if (text) currentAssistantParts.push(text);
+          } else if (event.type === 'assistant.turn_end') {
+            // End of assistant response — flush turn
+            if (currentUserMessage !== null || currentAssistantParts.length > 0) {
+              turns.push({
+                sessionId,
+                turnIndex: turnIndex++,
+                userMessage: currentUserMessage,
+                assistantResponse: currentAssistantParts.join('') || null,
+                timestamp: currentTimestamp || event.timestamp,
+              });
+              currentUserMessage = null;
+              currentAssistantParts = [];
+              currentTimestamp = '';
+            }
           }
         } catch { /* skip malformed lines */ }
       }
 
-      // Flush last turn
-      if (currentUserMessage || currentAssistantParts.length > 0) {
+      // Flush any remaining turn
+      if (currentUserMessage !== null || currentAssistantParts.length > 0) {
         turns.push({
           sessionId,
           turnIndex: turnIndex++,
