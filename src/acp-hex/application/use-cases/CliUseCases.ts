@@ -95,13 +95,14 @@ export class SpawnCliSession {
   constructor(private gateway: ACPGateway) {}
 
   async execute(
-    command?: string,
+    args?: string,
     cwd?: string,
   ): Promise<{ sessionId: string; ptyId: string }> {
-    return this.gateway.request<{ sessionId: string; ptyId: string }>(
+    const raw = await this.gateway.request<{ id: string; pid: number; tty: string; cwd: string }>(
       'copilot/spawn',
-      { command, cwd },
+      { cwd, args: args ? args.split(' ') : undefined },
     );
+    return { sessionId: raw.id, ptyId: raw.id };
   }
 }
 
