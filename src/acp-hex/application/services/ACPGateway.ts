@@ -138,6 +138,11 @@ export class ACPGateway {
     method: string,
     params?: Record<string, unknown>,
   ): Promise<T> {
+    // Wait for connection if still connecting
+    if (this.transport.state !== 'Connected') {
+      await this.waitForConnected();
+    }
+
     const id = ++this.idCounter;
     const message = { jsonrpc: '2.0' as const, id, method, params };
 
@@ -160,9 +165,34 @@ export class ACPGateway {
 
   // ─── JSON-RPC: notification (fire-and-forget) ──────────────────────────────
 
-  notify(method: string, params?: Record<string, unknown>): void {
+  async notify(method: string, params?: Record<string, unknown>): Promise<void> {
+    if (this.transport.state !== 'Connected') {
+      await this.waitForConnected();
+    }
     const message = { jsonrpc: '2.0' as const, method, params };
     this.transport.send(JSON.stringify(message) + '\n');
+  }
+
+  private waitForConnected(timeoutMs = 10_000): Promise<void> {
+    if (this.transport.state === 'Connected') return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        unsub();
+        reject(new Error(`Connection timeout: state is ${this.transport.state}`));
+      }, timeoutMs);
+      const unsub = eventBus.on('connection:stateChanged', (event) => {
+        if (event.state === 'Connected') {
+          clearTimeout(timer);
+          unsub();
+          resolve();
+        }
+        if (event.state === 'Failed' || event.state === 'Disconnected') {
+          clearTimeout(timer);
+          unsub();
+          reject(new Error(`Connection ${event.state}`));
+        }
+      });
+    });
   }
 
   // ─── Incoming message routing ──────────────────────────────────────────────
