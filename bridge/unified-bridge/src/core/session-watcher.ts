@@ -5,7 +5,7 @@
  * Emits delta events when new turns/sessions appear.
  */
 
-import { existsSync, readFileSync, watch, type FSWatcher } from 'fs';
+import { existsSync, readFileSync, readdirSync, watch, type FSWatcher } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { execSync } from 'child_process';
@@ -18,6 +18,7 @@ export interface CliSession {
   id: string;
   cwd: string | null;
   branch: string | null;
+  repository: string | null;
   summary: string | null;
   createdAt: string;
   updatedAt: string;
@@ -314,29 +315,95 @@ export class CopilotSessionWatcher extends EventEmitter {
   }
 
   private readRecentSessions(): CliSession[] {
+    // Source 1: sessions from DB
     this.ensureDb();
-    if (!this.db) return [];
-    const rows = this.db.prepare(
-      "SELECT id, cwd, branch, summary, created_at, updated_at FROM sessions WHERE updated_at > datetime('now', '-24 hours') ORDER BY updated_at DESC LIMIT 50",
-    ).all() as Array<{
-      id: string;
-      cwd: string | null;
-      branch: string | null;
-      summary: string | null;
-      created_at: string;
-      updated_at: string;
-    }>;
-    return rows.map(r => ({
-      id: r.id,
-      cwd: r.cwd,
-      branch: r.branch,
-      summary: r.summary,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
+    const dbSessions: CliSession[] = [];
+    const dbIds = new Set<string>();
+    if (this.db) {
+      const rows = this.db.prepare(
+        "SELECT id, cwd, branch, summary, created_at, updated_at FROM sessions WHERE updated_at > datetime('now', '-7 days') ORDER BY updated_at DESC LIMIT 100",
+      ).all() as Array<{
+        id: string;
+        cwd: string | null;
+        branch: string | null;
+        summary: string | null;
+        created_at: string;
+        updated_at: string;
+      }>;
+      for (const r of rows) {
+        dbIds.add(r.id);
+        dbSessions.push({
+          id: r.id,
+          cwd: r.cwd,
+          branch: r.branch,
+          repository: null,
+          summary: r.summary,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+          pid: null,
+          tty: null,
+          isAlive: false,
+        });
+      }
+    }
+
+    // Source 2: sessions from filesystem (workspace.yaml) not already in DB results
+    const sessionStateDir = join(homedir(), '.copilot', 'session-state');
+    const fsSessions: CliSession[] = [];
+    if (existsSync(sessionStateDir)) {
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      try {
+        const dirs = readdirSync(sessionStateDir, { withFileTypes: true });
+        for (const dir of dirs) {
+          if (!dir.isDirectory() || dbIds.has(dir.name)) continue;
+          const wsPath = join(sessionStateDir, dir.name, 'workspace.yaml');
+          if (!existsSync(wsPath)) continue;
+          try {
+            const yaml = readFileSync(wsPath, 'utf-8');
+            const session = this.parseWorkspaceYaml(dir.name, yaml);
+            if (session && new Date(session.updatedAt) >= cutoff) {
+              fsSessions.push(session);
+            }
+          } catch { /* skip unreadable */ }
+        }
+      } catch { /* skip if dir unreadable */ }
+    }
+
+    // Merge: DB sessions first (sorted by updated_at DESC), then FS sessions
+    const all = [...dbSessions, ...fsSessions];
+    all.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return all.slice(0, 100);
+  }
+
+  private parseWorkspaceYaml(id: string, yaml: string): CliSession | null {
+    const get = (key: string): string | null => {
+      const match = yaml.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'));
+      return match ? match[1].trim() : null;
+    };
+    const createdAt = get('created_at');
+    const updatedAt = get('updated_at');
+    if (!createdAt || !updatedAt) return null;
+
+    // Parse summary (can be inline string or multiline YAML)
+    let summary = get('summary');
+    if (summary === null || summary === '') {
+      // Try multiline format: summary:\n  - type: text\n    text: ...
+      const textMatch = yaml.match(/summary:\s*\n\s+-\s+type:\s+text\s*\n\s+text:\s+(.+)/m);
+      if (textMatch) summary = textMatch[1].trim();
+    }
+
+    return {
+      id,
+      cwd: get('cwd'),
+      branch: get('branch'),
+      repository: get('repository'),
+      summary,
+      createdAt,
+      updatedAt,
       pid: null,
       tty: null,
       isAlive: false,
-    }));
+    };
   }
 
   private getMaxTurnId(): number {
@@ -413,6 +480,7 @@ export class CopilotSessionWatcher extends EventEmitter {
             id: s.id,
             cwd: s.cwd,
             branch: s.branch,
+            repository: null,
             summary: s.summary,
             createdAt: s.created_at,
             updatedAt: s.updated_at,
