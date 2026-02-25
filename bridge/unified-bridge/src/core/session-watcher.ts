@@ -129,7 +129,14 @@ export class CopilotSessionWatcher extends EventEmitter {
     this.ensureDb();
     if (!this.db) return [];
 
-    // Try turns table first
+    // Primary: read from events.jsonl (most complete conversation data)
+    const eventsPath = join(homedir(), '.copilot', 'session-state', sessionId, 'events.jsonl');
+    if (existsSync(eventsPath)) {
+      const jsonlTurns = this.parseEventsJsonl(sessionId, eventsPath);
+      if (jsonlTurns.length > 0) return jsonlTurns;
+    }
+
+    // Fallback: turns table in session-store.db
     const rows = this.db.prepare(
       'SELECT session_id, turn_index, user_message, assistant_response, timestamp FROM turns WHERE session_id = ? ORDER BY turn_index',
     ).all(sessionId) as Array<{
@@ -148,13 +155,6 @@ export class CopilotSessionWatcher extends EventEmitter {
         assistantResponse: r.assistant_response,
         timestamp: r.timestamp,
       }));
-    }
-
-    // Fallback: read from events.jsonl (actual conversation data)
-    const eventsPath = join(homedir(), '.copilot', 'session-state', sessionId, 'events.jsonl');
-    if (existsSync(eventsPath)) {
-      const jsonlTurns = this.parseEventsJsonl(sessionId, eventsPath);
-      if (jsonlTurns.length > 0) return jsonlTurns;
     }
 
     // Last fallback: synthesize turns from checkpoints
