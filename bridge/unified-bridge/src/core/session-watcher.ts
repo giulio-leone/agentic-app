@@ -5,7 +5,7 @@
  * Emits delta events when new turns/sessions appear.
  */
 
-import { existsSync, watch, type FSWatcher } from 'fs';
+import { existsSync, readFileSync, watch, type FSWatcher } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { execSync } from 'child_process';
@@ -133,6 +133,7 @@ export class CopilotSessionWatcher extends EventEmitter {
     const eventsPath = join(homedir(), '.copilot', 'session-state', sessionId, 'events.jsonl');
     if (existsSync(eventsPath)) {
       const jsonlTurns = this.parseEventsJsonl(sessionId, eventsPath);
+      console.log(`[watcher] events.jsonl for ${sessionId}: ${jsonlTurns.length} turns`);
       if (jsonlTurns.length > 0) return jsonlTurns;
     }
 
@@ -192,7 +193,6 @@ export class CopilotSessionWatcher extends EventEmitter {
   /** Parse events.jsonl into CliTurn[] — groups user.message + assistant.message pairs */
   private parseEventsJsonl(sessionId: string, filePath: string): CliTurn[] {
     try {
-      const { readFileSync } = require('fs');
       const content = readFileSync(filePath, 'utf-8');
       const lines = content.split('\n').filter((l: string) => l.trim());
 
@@ -257,7 +257,8 @@ export class CopilotSessionWatcher extends EventEmitter {
       }
 
       return turns;
-    } catch {
+    } catch (err) {
+      console.error(`[watcher] parseEventsJsonl error for ${sessionId}:`, err);
       return [];
     }
   }
