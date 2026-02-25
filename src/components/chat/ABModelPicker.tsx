@@ -17,8 +17,8 @@ import { CheckSquare, Square, Play } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ThemeColors } from '../../utils/theme';
-import type { ACPServerConfiguration } from '../../acp/models/types';
-import { ServerType } from '../../acp/models/types';
+import type { ACPServerConfiguration } from '../../acp-hex/domain/types';
+import { ServerType } from '../../acp-hex/domain/types';
 import { ITEM_LAYOUT_60, keyExtractorById } from '../../utils/listUtils';
 
 interface Props {

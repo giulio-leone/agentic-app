@@ -13,8 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spacing, FontSize, Radius } from '../utils/theme';
 import { useAppStore } from '../stores/appStore';
 import { _service } from '../stores/storePrivate';
-import { terminalEvents } from '../acp/terminalEvents';
-import { ACPConnectionState } from '../acp/models/types';
+import { terminalEvents } from '../acp-hex/infrastructure/terminalEvents';
+import { ACPConnectionState } from '../acp-hex/domain/types';
 import { XTERM_HTML, GHOSTTY_HTML } from './terminalHtml';
 
 interface TerminalSession {
@@ -71,10 +71,9 @@ export const TerminalPanel = React.memo(function TerminalPanel() {
     try {
       const svc = _service;
       if (!svc) return;
-      const resp = await svc.terminalList();
-      const result = resp.result as Record<string, unknown>;
-      setActiveSessions((result.active as TerminalSession[]) || []);
-      setTmuxSessions((result.tmuxSessions as TmuxSession[]) || []);
+      const terminals = await svc.terminal.list.execute();
+      setActiveSessions((terminals as unknown as TerminalSession[]) || []);
+      setTmuxSessions([]);
     } catch { /* bridge may not support terminal yet */ }
   }, [isConnected]);
 
@@ -85,8 +84,8 @@ export const TerminalPanel = React.memo(function TerminalPanel() {
     try {
       webViewRef.current?.postMessage(JSON.stringify({ type: 'clear' }));
       webViewRef.current?.postMessage(JSON.stringify({ type: 'info', text: '⏳ Spawning shell...' }));
-      const resp = await svc.terminalSpawn({ cols: termSize.cols, rows: termSize.rows });
-      const info = resp.result as unknown as TerminalSession;
+      const resp = await svc.terminal.spawn.execute({ cols: termSize.cols, rows: termSize.rows });
+      const info = resp as unknown as TerminalSession;
       setActiveTermId(info.id);
       setShowPicker(false);
       webViewRef.current?.postMessage(JSON.stringify({ type: 'clear' }));
@@ -109,8 +108,8 @@ export const TerminalPanel = React.memo(function TerminalPanel() {
       webViewRef.current?.postMessage(JSON.stringify({
         type: 'info', text: `⏳ Connecting to tmux:${sessionName}...`
       }));
-      const resp = await svc.terminalConnectTmux(sessionName, termSize.cols, termSize.rows);
-      const info = resp.result as unknown as TerminalSession;
+      const resp = await svc.gateway.request('terminal/connectTmux', { sessionName, cols: termSize.cols, rows: termSize.rows });
+      const info = resp as unknown as TerminalSession;
       setActiveTermId(info.id);
       setShowPicker(false);
       webViewRef.current?.postMessage(JSON.stringify({ type: 'clear' }));
@@ -125,12 +124,12 @@ export const TerminalPanel = React.memo(function TerminalPanel() {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
       if (msg.type === 'input' && activeTermId) {
-        _service?.terminalInput(activeTermId, msg.data);
+        _service?.terminal.input.execute(activeTermId, msg.data);
       }
       if (msg.type === 'resize') {
         setTermSize({ cols: msg.cols, rows: msg.rows });
         if (activeTermId) {
-          _service?.terminalResize(activeTermId, msg.cols, msg.rows);
+          _service?.terminal.resize.execute(activeTermId, msg.cols, msg.rows);
         }
       }
       if (msg.type === 'ready') {

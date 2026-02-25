@@ -5,7 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { Alert } from 'react-native';
-import type { ChatMessage, MessageSegment } from '../../acp/models/types';
+import type { ChatMessage, MessageSegment } from '../../acp-hex/domain/types';
 import type { AIProviderConfig, ConsensusDetails } from '../../ai/types';
 import { streamChat, streamConsensusChat } from '../../ai/AIService';
 import { updateMessageById, detectArtifacts } from '../helpers';
@@ -13,7 +13,7 @@ import { SessionStorage } from '../../storage/SessionStorage';
 import { isAppInBackground, notifyResponseComplete } from '../../services/notifications';
 import { setAiAbortController } from '../storePrivate';
 
-import type { AppState, AppActions } from '../stores/appStore';
+import type { AppState, AppActions } from '../appStore';
 
 export interface StreamContext {
   set: (partial: Partial<AppState> | ((s: AppState & AppActions) => Partial<AppState>)) => void;

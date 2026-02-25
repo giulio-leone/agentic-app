@@ -13,7 +13,7 @@ import type { AgentEvent } from '../deep-agents';
 import { type AIProviderConfig, type ConsensusConfig, type ConsensusDetails, DEFAULT_CONSENSUS_CONFIG } from './types';
 import { createModel } from './providerFactory';
 import { toCoreMessages } from './messageUtils';
-import type { ChatMessage } from '../acp/models/types';
+import type { ChatMessage } from '../acp-hex/domain/types';
 
 /**
  * Stream a chat completion using an AgentGraph that forks parallel analysts

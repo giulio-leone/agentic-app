@@ -4,7 +4,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { ChatMessage, Attachment } from '../../acp/models/types';
+import { ChatMessage, Attachment } from '../../acp-hex/domain/types';
 import { BUILT_IN_TEMPLATES, matchTemplates, type PromptTemplate } from '../../utils/promptTemplates';
 
 interface UseCompositionOptions {

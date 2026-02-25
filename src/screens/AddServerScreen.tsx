@@ -17,7 +17,7 @@ import { YStack, XStack, Text, Separator } from 'tamagui';
 import { Lock, Brain, Eye } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { ServerType } from '../acp/models/types';
+import { ServerType } from '../acp-hex/domain/types';
 import { ReasoningEffort } from '../ai/types';
 import { ALL_PROVIDERS } from '../ai/providers';
 import { useDesignSystem } from '../utils/designSystem';

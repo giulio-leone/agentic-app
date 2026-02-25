@@ -19,7 +19,7 @@ import {
   useScreenWatcherActions, useSessionActions,
 } from '../stores/selectors';
 import type { SmartCameraViewHandle } from '../components/camera/SmartCameraView';
-import type { Attachment } from '../acp/models/types';
+import type { Attachment } from '../acp-hex/domain/types';
 
 const service = new ScreenWatcherService();
 

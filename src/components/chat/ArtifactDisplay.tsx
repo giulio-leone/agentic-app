@@ -7,7 +7,7 @@ import { TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Code, Globe, Palette, BarChart3, Table, FileText, Image, Paperclip, type LucideIcon } from 'lucide-react-native';
-import type { Artifact, ArtifactType } from '../../acp/models/types';
+import type { Artifact, ArtifactType } from '../../acp-hex/domain/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { sharedStyles } from '../../utils/sharedStyles';

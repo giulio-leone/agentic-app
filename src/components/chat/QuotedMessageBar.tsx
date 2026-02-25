@@ -5,7 +5,7 @@ import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { FontSize, Spacing } from '../../utils/theme';
-import type { ChatMessage } from '../../acp/models/types';
+import type { ChatMessage } from '../../acp-hex/domain/types';
 
 interface Props {
   message: ChatMessage;

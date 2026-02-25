@@ -20,7 +20,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { ConnectionBadge } from '../ConnectionBadge';
-import { SessionSummary, ServerType, ACPServerConfiguration, ACPConnectionState } from '../../acp/models/types';
+import { SessionSummary, ServerType, ACPServerConfiguration, ACPConnectionState } from '../../acp-hex/domain/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';

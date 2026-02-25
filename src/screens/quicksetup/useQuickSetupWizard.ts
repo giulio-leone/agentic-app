@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useServers, useServerActions } from '../../stores/selectors';
-import { ServerType } from '../../acp/models/types';
+import { ServerType } from '../../acp-hex/domain/types';
 import { AIProviderType } from '../../ai/types';
 import { getProviderInfo } from '../../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';

@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { YStack } from 'tamagui';
-import { ACPConnectionState } from '../acp/models/types';
+import { ACPConnectionState } from '../acp-hex/domain/types';
 import { useDesignSystem } from '../utils/designSystem';
 import type { ThemeColors } from '../utils/theme';
 

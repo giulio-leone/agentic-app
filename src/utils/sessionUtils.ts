@@ -2,7 +2,7 @@
  * Session utility functions — shared across components.
  */
 
-import type { SessionSummary } from '../acp/models/types';
+import type { SessionSummary } from '../acp-hex/domain/types';
 
 export interface SessionGroup {
   label: string;

@@ -9,7 +9,7 @@ import {
   NativeSyntheticEvent,
   Animated,
 } from 'react-native';
-import { ChatMessage } from '../../acp/models/types';
+import { ChatMessage } from '../../acp-hex/domain/types';
 
 interface UseScrollToBottomOptions {
   chatMessages: ChatMessage[];

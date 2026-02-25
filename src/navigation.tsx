@@ -20,7 +20,7 @@ const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').the
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
 const LazyTerminalPanel = React.lazy(() => import('./components/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
-import { ACPServerConfiguration } from './acp/models/types';
+import { ACPServerConfiguration } from './acp-hex/domain/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
 import { HIT_SLOP_8 } from './utils/sharedStyles';

@@ -2,7 +2,7 @@
  * Chat export utilities — Markdown, JSON, HTML, and PDF formats.
  */
 
-import type { ChatMessage } from '../acp/models/types';
+import type { ChatMessage } from '../acp-hex/domain/types';
 
 function formatTimestamp(iso: string): string {
   try {

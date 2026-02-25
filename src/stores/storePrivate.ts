@@ -11,10 +11,12 @@
  * app with a single service instance.
  */
 
-import { ACPService } from '../acp/ACPService';
+import type { AcpHexInstance } from '../acp-hex/integration/bootstrap';
+import { getAcpHex } from '../acp-hex/integration/bootstrap';
 
-export let _service: ACPService | null = null;
+export let _service: AcpHexInstance | null = null;
 export let _aiAbortController: AbortController | null = null;
 
-export function setService(s: ACPService | null) { _service = s; }
+export function setService(s: AcpHexInstance | null) { _service = s; }
+export function getService(): AcpHexInstance | null { return _service ?? getAcpHex(); }
 export function setAiAbortController(c: AbortController | null) { _aiAbortController = c; }

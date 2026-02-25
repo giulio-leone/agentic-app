@@ -4,8 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   ChatMessage,
   ServerType,
-} from '../../acp/models/types';
-import { JSONValue } from '../../acp/models';
+} from '../../acp-hex/domain/types';
+import { getAcpHex } from '../../acp-hex/integration/bootstrap';
 import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
 import { getApiKey } from '../../storage/SecureStorage';
 import {
@@ -160,7 +160,8 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       }
 
       // ── ACP path ──
-      if (!_service) {
+      const hex = _service ?? getAcpHex();
+      if (!hex) {
         const errMsg: ChatMessage = {
           id: uuidv4(),
           role: 'system',
@@ -173,12 +174,8 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
 
       try {
         get().appendLog(`→ session/prompt: ${text.substring(0, 80)}`);
-        const response = await _service.sendPrompt({
-          sessionId: sessionId,
-          text,
-        });
-        const result = response.result as Record<string, JSONValue> | undefined;
-        const stopReason = result?.stopReason as string | undefined;
+        await hex.router.sendPrompt(sessionId, text);
+        const stopReason: string | undefined = undefined; // arrives via EventBus notifications
         const currentState = get();
         if (currentState.streamingMessageId) {
           const idx = currentState.chatMessages.findIndex(m => m.id === currentState.streamingMessageId);
@@ -225,9 +222,10 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         return;
       }
 
-      if (!_service || !state.selectedSessionId) return;
+      const hex = _service ?? getAcpHex();
+      if (!hex || !state.selectedSessionId) return;
       try {
-        await _service.cancelSession({ sessionId: state.selectedSessionId });
+        await hex.session.cancel.execute(state.selectedSessionId);
         set({ isStreaming: false });
         get().appendLog('→ session/cancel');
       } catch { /* cancel may fail if session already ended */

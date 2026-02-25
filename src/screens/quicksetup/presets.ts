@@ -3,7 +3,7 @@
  */
 
 import { Server, Globe, Bot, Brain, Gem, Zap, Github, Code, Terminal, Layers, type LucideIcon } from 'lucide-react-native';
-import { ServerType } from '../../acp/models/types';
+import { ServerType } from '../../acp-hex/domain/types';
 import { AIProviderType } from '../../ai/types';
 
 export interface PresetProvider {

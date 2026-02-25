@@ -3,7 +3,7 @@
  */
 
 import { type ModelMessage } from 'ai';
-import type { ChatMessage } from '../acp/models/types';
+import type { ChatMessage } from '../acp-hex/domain/types';
 
 type ContentPart =
   | { type: 'text'; text: string }

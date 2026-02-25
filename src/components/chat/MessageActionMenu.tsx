@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { Pencil, Copy, RefreshCw, Trash2, Bookmark, Share2, FileText } from 'lucide-react-native';
-import type { ChatMessage } from '../../acp/models/types';
+import type { ChatMessage } from '../../acp-hex/domain/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 

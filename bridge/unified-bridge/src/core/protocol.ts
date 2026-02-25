@@ -531,7 +531,7 @@ export function createProtocolHandler(
     const cwd = (params.cwd as string) || process.cwd();
     const args = (params.args as string[]) || [];
     try {
-      const session = copilotPty.spawn(cwd, args);
+      const session = copilotPty.spawnSession(cwd, args);
       sendResponse(socket, id, session);
     } catch (err) {
       sendError(socket, id, -32000, (err as Error).message);
@@ -545,7 +545,8 @@ export function createProtocolHandler(
       sendError(socket, id, -32602, 'Missing sessionId or input');
       return;
     }
-    const ok = copilotPty.write(sessionId, input);
+    const closeStdin = params.closeStdin === true;
+    const ok = copilotPty.write(sessionId, input, closeStdin);
     sendResponse(socket, id, { success: ok });
   }
 

@@ -19,7 +19,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import { Copy, X, Check, Share2, Edit3, Eye, Code, Globe, Palette, BarChart3, Table, FileText, Image as ImageIcon } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import type { Artifact, ArtifactType } from '../../acp/models/types';
+import type { Artifact, ArtifactType } from '../../acp-hex/domain/types';
 import { useDesignSystem } from '../../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { useCopyFeedback } from '../../hooks/useCopyFeedback';

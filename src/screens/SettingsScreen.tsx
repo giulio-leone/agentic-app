@@ -27,7 +27,7 @@ import { MCPServerRow } from './settings/MCPServerRow';
 import type { MCPServerConfig } from '../mcp/types';
 import { AddMCPServerForm } from './settings/AddMCPServerForm';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
-import type { Artifact } from '../acp/models/types';
+import type { Artifact } from '../acp-hex/domain/types';
 import { sharedStyles } from '../utils/sharedStyles';
 
 const TEST_ARTIFACTS: Artifact[] = [

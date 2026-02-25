@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useServers, useSelectedServerId, useConnectionState, useIsInitialized, useAgentInfo, useSessions, useSelectedSessionId, useConnectionError, useMCPStatuses, useServerActions, useSessionActions } from '../stores/selectors';
 import { useAppStore, type CliSessionInfo } from '../stores/appStore';
-import { ACPConnectionState, SessionSummary, ServerType, ACPServerConfiguration } from '../acp/models/types';
+import { ACPConnectionState, SessionSummary, ServerType, ACPServerConfiguration } from '../acp-hex/domain/types';
 import { getProviderInfo } from '../ai/providers';
 import { groupSessionsByDate } from '../utils/sessionUtils';
 import { MCPConnectionState } from '../mcp/types';

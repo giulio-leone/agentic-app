@@ -17,7 +17,7 @@ import type { AgentEvent } from '../deep-agents';
 import { AIProviderType, type AIProviderConfig } from './types';
 import { createModel } from './providerFactory';
 import { toCoreMessages } from './messageUtils';
-import type { ChatMessage } from '../acp/models/types';
+import type { ChatMessage } from '../acp-hex/domain/types';
 
 // Re-export for consumers that import from AIService
 export { createModel } from './providerFactory';

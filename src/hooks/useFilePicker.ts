@@ -5,7 +5,7 @@
 import { useCallback } from 'react';
 import type * as ImagePickerTypes from 'expo-image-picker';
 import { v4 as uuidv4 } from 'uuid';
-import { Attachment } from '../acp/models/types';
+import { Attachment } from '../acp-hex/domain/types';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 

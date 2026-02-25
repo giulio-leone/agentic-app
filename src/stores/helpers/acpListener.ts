@@ -3,15 +3,21 @@
  * Handles state changes (with auto-retry), notifications, messages, and errors.
  */
 import type { AppState, AppActions } from '../appStore';
-import { ACPConnectionState } from '../../acp/models/types';
-import { ACPServiceListener } from '../../acp/ACPService';
-import { parseSessionUpdate, applySessionUpdate } from '../../acp/SessionUpdateHandler';
-import { JSONValue } from '../../acp/models';
+import { ACPConnectionState } from '../../acp-hex/domain/types';
+/** Inline listener interface — replaces old ACPService import for hex migration. */
+interface ACPServiceListener {
+  onStateChange?: (state: ACPConnectionState) => void;
+  onNotification?: (method: string, params: Record<string, unknown>) => void;
+  onMessage?: (message: unknown) => void;
+  onError?: (error: Error) => void;
+}
+import { parseSessionUpdate, applySessionUpdate } from '../../acp-hex/application/services/SessionUpdateHandler';
+type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
 import { SessionStorage } from '../../storage/SessionStorage';
 import { showErrorToast, showInfoToast } from '../../utils/toast';
 import { isAppInBackground, notifyResponseComplete, setBadgeCount } from '../../services/notifications';
 import { _service } from '../storePrivate';
-import { terminalEvents } from '../../acp/terminalEvents';
+import { terminalEvents } from '../../acp-hex/infrastructure/terminalEvents';
 
 // Retry state (module-level to avoid store bloat)
 const MAX_RETRIES = 3;
@@ -58,7 +64,7 @@ export function createACPListener(get: StoreGet, set: StoreSet): ACPServiceListe
     onNotification: (method, params) => {
       get().appendLog(`← notification: ${method}`);
       if (method === 'session/update' || method === 'notifications/session/update') {
-        const actions = parseSessionUpdate(params);
+        const actions = parseSessionUpdate(params as JSONValue);
         const state = get();
         const { messages, streamingMessageId, stopReason } = applySessionUpdate(
           state.chatMessages,

@@ -11,7 +11,7 @@ import Animated, { SharedValue, useAnimatedStyle } from 'react-native-reanimated
 import { Reply } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import type { ThemeColors } from '../../utils/theme';
-import type { ChatMessage } from '../../acp/models/types';
+import type { ChatMessage } from '../../acp-hex/domain/types';
 
 interface Props {
   children: React.ReactNode;

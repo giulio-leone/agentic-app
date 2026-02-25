@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { streamChat } from '../ai/AIService';
 import type { AIProviderConfig } from '../ai/types';
-import type { ChatMessage } from '../acp/models/types';
+import type { ChatMessage } from '../acp-hex/domain/types';
 
 export interface ABModelResult {
   id: string;

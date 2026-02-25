@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState, RefObject } from 'react';
 import { FlatList } from 'react-native';
-import { ChatMessage } from '../../acp/models/types';
+import { ChatMessage } from '../../acp-hex/domain/types';
 
 interface UseChatSearchOptions {
   chatMessages: ChatMessage[];

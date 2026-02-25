@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { YStack, XStack, Text } from 'tamagui';
 import { Sparkles, Volume1, Volume2, Bookmark } from 'lucide-react-native';
-import { ChatMessage, MessageSegment } from '../acp/models/types';
+import { ChatMessage, MessageSegment } from '../acp-hex/domain/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
 import { HIT_SLOP_8 } from '../utils/sharedStyles';
@@ -33,7 +33,7 @@ interface Props {
   onSpeak?: (text: string, messageId: string) => void;
   isSpeaking?: boolean;
   onLongPress?: (message: ChatMessage) => void;
-  onOpenArtifact?: (artifact: import('../acp/models/types').Artifact) => void;
+  onOpenArtifact?: (artifact: import('../acp-hex/domain/types').Artifact) => void;
   highlighted?: boolean;
   bookmarked?: boolean;
 }

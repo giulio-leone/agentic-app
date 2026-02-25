@@ -10,8 +10,7 @@ import {
   AgentProfile,
   ChatMessage,
   SessionSummary,
-} from '../acp/models/types';
-import { ACPService } from '../acp/ACPService';
+} from '../acp-hex/domain/types';
 import type { MCPServerConfig, MCPServerStatus } from '../mcp/types';
 
 /** Copilot CLI session info from bridge discovery */
@@ -139,12 +138,12 @@ export interface AppActions {
 
   // Copilot PTY interaction
   spawnCopilotCli: (cwd: string, cliSessionId?: string, args?: string[]) => Promise<string | null>;
-  writeToCopilotPty: (sessionId: string, input: string) => Promise<boolean>;
+  writeToCopilotPty: (sessionId: string, input: string, closeStdin?: boolean) => Promise<boolean>;
   killCopilotPty: (sessionId: string) => Promise<void>;
   activePtySessionId: string | null;
 
   // Chat
-  sendPrompt: (text: string, attachments?: import('../acp/models/types').Attachment[]) => Promise<void>;
+  sendPrompt: (text: string, attachments?: import('../acp-hex/domain/types').Attachment[]) => Promise<void>;
   cancelPrompt: () => Promise<void>;
   setPromptText: (text: string) => void;
   editMessage: (id: string, newContent: string) => Promise<void>;
@@ -194,7 +193,7 @@ export interface AppActions {
   loadBookmarks: () => Promise<void>;
 
   // Internal
-  _getService: () => ACPService | null;
+  _getService: () => import('../acp-hex/integration/bootstrap').AcpHexInstance | null;
 }
 
 // ─── Combined Store ───

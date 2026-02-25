@@ -1,16 +1,13 @@
 /**
- * CopilotPtyManager — Spawn and connect to Copilot CLI processes via PTY.
+ * CopilotPtyManager — Spawn Copilot CLI processes with STDIO piping.
  *
- * Spawn: Creates new copilot CLI processes (--yolo mode) with full STDIO piping.
- * Connect: Pipes into an existing copilot process's TTY for output streaming.
- *
+ * Uses child_process.spawn (not node-pty) for maximum compatibility.
  * All I/O is emitted as events for the protocol layer to forward via WebSocket.
  */
 
-import * as pty from 'node-pty';
+import { spawn, execSync, type ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { existsSync, readFileSync, realpathSync } from 'fs';
-import { execSync } from 'child_process';
 
 // ── Types ──
 
@@ -31,74 +28,78 @@ export interface PtyOutputEvent {
 // ── Manager ──
 
 export class CopilotPtyManager extends EventEmitter {
-  private sessions = new Map<string, { pty: pty.IPty; info: CopilotPtySession }>();
+  private sessions = new Map<string, { proc: ChildProcess; info: CopilotPtySession }>();
   private nextId = 1;
 
   /** Spawn a new Copilot CLI process in --yolo mode */
-  spawn(cwd: string, args: string[] = []): CopilotPtySession {
+  spawnSession(cwd: string, args: string[] = []): CopilotPtySession {
     const copilotPath = this.findCopilotBinary();
     const id = `pty-copilot-${this.nextId++}`;
     const defaultArgs = ['--yolo'];
 
-    // If copilot is a Node.js script (symlink to .js), spawn via node
-    const resolvedPath = this.resolveScript(copilotPath);
-    const command = resolvedPath.useNode ? process.execPath : resolvedPath.path;
-    const allArgs = resolvedPath.useNode
-      ? [resolvedPath.path, ...defaultArgs, ...args]
+    const resolved = this.resolveScript(copilotPath);
+    const command = resolved.useNode ? process.execPath : resolved.path;
+    const allArgs = resolved.useNode
+      ? [resolved.path, ...defaultArgs, ...args]
       : [...defaultArgs, ...args];
 
-    const term = pty.spawn(command, allArgs, {
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 40,
+    const proc = spawn(command, allArgs, {
       cwd,
-      env: { ...process.env, TERM: 'xterm-256color' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, TERM: 'dumb', FORCE_COLOR: '0' },
     });
 
     const info: CopilotPtySession = {
       id,
-      pid: term.pid,
+      pid: proc.pid ?? 0,
       tty: '',
       cwd,
       mode: 'spawn',
       alive: true,
     };
 
-    term.onData((data: string) => {
-      this.emit('output', { sessionId: id, data } satisfies PtyOutputEvent);
+    proc.stdout?.on('data', (chunk: Buffer) => {
+      this.emit('output', { sessionId: id, data: chunk.toString() } satisfies PtyOutputEvent);
     });
 
-    term.onExit(({ exitCode }: { exitCode: number }) => {
+    proc.stderr?.on('data', (chunk: Buffer) => {
+      this.emit('output', { sessionId: id, data: chunk.toString() } satisfies PtyOutputEvent);
+    });
+
+    proc.on('exit', (code: number | null) => {
       info.alive = false;
-      this.emit('exit', { sessionId: id, exitCode });
+      this.emit('exit', { sessionId: id, exitCode: code ?? 1 });
       this.sessions.delete(id);
     });
 
-    this.sessions.set(id, { pty: term, info });
-    console.log(`[pty] Spawned copilot (PID ${term.pid}) in ${cwd}`);
+    proc.on('error', (err: Error) => {
+      info.alive = false;
+      this.emit('output', { sessionId: id, data: `\n[Error: ${err.message}]\n` });
+      this.emit('exit', { sessionId: id, exitCode: 1 });
+      this.sessions.delete(id);
+    });
+
+    this.sessions.set(id, { proc, info });
+    console.log(`[pty] Spawned copilot (PID ${proc.pid}) in ${cwd}`);
     return { ...info };
   }
 
-  /** Write input to a PTY session */
-  write(sessionId: string, input: string): boolean {
+  /** Write input to a session's stdin. Close stdin after to trigger processing. */
+  write(sessionId: string, input: string, closeStdin = false): boolean {
     const session = this.sessions.get(sessionId);
-    if (!session || !session.info.alive) return false;
-    session.pty.write(input);
+    if (!session || !session.info.alive || !session.proc.stdin?.writable) return false;
+    session.proc.stdin.write(input);
+    if (closeStdin) session.proc.stdin.end();
     return true;
   }
 
-  /** Resize a PTY session */
-  resize(sessionId: string, cols: number, rows: number): void {
-    const session = this.sessions.get(sessionId);
-    if (session) session.pty.resize(cols, rows);
-  }
-
-  /** Kill a PTY session */
+  /** Terminate a session */
   dispose(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
     session.info.alive = false;
-    session.pty.kill();
+    session.proc.stdin?.end();
+    session.proc.kill('SIGTERM');
     this.sessions.delete(sessionId);
     console.log(`[pty] Disposed ${sessionId}`);
   }
@@ -109,7 +110,7 @@ export class CopilotPtyManager extends EventEmitter {
     return info ? { ...info } : undefined;
   }
 
-  /** List all active PTY sessions */
+  /** List all active sessions */
   listSessions(): CopilotPtySession[] {
     return Array.from(this.sessions.values()).map(s => ({ ...s.info }));
   }
@@ -139,19 +140,18 @@ export class CopilotPtyManager extends EventEmitter {
     }
   }
 
-  /** Resolve symlinks and detect Node.js scripts that need `node` prefix */
+  /** Resolve symlinks and detect Node.js scripts */
   private resolveScript(binPath: string): { path: string; useNode: boolean } {
     try {
       const resolved = realpathSync(binPath);
       if (resolved.endsWith('.js') || resolved.endsWith('.mjs')) {
         return { path: resolved, useNode: true };
       }
-      // Check shebang for scripts without .js extension
       const head = readFileSync(resolved, { encoding: 'utf-8', flag: 'r' }).slice(0, 128);
       if (head.startsWith('#!/usr/bin/env node') || head.startsWith('#!/usr/bin/node')) {
         return { path: resolved, useNode: true };
       }
-    } catch { /* fall through to direct execution */ }
+    } catch { /* fall through */ }
     return { path: binPath, useNode: false };
   }
 }

@@ -5,10 +5,10 @@ import {
   SessionSummary,
   ChatMessage,
   ServerType,
-} from '../../acp/models/types';
-import { JSONValue } from '../../acp/models';
+} from '../../acp-hex/domain/types';
 import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
 import { _service } from '../storePrivate';
+import { getAcpHex } from '../../acp-hex/integration/bootstrap';
 
 /** Returns the storage key for a server: shared for AI providers, per-server for ACP/Codex. */
 function storageId(state: AppState & AppActions): string | null {
@@ -36,22 +36,13 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     const stored = await SessionStorage.fetchSessions(sid);
     set({ sessions: stored });
 
-    if (_service && state.isInitialized) {
+    const hex = _service ?? getAcpHex();
+    if (hex && state.isInitialized) {
       try {
-        const response = await _service.listSessions();
-        const result = response.result as Record<string, JSONValue> | undefined;
-        if (result) {
-          const sessionsList = (result.sessions as Array<Record<string, JSONValue>>) ?? [];
-          const sessions: SessionSummary[] = sessionsList.map(s => ({
-            id: (s.id as string) ?? (s.sessionId as string) ?? '',
-            title: s.title as string | undefined,
-            cwd: s.cwd as string | undefined,
-            updatedAt: s.updatedAt as string | undefined,
-          }));
-          set({ sessions });
-          for (const session of sessions) {
-            await SessionStorage.saveSession(session, sid);
-          }
+        const sessions = await hex.session.list.execute();
+        set({ sessions });
+        for (const session of sessions) {
+          await SessionStorage.saveSession(session, sid);
         }
       } catch {
         get().appendLog('session/list not supported, using local sessions');
@@ -85,16 +76,19 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
       return;
     }
 
-    if (!_service) return;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return;
     try {
       get().appendLog('→ session/new');
-      const response = await _service.createSession({
-        cwd: get().selectedCwd || cwd || server.workingDirectory,
-        model: get().selectedBridgeModel ?? undefined,
-        reasoningEffort: get().selectedReasoningEffort ?? undefined,
-      });
-      const result = response.result as Record<string, JSONValue> | undefined;
-      const sessionId = (result?.id as string) ?? (result?.sessionId as string);
+      const result = await hex.gateway.request<{ id?: string; sessionId?: string }>(
+        'session/new',
+        {
+          cwd: get().selectedCwd || cwd || server.workingDirectory,
+          model: get().selectedBridgeModel ?? undefined,
+          reasoningEffort: get().selectedReasoningEffort ?? undefined,
+        },
+      );
+      const sessionId = result.id ?? result.sessionId;
       if (sessionId) {
         const newSession: SessionSummary = {
           id: sessionId,
@@ -131,13 +125,10 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     if (id?.startsWith('cli:')) return;
 
     // For ACP servers, try server-side session replay first
-    if (_service && id) {
-      const session = get().sessions.find(s => s.id === id);
+    const hex = _service ?? getAcpHex();
+    if (hex && id) {
       try {
-        await _service.loadSession({
-          sessionId: id,
-          cwd: session?.cwd,
-        });
+        await hex.session.load.execute(id);
         if (get().chatMessages.length > 0) return;
       } catch (e: unknown) {
         // loadSession not supported or failed

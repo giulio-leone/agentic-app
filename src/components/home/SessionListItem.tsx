@@ -8,7 +8,7 @@ import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture
 import Animated, { SharedValue, useAnimatedStyle, FadeIn } from 'react-native-reanimated';
 import { Trash2, Terminal } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { SessionSummary } from '../../acp/models/types';
+import { SessionSummary } from '../../acp-hex/domain/types';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 
 interface Props {

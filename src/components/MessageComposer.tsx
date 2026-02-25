@@ -16,7 +16,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
-import { Attachment } from '../acp/models/types';
+import { Attachment } from '../acp-hex/domain/types';
 import { useFilePicker } from '../hooks/useFilePicker';
 import { AttachmentSheet } from './AttachmentSheet';
 import { AttachmentPreviewStrip } from './composer/AttachmentPreviewStrip';

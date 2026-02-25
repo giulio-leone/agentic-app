@@ -22,7 +22,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { getServerColor } from '../../utils/serverColors';
-import type { ACPServerConfiguration } from '../../acp/models/types';
+import type { ACPServerConfiguration } from '../../acp-hex/domain/types';
 import { sharedStyles } from '../../utils/sharedStyles';
 
 interface ToolbarAction {

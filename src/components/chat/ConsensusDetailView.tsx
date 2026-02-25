@@ -9,7 +9,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import { Scale, Sparkles, ShieldAlert, Wrench, CheckCircle } from 'lucide-react-native';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
-import type { ConsensusDetails } from '../../acp/models/types';
+import type { ConsensusDetails } from '../../acp-hex/domain/types';
 import { MarkdownContent } from './MarkdownContent';
 
 const ROLE_ICONS: Record<string, typeof Sparkles> = {

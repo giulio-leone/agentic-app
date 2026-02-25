@@ -37,7 +37,7 @@ import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
 import { InlineEditView } from '../components/chat/InlineEditView';
 import { QuotedMessageBar } from '../components/chat/QuotedMessageBar';
 import { ConsensusConfigSheet } from '../components/ConsensusConfigSheet';
-import { ChatMessage, ACPConnectionState, ServerType } from '../acp/models/types';
+import { ChatMessage, ACPConnectionState, ServerType } from '../acp-hex/domain/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing } from '../utils/theme';
 import { useChatSpeech } from '../hooks/useChatSpeech';
@@ -188,22 +188,37 @@ export function SessionDetailScreen() {
     toggleBookmark,
   });
 
-  // Wrap sendPrompt: if PTY active, route to PTY stdin + show user message locally
-  const ptyAwareSendPrompt = useCallback(async (text: string, attachments?: import('../acp/models/types').Attachment[]) => {
-    if (isPtySession && activePtySessionId) {
-      useAppStore.setState(state => ({
-        chatMessages: [...state.chatMessages, {
-          id: `pty-user-${Date.now()}`,
-          role: 'user' as const,
-          content: text,
-          timestamp: new Date().toISOString(),
-        }],
-      }));
-      await writeToCopilotPty(activePtySessionId, text + '\n');
-    } else {
+  // CLI prompt: auto-spawn → write prompt → close stdin → stream output → process exits
+  const ptyAwareSendPrompt = useCallback(async (text: string, attachments?: import('../acp-hex/domain/types').Attachment[]) => {
+    if (!isCliSession) {
       sendPrompt(text, attachments);
+      return;
     }
-  }, [isPtySession, activePtySessionId, writeToCopilotPty, sendPrompt]);
+
+    // Add user message to chat
+    useAppStore.setState(state => ({
+      chatMessages: [...state.chatMessages, {
+        id: `pty-user-${Date.now()}`,
+        role: 'user' as const,
+        content: text,
+        timestamp: new Date().toISOString(),
+      }],
+    }));
+
+    // If PTY active, write to it (shouldn't happen normally — each prompt is one-shot)
+    if (isPtySession && activePtySessionId) {
+      await writeToCopilotPty(activePtySessionId, text + '\n', true);
+      return;
+    }
+
+    // Auto-spawn a new copilot process for this prompt
+    const cwd = selectedCliSession?.cwd || '/tmp';
+    const cliId = selectedCliSession?.id;
+    const ptyId = await spawnCopilotCli(cwd, cliId);
+    if (ptyId) {
+      await writeToCopilotPty(ptyId, text + '\n', true);
+    }
+  }, [isCliSession, isPtySession, activePtySessionId, writeToCopilotPty, sendPrompt, selectedCliSession, spawnCopilotCli]);
 
   const [isSpawning, setIsSpawning] = useState(false);
   const handleSpawnCli = useCallback(async () => {
@@ -561,12 +576,12 @@ export function SessionDetailScreen() {
       )}
 
       <MessageComposer
-        value={isCliSession && !isPtySession ? '' : promptText}
+        value={promptText}
         onChangeText={setPromptText}
         onSend={handleSend}
         onCancel={cancelPrompt}
         isStreaming={isStreaming}
-        isDisabled={!isConnected || (isCliSession && !isPtySession)}
+        isDisabled={!isConnected}
         isListening={isListening}
         onToggleVoice={voiceAvailable ? toggleVoice : undefined}
         placeholder={isCliSession && !isPtySession ? 'CLI session — avvia PTY per interagire' : isPtySession ? 'Invia prompt a Copilot CLI...' : undefined}

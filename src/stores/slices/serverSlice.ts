@@ -3,19 +3,18 @@ import type { AppState, AppActions } from '../appStore';
 import {
   ACPConnectionState,
   ServerType,
-} from '../../acp/models/types';
-import type { ACPTransportConfig } from '../../acp/ACPTransport';
-import { JSONValue } from '../../acp/models';
+} from '../../acp-hex/domain/types';
 import { SessionStorage } from '../../storage/SessionStorage';
 import { getProviderInfo } from '../../ai/providers';
 import { v4 as uuidv4 } from 'uuid';
-import { ACPService } from '../../acp/ACPService';
-import type { AgentProfile } from '../../acp/models/types';
+import { createAcpHex, getAcpHex } from '../../acp-hex/integration/bootstrap';
+import type { AgentProfile } from '../../acp-hex/domain/types';
+import { eventBus } from '../../acp-hex/domain';
 import {
   _service, _aiAbortController,
   setService, setAiAbortController,
 } from '../storePrivate';
-import type { ACPServerConfiguration } from '../../acp/models/types';
+import type { ACPServerConfiguration } from '../../acp-hex/domain/types';
 import { createACPListener, clearRetry } from '../helpers/acpListener';
 import { showInfoToast, showErrorToast } from '../../utils/toast';
 
@@ -23,8 +22,8 @@ import { showInfoToast, showErrorToast } from '../../utils/toast';
 const isAIServer = (s?: ACPServerConfiguration) =>
   s?.serverType === ServerType.AIProvider || (!s?.serverType && !s?.host);
 
-export type ServerSlice = Pick<AppState, 'servers' | 'selectedServerId' | 'connectionState' | 'isInitialized' | 'agentInfo' | 'connectionError'>
-  & Pick<AppActions, 'loadServers' | 'addServer' | 'updateServer' | 'deleteServer' | 'selectServer' | 'connect' | 'disconnect' | 'initialize' | '_getService'>;
+export type ServerSlice = Pick<AppState, 'servers' | 'selectedServerId' | 'connectionState' | 'isInitialized' | 'agentInfo' | 'connectionError' | 'bridgeModels' | 'reasoningEffortLevels' | 'selectedBridgeModel' | 'selectedReasoningEffort' | 'selectedCwd' | 'cliSessions' | 'isDiscoveringCli' | 'activePtySessionId' | 'ptyOwnerCliSessionId'>
+  & Pick<AppActions, 'loadServers' | 'addServer' | 'updateServer' | 'deleteServer' | 'selectServer' | 'connect' | 'disconnect' | 'initialize' | '_getService' | 'setSelectedBridgeModel' | 'setSelectedReasoningEffort' | 'setSelectedCwd' | 'listDirectory' | 'discoverCliSessions' | 'loadCliSessionTurns' | 'startCliWatch' | 'stopCliWatch' | 'spawnCopilotCli' | 'writeToCopilotPty' | 'killCopilotPty'>;
 
 export const createServerSlice: StateCreator<AppState & AppActions, [], [], ServerSlice> = (set, get) => ({
   // State
@@ -40,19 +39,18 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   selectedCwd: null,
   connectionError: null,
 
-  setSelectedBridgeModel: (modelId) => set({ selectedBridgeModel: modelId }),
-  setSelectedReasoningEffort: (level) => set({ selectedReasoningEffort: level }),
-  setSelectedCwd: (path) => set({ selectedCwd: path }),
+  setSelectedBridgeModel: (modelId: string | null) => set({ selectedBridgeModel: modelId }),
+  setSelectedReasoningEffort: (level: string | null) => set({ selectedReasoningEffort: level }),
+  setSelectedCwd: (path: string | null) => set({ selectedCwd: path }),
 
   listDirectory: async (path?: string) => {
-    if (!_service) return null;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return null;
     try {
-      const response = await _service.fsList(path);
-      const result = response.result as Record<string, unknown> | undefined;
-      if (!result) return null;
+      const entries = await hex.filesystem.browse.execute(path ?? '/');
       return {
-        path: result.path as string,
-        entries: (result.entries as Array<{ name: string; path: string; isDirectory: boolean }>) ?? [],
+        path: path ?? '/',
+        entries: entries.map(e => ({ name: e.name, path: e.path, isDirectory: e.type === 'directory' })),
       };
     } catch (err) {
       get().appendLog(`fs/list error: ${(err as Error).message}`);
@@ -67,22 +65,17 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   ptyOwnerCliSessionId: null as string | null,
 
   discoverCliSessions: async () => {
-    if (!_service) {
+    const hex = _service ?? getAcpHex();
+    if (!hex) {
       get().appendLog('copilot/discover: no service');
       showErrorToast('CLI Discovery', 'No service');
       return;
     }
     set({ isDiscoveringCli: true });
     try {
-      const response = await _service.copilotDiscover();
-      const result = response.result as Record<string, unknown> | undefined;
-      if (result?.sessions) {
-        const sessions = result.sessions as AppState['cliSessions'];
-        set({ cliSessions: sessions });
-        showInfoToast('CLI Discovery', `${sessions.length} sessions found`);
-      } else {
-        showErrorToast('CLI Discovery', `No sessions in response: ${JSON.stringify(response).slice(0, 100)}`);
-      }
+      const sessions = await hex.cli.discover.execute();
+      set({ cliSessions: sessions as unknown as AppState['cliSessions'] });
+      showInfoToast('CLI Discovery', `${sessions.length} sessions found`);
     } catch (err) {
       const msg = (err as Error).message;
       get().appendLog(`copilot/discover error: ${msg}`);
@@ -93,7 +86,8 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   loadCliSessionTurns: async (sessionId: string) => {
-    if (!_service) return;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return;
     // Show loading state
     set({ chatMessages: [{
       id: `cli-loading-${sessionId}`,
@@ -102,41 +96,43 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       timestamp: new Date().toISOString(),
     }] });
     try {
-      const response = await _service.copilotTurns(sessionId);
-      const result = response.result as Record<string, unknown> | undefined;
-      if (!result?.turns) {
-        set({ chatMessages: [{
-          id: `cli-empty-${sessionId}`,
-          role: 'system' as const,
-          content: '📋 Sessione CLI senza contenuto ancora — attendi nuovi turn.',
-          timestamp: new Date().toISOString(),
-        }] });
-        return;
-      }
-      const turns = result.turns as Array<{
-        sessionId: string;
-        turnIndex: number;
-        userMessage: string | null;
-        assistantResponse: string | null;
-        timestamp: string;
-      }>;
-      // Convert CLI turns to ChatMessage format
+      const turns = await hex.cli.loadTurns.execute(sessionId);
+      // Convert CLI turns (Message[]) to ChatMessage format
       const messages = turns.flatMap(t => {
-        const msgs: import('../../acp/models/types').ChatMessage[] = [];
-        if (t.userMessage) {
+        const msgs: import('../../acp-hex/domain/types').ChatMessage[] = [];
+        const turn = t as unknown as {
+          role: string;
+          content: string;
+          id: string;
+          timestamp?: string;
+          turnIndex?: number;
+          userMessage?: string | null;
+          assistantResponse?: string | null;
+        };
+        // Handle both Message format and legacy turn format
+        if (turn.userMessage !== undefined) {
+          if (turn.userMessage) {
+            msgs.push({
+              id: `cli-${sessionId}-user-${turn.turnIndex ?? 0}`,
+              role: 'user',
+              content: turn.userMessage,
+              timestamp: turn.timestamp ?? new Date().toISOString(),
+            });
+          }
+          if (turn.assistantResponse) {
+            msgs.push({
+              id: `cli-${sessionId}-assistant-${turn.turnIndex ?? 0}`,
+              role: 'assistant',
+              content: turn.assistantResponse,
+              timestamp: turn.timestamp ?? new Date().toISOString(),
+            });
+          }
+        } else if (turn.role && turn.content) {
           msgs.push({
-            id: `cli-${sessionId}-user-${t.turnIndex}`,
-            role: 'user',
-            content: t.userMessage,
-            timestamp: t.timestamp,
-          });
-        }
-        if (t.assistantResponse) {
-          msgs.push({
-            id: `cli-${sessionId}-assistant-${t.turnIndex}`,
-            role: 'assistant',
-            content: t.assistantResponse,
-            timestamp: t.timestamp,
+            id: turn.id ?? `cli-${sessionId}-${turn.role}-${msgs.length}`,
+            role: turn.role as 'user' | 'assistant' | 'system',
+            content: turn.content,
+            timestamp: turn.timestamp ?? new Date().toISOString(),
           });
         }
         return msgs;
@@ -159,18 +155,20 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   startCliWatch: async () => {
-    if (!_service) return;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return;
     try {
-      await _service.copilotWatchStart();
+      await hex.cli.watch.start();
     } catch (err) {
       get().appendLog(`copilot/watch/start error: ${(err as Error).message}`);
     }
   },
 
   stopCliWatch: async () => {
-    if (!_service) return;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return;
     try {
-      await _service.copilotWatchStop();
+      await hex.cli.watch.stop();
     } catch (err) {
       get().appendLog(`copilot/watch/stop error: ${(err as Error).message}`);
     }
@@ -179,7 +177,8 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   // ── Copilot PTY interaction ──
 
   spawnCopilotCli: async (cwd: string, cliSessionId?: string, args?: string[]) => {
-    if (!_service) {
+    const hex = _service ?? getAcpHex();
+    if (!hex) {
       showErrorToast('PTY: no service connected');
       return null;
     }
@@ -187,17 +186,16 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       // Dispose any existing PTY before spawning a new one
       const existingPty = get().activePtySessionId;
       if (existingPty) {
-        try { await _service.copilotKill(existingPty); } catch { /* best effort */ }
+        try { await hex.cli.kill.execute(existingPty); } catch { /* best effort */ }
         set({ activePtySessionId: null, ptyOwnerCliSessionId: null });
       }
       showInfoToast(`PTY: spawning in ${cwd.split('/').pop()}...`);
-      const response = await _service.copilotSpawn(cwd, args);
-      const result = response.result as Record<string, unknown> | undefined;
-      if (result?.id && typeof result.id === 'string') {
-        const ptyId = result.id as string;
+      const result = await hex.cli.spawn.execute(args?.join(' '), cwd);
+      if (result?.ptyId) {
+        const ptyId = result.ptyId;
         set({ activePtySessionId: ptyId, ptyOwnerCliSessionId: cliSessionId ?? null });
-        showInfoToast(`✓ Copilot CLI spawned (PID ${result.pid})`);
-        get().appendLog(`✓ Copilot CLI spawned: ${ptyId} (PID ${result.pid})`);
+        showInfoToast(`✓ Copilot CLI spawned (${ptyId})`);
+        get().appendLog(`✓ Copilot CLI spawned: ${ptyId}`);
         return ptyId;
       }
       showErrorToast(`PTY: spawn response missing id: ${JSON.stringify(result)}`);
@@ -209,11 +207,11 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     }
   },
 
-  writeToCopilotPty: async (sessionId: string, input: string) => {
-    if (!_service) return false;
+  writeToCopilotPty: async (sessionId: string, input: string, closeStdin = false) => {
+    const hex = _service ?? getAcpHex();
+    if (!hex) return false;
     try {
-      const response = await _service.copilotWrite(sessionId, input);
-      const result = response.result as Record<string, unknown> | undefined;
+      const result = await hex.gateway.request<{ success: boolean }>('copilot/write', { sessionId, input, closeStdin });
       return !!(result?.success);
     } catch (err) {
       get().appendLog(`copilot/write error: ${(err as Error).message}`);
@@ -222,9 +220,10 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   killCopilotPty: async (sessionId: string) => {
-    if (!_service) return;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return;
     try {
-      await _service.copilotKill(sessionId);
+      await hex.cli.kill.execute(sessionId);
       if (get().activePtySessionId === sessionId) {
         set({ activePtySessionId: null, ptyOwnerCliSessionId: null });
       }
@@ -394,49 +393,55 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       }
     }
 
-    const config: ACPTransportConfig = {
-      endpoint,
-      authToken: server.token || undefined,
-    };
+    const transportType: 'websocket' | 'tcp' = scheme === 'tcp' ? 'tcp' : 'websocket';
 
-    const listener = createACPListener(get, set);
-
-    // TCP→WS auto-fallback: if TCP fails, retry with WS on port+1
+    // Compute TCP fallback port (WS on port+1)
+    let tcpFallbackPort: number | undefined;
     if (scheme === 'tcp') {
-      const originalOnError = listener.onError;
-      let triedFallback = false;
-      listener.onError = (error: Error) => {
-        if (!triedFallback && error.message.includes('TCP')) {
-          triedFallback = true;
-          // Extract host and port, build WS endpoint on port+1
-          const hostPort = cleanHost;
-          const colonIdx = hostPort.lastIndexOf(':');
-          if (colonIdx !== -1) {
-            const host = hostPort.substring(0, colonIdx);
-            const tcpPort = parseInt(hostPort.substring(colonIdx + 1), 10);
-            const wsEndpoint = `ws://${host}:${tcpPort + 1}`;
-            get().appendLog(`TCP failed, trying WebSocket fallback: ${wsEndpoint}`);
-            _service?.disconnect();
-            const wsConfig: ACPTransportConfig = { endpoint: wsEndpoint, authToken: server.token || undefined };
-            const wsListener = createACPListener(get, set);
-            setService(new ACPService(wsConfig, wsListener));
-            _service!.connect();
-            return;
-          }
-        }
-        originalOnError?.(error);
-      };
+      const colonIdx = cleanHost.lastIndexOf(':');
+      if (colonIdx !== -1) {
+        const tcpPort = parseInt(cleanHost.substring(colonIdx + 1), 10);
+        if (!isNaN(tcpPort)) tcpFallbackPort = tcpPort + 1;
+      }
     }
 
-    setService(new ACPService(config, listener));
+    const hex = createAcpHex({ endpoint, transportType, tcpFallbackPort });
+    setService(hex);
+
+    // Subscribe to EventBus for connection state changes → drive acpListener
+    const listener = createACPListener(get, set);
+    eventBus.on('connection:stateChanged', (event) => {
+      // Map domain ConnectionState (PascalCase) to ACPConnectionState (lowercase)
+      const stateMap: Record<string, ACPConnectionState> = {
+        Disconnected: ACPConnectionState.Disconnected,
+        Connecting: ACPConnectionState.Connecting,
+        Connected: ACPConnectionState.Connected,
+        Reconnecting: ACPConnectionState.Connecting,
+        CircuitOpen: ACPConnectionState.Failed,
+        HalfOpen: ACPConnectionState.Connecting,
+        Failed: ACPConnectionState.Failed,
+      };
+      const mapped = stateMap[event.state] ?? ACPConnectionState.Disconnected;
+      listener.onStateChange?.(mapped);
+    });
+
+    // Forward gateway notifications to acpListener
+    eventBus.on('*' as any, (event: any) => {
+      // The gateway emits notification-type events; forward raw ACP notifications
+      if (event.type === 'error:occurred') {
+        listener.onError?.(new Error(event.message));
+      }
+    });
+
     clearRetry();
-    _service!.connect();
+    hex.gateway.connect();
     set({ connectionError: null });
   },
 
   disconnect: () => {
     clearRetry();
-    _service?.disconnect();
+    const hex = _service ?? getAcpHex();
+    hex?.disconnect();
     setService(null);
     set({
       connectionState: ACPConnectionState.Disconnected,
@@ -445,47 +450,42 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   initialize: async () => {
-    if (!_service) return;
+    const hex = _service ?? getAcpHex();
+    if (!hex) return;
     try {
       get().appendLog('→ initialize');
-      const response = await _service.initialize();
-      const result = response.result as Record<string, JSONValue> | undefined;
+      const result = await hex.session.initialize.execute('AgmenteRN', '3.18.0');
       if (result) {
-        const serverInfo = result.serverInfo as Record<string, JSONValue> | undefined;
-        const capabilities = result.capabilities as Record<string, JSONValue> | undefined;
-        const modes = (result.modes as Array<Record<string, JSONValue>> | undefined) ?? [];
-
         const agentInfo: AgentProfile = {
-          name: (serverInfo?.name as string) ?? 'Unknown Agent',
-          version: (serverInfo?.version as string) ?? '',
+          name: result.serverName ?? 'Unknown Agent',
+          version: result.version ?? '',
           capabilities: {
             promptCapabilities: {
-              image: !!(capabilities?.promptCapabilities as Record<string, JSONValue>)?.image,
+              image: !!(result.capabilities?.promptCapabilities as Record<string, unknown>)?.image,
             },
           },
-          modes: modes.map(m => ({
-            id: (m.id as string) ?? '',
-            name: (m.name as string) ?? '',
-            description: m.description as string | undefined,
+          modes: ((result as any).modes ?? []).map((m: any) => ({
+            id: m.id ?? '',
+            name: m.name ?? '',
+            description: m.description,
           })),
         };
         set({ isInitialized: true, agentInfo });
         get().appendLog(`✓ Initialized: ${agentInfo.name} ${agentInfo.version}`);
 
         // Extract bridge models from initialize response
-        const rawModels = result.models as Array<Record<string, JSONValue>> | undefined;
-        if (rawModels && rawModels.length > 0) {
-          const bridgeModels = rawModels.map(m => ({
-            id: (m.id as string) ?? '',
-            name: (m.name as string) ?? (m.id as string) ?? '',
-            provider: (m.provider as string) ?? 'bridge',
+        if (result.models && result.models.length > 0) {
+          const bridgeModels = result.models.map(m => ({
+            id: m.id ?? '',
+            name: m.name ?? m.id ?? '',
+            provider: m.provider ?? 'bridge',
           }));
           set({ bridgeModels });
           get().appendLog(`✓ Bridge models: ${bridgeModels.length}`);
         }
 
         // Extract reasoning effort levels
-        const rawLevels = result.reasoningEffortLevels as string[] | undefined;
+        const rawLevels = (result as any).reasoningEffortLevels as string[] | undefined;
         if (rawLevels && rawLevels.length > 0) {
           set({ reasoningEffortLevels: rawLevels });
           get().appendLog(`✓ Reasoning effort levels: ${rawLevels.join(', ')}`);

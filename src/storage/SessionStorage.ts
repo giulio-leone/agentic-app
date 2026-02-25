@@ -4,7 +4,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ACPServerConfiguration, SessionSummary, ChatMessage, ServerType } from '../acp/models/types';
+import { ACPServerConfiguration, SessionSummary, ChatMessage, ServerType } from '../acp-hex/domain/types';
 import type { MCPServerConfig } from '../mcp/types';
 
 const SERVERS_KEY = '@agentic/servers';

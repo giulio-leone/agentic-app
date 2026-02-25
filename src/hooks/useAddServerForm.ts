@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useServerActions } from '../stores/selectors';
-import { ServerType } from '../acp/models/types';
+import { ServerType } from '../acp-hex/domain/types';
 import { AIProviderType, AIProviderConfig, ReasoningEffort } from '../ai/types';
 import { getProviderInfo } from '../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../ai/ModelFetcher';

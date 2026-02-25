@@ -5,7 +5,7 @@ import React, { useCallback } from 'react';
 import { TouchableOpacity, Platform } from 'react-native';
 import { YStack, Text } from 'tamagui';
 import { ConnectionBadge } from '../ConnectionBadge';
-import { ACPConnectionState, ACPServerConfiguration } from '../../acp/models/types';
+import { ACPConnectionState, ACPServerConfiguration } from '../../acp-hex/domain/types';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 
 interface Props {

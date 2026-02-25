@@ -20,8 +20,8 @@ import {
 } from 'react-native';
 import { Check, Eye, Brain, Wrench, Search, X, ChevronLeft } from 'lucide-react-native';
 import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
-import { ServerType } from '../../acp/models/types';
-import type { ACPServerConfiguration } from '../../acp/models/types';
+import { ServerType } from '../../acp-hex/domain/types';
+import type { ACPServerConfiguration } from '../../acp-hex/domain/types';
 import { getProviderInfo } from '../../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { getCachedModels } from '../../ai/ModelCache';

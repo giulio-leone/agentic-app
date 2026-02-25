@@ -6,7 +6,7 @@ import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
-import { ChatMessage, Artifact } from '../../acp/models/types';
+import { ChatMessage, Artifact } from '../../acp-hex/domain/types';
 import { chatToMarkdown, chatToJSON, chatToHTML, chatToPDF, shareExport, shareFile } from '../../utils/chatExport';
 import { PromptLibrary } from '../../storage/PromptLibrary';
 import { v4 as uuidv4 } from 'uuid';

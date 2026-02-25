@@ -98,4 +98,4 @@ export const DEFAULT_CONSENSUS_CONFIG: ConsensusConfig = {
 };
 
 // Re-export ConsensusDetails from the canonical message types
-export type { ConsensusDetails } from '../acp/models/types';
+export type { ConsensusDetails } from '../acp-hex/domain/types';

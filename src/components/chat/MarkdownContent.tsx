@@ -5,7 +5,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { StyleSheet, Linking } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import type { Artifact } from '../../acp/models/types';
+import type { Artifact } from '../../acp-hex/domain/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { ArtifactList } from './ArtifactDisplay';

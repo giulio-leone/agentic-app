@@ -5,7 +5,7 @@ import React, { useCallback } from 'react';
 import { ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { X } from 'lucide-react-native';
-import { Attachment } from '../../acp/models/types';
+import { Attachment } from '../../acp-hex/domain/types';
 import { Spacing } from '../../utils/theme';
 import { getFileIcon, formatSize } from '../../utils/fileUtils';
 

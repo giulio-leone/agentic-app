@@ -8,7 +8,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import { Wrench, Loader, Check, ChevronDown, ChevronRight, Terminal, FileEdit } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import { StyleSheet } from 'react-native';
-import type { MessageSegment } from '../../acp/models/types';
+import type { MessageSegment } from '../../acp-hex/domain/types';
 import type { ThemeColors } from '../../utils/theme';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import { sharedStyles } from '../../utils/sharedStyles';

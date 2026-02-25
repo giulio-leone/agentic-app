@@ -22,7 +22,7 @@ import {
 } from '../stores/selectors';
 import { ServerListItem } from '../components/home/ServerListItem';
 import { SessionListItem } from '../components/home/SessionListItem';
-import { ACPConnectionState, SessionSummary } from '../acp/models/types';
+import { ACPConnectionState, SessionSummary } from '../acp-hex/domain/types';
 import { useAppStore, type CliSessionInfo } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';

@@ -2,7 +2,7 @@
  * Shared helpers used by multiple store slices.
  */
 
-import type { ChatMessage, Artifact, ArtifactType } from '../acp/models/types';
+import type { ChatMessage, Artifact, ArtifactType } from '../acp-hex/domain/types';
 
 // ─── Artifact Detection ───
 

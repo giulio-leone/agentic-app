@@ -3,9 +3,10 @@
  * Mirrors the Swift SessionUpdateHandler / SessionUpdateParsing logic.
  */
 
-import { JSONValue } from './models';
-import { ChatMessage, MessageSegment } from './models/types';
+import { ChatMessage, MessageSegment } from '../../domain/types';
 import { v4 as uuidv4 } from 'uuid';
+
+type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
 
 /**
  * Parse an ACP session/update notification into actions that update chat state.

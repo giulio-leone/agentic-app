@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, Image, Dimensions } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
-import { Attachment } from '../../acp/models/types';
+import { Attachment } from '../../acp-hex/domain/types';
 import { FontSize, Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { getFileIcon, formatSize } from '../../utils/fileUtils';
 import { ImageModal } from './ImageModal';
