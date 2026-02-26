@@ -1,0 +1,33 @@
+{
+  "name": "@agmente/copilot-sdk-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "GitHub Copilot SDK Bridge - WebSocket gateway for React Native",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "^0.1.10",
+    "qrcode": "^1.5.4",
+    "selfsigned": "^2.4.1",
+    "uuid": "^11.1.0",
+    "ws": "^8.19.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
