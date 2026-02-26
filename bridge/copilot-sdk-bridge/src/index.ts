@@ -181,6 +181,14 @@ async function main(): Promise<void> {
   wss = new BridgeWebSocketServer(
     config,
     (clientId, msg) => handler.handleMessage(clientId, msg),
+    (clientId, token, req) => {
+      const result = authenticator.authenticateConnection(token ?? '', req);
+      if (!result.authenticated) return false;
+      // Map the WS-assigned clientId to the authenticator's record
+      authenticator.removeClient(result.clientId);
+      (authenticator as any).authenticated.set(clientId, true);
+      return true;
+    },
     (clientId, _req) => handler.handleConnect(clientId),
     (clientId) => handler.handleDisconnect(clientId),
     tlsOptions,

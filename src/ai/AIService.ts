@@ -167,6 +167,10 @@ export function streamChat(
   return controller;
 }
 
+// ── Copilot session cache ────────────────────────────────────────────────────
+
+const copilotSessionCache = new Map<string, string>(); // model -> sessionId
+
 // ── Copilot bridge streaming ─────────────────────────────────────────────────
 
 /**
@@ -197,7 +201,13 @@ function streamCopilotChat(
         );
       }
 
-      const { sessionId } = await bridge.createSession(config.modelId);
+      const cacheKey = config.modelId || 'default';
+      let sessionId = copilotSessionCache.get(cacheKey);
+      if (!sessionId) {
+        const result = await bridge.createSession(config.modelId);
+        sessionId = result.sessionId;
+        copilotSessionCache.set(cacheKey, sessionId);
+      }
 
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       if (!lastUserMessage) throw new Error('No user message to send');
@@ -205,7 +215,11 @@ function streamCopilotChat(
       const innerController = bridge.streamPrompt(sessionId, lastUserMessage.content, {
         onChunk,
         onComplete,
-        onError,
+        onError: (err) => {
+          // Invalidate cached session on error (may be stale)
+          copilotSessionCache.delete(cacheKey);
+          onError(err);
+        },
         onReasoning,
         onToolCall,
         onToolResult,
@@ -218,7 +232,10 @@ function streamCopilotChat(
               sessionId,
               stepIndex: 0,
             }).then((approved) => {
-              bridge.respondToTool(sessionId, request.toolCallId, { approved }, approved)
+              bridge.respondToTool(sessionId!, request.toolCallId, { approved }, approved)
+                .catch(() => {});
+            }).catch(() => {
+              bridge.respondToTool(sessionId!, request.toolCallId, { approved: false }, false)
                 .catch(() => {});
             });
           } else if (request.kind === 'ask_user') {

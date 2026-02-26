@@ -97,7 +97,11 @@ export class CopilotBridgeService {
   // ── Connection lifecycle ───────────────────────────────────────────────────
 
   connect(config: CopilotBridgeConfig): void {
-    if (this.ws) this.cleanupSocket();
+    if (this.ws) {
+      this.errorAllActiveStreams(new Error('Replacing existing connection'));
+      this.rejectAllPending(new Error('Replacing existing connection'));
+      this.cleanupSocket();
+    }
 
     this.config = config;
     this.shouldReconnect = config.reconnect !== false;
@@ -111,6 +115,7 @@ export class CopilotBridgeService {
     this.shouldReconnect = false;
     this.clearReconnectTimer();
     this.rejectAllPending(new Error('Disconnected by client'));
+    this.errorAllActiveStreams(new Error('Disconnected by client'));
     this.cleanupSocket();
     this.setState('disconnected');
   }
@@ -266,6 +271,7 @@ export class CopilotBridgeService {
       if (this.ws !== ws) return;
       this.cleanupSocket();
       this.rejectAllPending(new Error('WebSocket closed'));
+      this.errorAllActiveStreams(new Error('WebSocket connection closed'));
       if (this.shouldReconnect && this._state !== 'disconnected') {
         this.scheduleReconnect();
       } else {
@@ -341,6 +347,15 @@ export class CopilotBridgeService {
       throw new Error('WebSocket is not connected');
     }
     this.ws.send(JSON.stringify(message));
+  }
+
+  private errorAllActiveStreams(error: Error): void {
+    for (const [, callbacks] of this.activeStreamCallbacks) {
+      try {
+        callbacks.onError(error);
+      } catch { /* best-effort */ }
+    }
+    this.activeStreamCallbacks.clear();
   }
 
   private rejectAllPending(error: Error): void {

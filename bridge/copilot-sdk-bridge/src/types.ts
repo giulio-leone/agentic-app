@@ -253,6 +253,14 @@ export interface StreamingAckResponse {
   };
 }
 
+// ── session.destroy response ──
+
+export interface SessionDestroyResponse {
+  type: 'session.destroy.result';
+  id: string;
+  payload: { sessionId: string; destroyed: boolean };
+}
+
 // ── error response ──
 
 export interface ErrorResponse {
@@ -335,6 +343,7 @@ export type BridgeMessage =
   | InitializeResponse
   | SessionNewResponse
   | SessionListResponse
+  | SessionDestroyResponse
   | ModelsListResponse
   | StreamingAckResponse
   | ErrorResponse

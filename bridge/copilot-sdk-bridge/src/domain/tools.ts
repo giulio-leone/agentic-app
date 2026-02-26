@@ -188,13 +188,12 @@ function createPendingPromise(
 ): Promise<unknown> {
   return new Promise<unknown>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      toolManager.rejectToolCall(toolCallId, 'Timeout');
-      reject(
-        new TimeoutError(
-          `Tool call ${toolCallId} timed out after ${timeoutMs}ms`,
-          timeoutMs,
-        ),
-      );
+      const entry = (toolManager as any).pending.get(toolCallId);
+      if (entry) {
+        clearTimeout(entry.timeout);
+        (toolManager as any).pending.delete(toolCallId);
+        entry.reject(new TimeoutError(`Tool call ${toolCallId} timed out`, timeoutMs));
+      }
     }, timeoutMs);
 
     toolManager.register({ toolCallId, resolve, reject, timeout });

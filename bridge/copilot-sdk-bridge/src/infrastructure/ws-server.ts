@@ -22,7 +22,10 @@ import { errorMessage } from '../errors.js';
 /** Invoked when a validated client message arrives. */
 export type OnMessageCallback = (clientId: string, message: ClientMessage) => void;
 
-/** Invoked when a new WebSocket client connects. */
+/** Invoked to authenticate a new WebSocket client. Returns true if allowed. */
+export type OnAuthenticateCallback = (clientId: string, token: string | null, req: IncomingMessage) => boolean;
+
+/** Invoked when a new WebSocket client connects (after auth). */
 export type OnConnectCallback = (clientId: string, req: IncomingMessage) => void;
 
 /** Invoked when a WebSocket client disconnects. */
@@ -61,6 +64,7 @@ interface ClientSocket extends WebSocket {
 export class BridgeWebSocketServer {
   private readonly config: BridgeConfig;
   private readonly onMessage: OnMessageCallback;
+  private readonly onAuthenticate: OnAuthenticateCallback;
   private readonly onConnect: OnConnectCallback;
   private readonly onDisconnect: OnDisconnectCallback;
 
@@ -73,12 +77,14 @@ export class BridgeWebSocketServer {
   constructor(
     config: BridgeConfig,
     onMessage: OnMessageCallback,
+    onAuthenticate: OnAuthenticateCallback,
     onConnect: OnConnectCallback,
     onDisconnect: OnDisconnectCallback,
     tlsOptions?: TlsOptions,
   ) {
     this.config = config;
     this.onMessage = onMessage;
+    this.onAuthenticate = onAuthenticate;
     this.onConnect = onConnect;
     this.onDisconnect = onDisconnect;
 
@@ -107,6 +113,26 @@ export class BridgeWebSocketServer {
       const clientId = uuidv4();
       client.clientId = clientId;
       client.isAlive = true;
+
+      // Extract token from query param or Authorization header
+      let token: string | null = null;
+      try {
+        const url = new URL(req.url ?? '', `http://${req.headers.host}`);
+        token = url.searchParams.get('token');
+      } catch { /* ignore malformed URL */ }
+      if (!token) {
+        const auth = req.headers['authorization'];
+        if (auth?.startsWith('Bearer ')) {
+          token = auth.slice(7).trim();
+        }
+      }
+
+      // Authenticate before accepting the connection
+      if (!this.onAuthenticate(clientId, token, req)) {
+        console.log(`[ws] client rejected (unauthorized): ${clientId}`);
+        ws.close(4001, 'Unauthorized');
+        return;
+      }
 
       this.clients.set(clientId, client);
       console.log(`[ws] client connected: ${clientId}`);

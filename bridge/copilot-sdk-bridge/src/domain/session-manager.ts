@@ -238,11 +238,7 @@ export class SessionManager {
       );
       this.sessions.delete(oldest.sessionId);
       // Best-effort abort — fire and forget
-      try {
-        (oldest.session as any).abort();
-      } catch {
-        // ignored
-      }
+      Promise.resolve((oldest.session as any).abort?.()).catch(() => { /* best-effort */ });
     }
   }
 }

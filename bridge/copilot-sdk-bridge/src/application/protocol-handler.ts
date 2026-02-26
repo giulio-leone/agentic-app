@@ -49,6 +49,7 @@ const CAPABILITIES = ['streaming', 'tools', 'mcp', 'sessions'];
 export class ProtocolHandler {
   private wss: BridgeWebSocketServer | null = null;
   private readonly toolManagers = new Map<string, ToolManager>();
+  private readonly authenticatedClients = new Set<string>();
 
   constructor(
     private readonly client: ResilientCopilotClient,
@@ -75,6 +76,12 @@ export class ProtocolHandler {
    * Wraps every handler in a try/catch that sends an {@link ErrorResponse}.
    */
   async handleMessage(clientId: string, message: ClientMessage): Promise<void> {
+    // Auth guard: reject all messages from unauthenticated clients
+    if (!this.authenticatedClients.has(clientId)) {
+      this.sendError(clientId, message.id, 'UNAUTHORIZED', 'Client not authenticated');
+      return;
+    }
+
     if (!this.rateLimiter.checkLimit(clientId)) {
       this.sendError(clientId, message.id, 'RATE_LIMITED', 'Too many requests');
       return;
@@ -127,6 +134,7 @@ export class ProtocolHandler {
    * Logs the event and sends the current auth status.
    */
   handleConnect(clientId: string): void {
+    this.authenticatedClients.add(clientId);
     console.log(`${TAG} client connected: ${clientId}`);
     const authenticated = this.authenticator.isAuthenticated(clientId);
     const notification: AuthStatusNotification = {
@@ -142,6 +150,7 @@ export class ProtocolHandler {
    */
   handleDisconnect(clientId: string): void {
     console.log(`${TAG} client disconnected: ${clientId}`);
+    this.authenticatedClients.delete(clientId);
 
     const tm = this.toolManagers.get(clientId);
     if (tm) {
@@ -342,12 +351,17 @@ export class ProtocolHandler {
 
   /** Destroy a session and free its resources. */
   private async handleSessionDestroy(
-    _clientId: string,
+    clientId: string,
     message: Extract<ClientMessage, { type: 'session.destroy' }>,
   ): Promise<void> {
     const { sessionId } = message.payload;
     await this.sessions.destroySession(sessionId);
     console.log(`${TAG} session.destroy — id=${sessionId}`);
+    this.send(clientId, {
+      type: 'session.destroy.result',
+      id: message.id,
+      payload: { sessionId, destroyed: true },
+    });
   }
 
   // ── 8. tool.response ──
