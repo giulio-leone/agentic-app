@@ -73,7 +73,7 @@ export function parseSessionUpdate(
       return actions;
     }
 
-    // Unified Bridge: agent_event for terminal commands, file edits, reasoning
+    // Copilot SDK Bridge: agent_event for terminal commands, file edits, reasoning
     if (sessionUpdate === 'agent_event' && content) {
       const event = content.event as Record<string, JSONValue> | undefined;
       const kind = (event?.kind as string) ?? (content.type as string) ?? 'unknown';
@@ -354,7 +354,7 @@ function appendTextToSegments(
   return segs;
 }
 
-/** Maps agent event types from Unified Bridge to user-visible labels. */
+/** Maps agent event types from Copilot SDK Bridge to user-visible labels. */
 function agentEventLabelFromData(eventType: string, data: Record<string, JSONValue>): string | null {
   switch (eventType) {
     case 'terminal_command': {

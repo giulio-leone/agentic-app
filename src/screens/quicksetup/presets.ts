@@ -1,8 +1,8 @@
 /**
- * QuickSetup — Preset data for AI providers and ACP agents.
+ * QuickSetup — Preset data for AI providers, ACP agents, and Copilot SDK Bridge.
  */
 
-import { Server, Globe, Bot, Brain, Gem, Zap, Github, Code, Terminal, Layers, type LucideIcon } from 'lucide-react-native';
+import { Server, Globe, Bot, Brain, Gem, Zap, Github, Code, Terminal, type LucideIcon } from 'lucide-react-native';
 import { ServerType } from '../../acp-hex/domain/types';
 import { AIProviderType } from '../../ai/types';
 
@@ -15,13 +15,27 @@ export interface PresetProvider {
 }
 
 export interface ACPPreset {
-  serverType: ServerType.ACP | ServerType.Codex | ServerType.CopilotCLI;
+  serverType: ServerType.ACP;
   label: string;
   description: string;
   defaultScheme: 'ws' | 'wss' | 'tcp';
   defaultHost: string;
   icon: LucideIcon;
 }
+
+export interface CopilotBridgePreset {
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  defaultPort: number;
+}
+
+export const COPILOT_BRIDGE_PRESET: CopilotBridgePreset = {
+  label: 'Copilot SDK Bridge',
+  description: 'GitHub Copilot via SDK — discovery, pairing, 17+ modelli',
+  icon: Github,
+  defaultPort: 3030,
+};
 
 export const AI_PRESETS: PresetProvider[] = [
   {
@@ -62,14 +76,6 @@ export const AI_PRESETS: PresetProvider[] = [
 ];
 
 export const ACP_PRESETS: ACPPreset[] = [
-  {
-    serverType: ServerType.ACP,
-    label: 'Unified Bridge',
-    description: 'Copilot + Codex multi-provider (tcp:3020)',
-    defaultScheme: 'tcp',
-    defaultHost: 'localhost:3020',
-    icon: Layers,
-  },
   {
     serverType: ServerType.ACP,
     label: 'Gemini CLI',

@@ -49,7 +49,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
             Protocol
           </Text>
           <XStack backgroundColor={colors.systemGray5} borderRadius={Radius.sm} padding={2} marginBottom={Spacing.md}>
-            {([ServerType.ACP, ServerType.Codex, ServerType.CopilotCLI, ServerType.AIProvider] as const).map(type => (
+            {([ServerType.ACP, ServerType.AIProvider] as const).map(type => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -73,7 +73,7 @@ export const AddServerScreen = React.memo(function AddServerScreen() {
                   fontWeight={w.serverType === type ? '600' : '500'}
                   color={w.serverType === type ? '$color' : '$textTertiary'}
                 >
-                  {type === ServerType.AIProvider ? 'AI Provider' : type === ServerType.Codex ? 'Codex' : type === ServerType.CopilotCLI ? 'Copilot' : 'ACP'}
+                  {type === ServerType.AIProvider ? 'AI Provider' : 'ACP'}
                 </Text>
               </TouchableOpacity>
             ))}

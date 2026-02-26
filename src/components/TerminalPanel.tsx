@@ -1,6 +1,6 @@
 /**
  * TerminalPanel — Embedded xterm.js terminal via WebView.
- * Connects to remote shells through the Unified Bridge ACP protocol.
+ * Connects to remote shells through the Copilot SDK Bridge ACP protocol.
  * Supports spawning new PTY shells and connecting to existing tmux sessions.
  */
 

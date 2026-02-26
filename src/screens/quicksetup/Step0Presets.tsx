@@ -1,5 +1,5 @@
 /**
- * Step0Presets — provider/ACP selection cards for QuickSetup step 0.
+ * Step0Presets — provider/ACP/Copilot selection cards for QuickSetup step 0.
  */
 
 import React from 'react';
@@ -8,7 +8,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ThemeColors } from '../../utils/theme';
-import { AI_PRESETS, ACP_PRESETS } from './presets';
+import { AI_PRESETS, ACP_PRESETS, COPILOT_BRIDGE_PRESET } from './presets';
 import type { useQuickSetupWizard } from './useQuickSetupWizard';
 
 type WizardState = ReturnType<typeof useQuickSetupWizard>;
@@ -39,8 +39,41 @@ export function Step0Presets({ w, colors }: Step0PresetsProps) {
         </Text>
       </YStack>
 
-      {/* AI Provider presets */}
+      {/* Copilot SDK Bridge — featured */}
       <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5}>
+        Copilot SDK Bridge
+      </Text>
+      {(() => {
+        const idx = cardIndex++;
+        const preset = COPILOT_BRIDGE_PRESET;
+        return (
+          <Animated.View
+            style={{ opacity: w.cardAnims[idx], transform: [{ translateY: w.cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}
+          >
+            <TouchableOpacity
+              style={[styles.featuredCard, { backgroundColor: colors.cardBackground, borderColor: colors.primary }]}
+              onPress={() => w.handleCopilotSelect()}
+              activeOpacity={0.7}
+            >
+              <XStack alignItems="center" gap={Spacing.sm}>
+                <preset.icon size={22} color={colors.primary} />
+                <YStack flex={1}>
+                  <Text fontSize={FontSize.body} fontWeight="700" color={colors.text}>
+                    {preset.label}
+                  </Text>
+                  <Text fontSize={11} color={colors.textTertiary}>
+                    {preset.description}
+                  </Text>
+                </YStack>
+                <ChevronRight size={16} color={colors.primary} />
+              </XStack>
+            </TouchableOpacity>
+          </Animated.View>
+        );
+      })()}
+
+      {/* AI Provider presets */}
+      <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5} marginTop={Spacing.xs}>
         AI Provider
       </Text>
       {AI_PRESETS.map(preset => {
@@ -121,6 +154,12 @@ export function Step0Presets({ w, colors }: Step0PresetsProps) {
 }
 
 const styles = StyleSheet.create({
+  featuredCard: {
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1.5,
+  },
   compactCard: {
     borderRadius: Radius.md,
     paddingVertical: Spacing.sm,

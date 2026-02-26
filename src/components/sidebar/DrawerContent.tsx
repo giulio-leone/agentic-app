@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { YStack, XStack, Text, Separator } from 'tamagui';
-import { Trash2, X, PenLine, Settings, Check, Plus, Terminal, Github, Server } from 'lucide-react-native';
+import { Trash2, X, PenLine, Settings, Check, Plus, Terminal, Server } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
@@ -54,10 +54,6 @@ const ServerChip = React.memo(function ServerChip({
   let ProviderIcon: React.ComponentType<{ size?: number; color?: string; style?: object }> | null = null;
   if (isAIProvider && server.aiProviderConfig?.providerType) {
     try { ProviderIcon = getProviderInfo(server.aiProviderConfig.providerType).icon; } catch { /* unknown provider */ }
-  } else if (server.serverType === ServerType.CopilotCLI) {
-    ProviderIcon = Github;
-  } else if (server.serverType === ServerType.Codex) {
-    ProviderIcon = Terminal;
   } else if (server.serverType === ServerType.ACP) {
     ProviderIcon = Server;
   }

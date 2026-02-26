@@ -61,7 +61,7 @@ const TEST_ARTIFACTS: Artifact[] = [
     type: 'mermaid',
     title: 'Architecture Diagram',
     content: `graph TD
-    A[Mobile App] -->|ACP Protocol| B[Unified Bridge]
+    A[Mobile App] -->|ACP Protocol| B[Copilot SDK Bridge]
     B --> C[Claude Code]
     B --> D[Copilot CLI]
     B --> E[Codex]
