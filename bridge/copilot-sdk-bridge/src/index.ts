@@ -183,10 +183,9 @@ async function main(): Promise<void> {
     (clientId, msg) => handler.handleMessage(clientId, msg),
     (clientId, token, req) => {
       const result = authenticator.authenticateConnection(token ?? '', req);
-      if (!result.authenticated) return false;
-      // Map the WS-assigned clientId to the authenticator's record
-      authenticator.removeClient(result.clientId);
-      (authenticator as any).authenticated.set(clientId, true);
+      if (!result.valid) return false;
+      // Register the WS-assigned clientId as authenticated
+      authenticator.registerClient(clientId);
       return true;
     },
     (clientId, _req) => handler.handleConnect(clientId),
@@ -240,6 +239,18 @@ async function main(): Promise<void> {
   );
 
   console.log('[bridge] ✓ Server ready');
+
+  // Keep the Node.js event loop alive — the WS server handle alone may
+  // not prevent the process from exiting when the SDK child process
+  // terminates or other handles are garbage-collected.
+  setInterval(() => {
+    /* intentional no-op keep-alive */
+  }, 30_000);
+
+  // Also ensure the HTTP server backing the WSS explicitly refs itself
+  if (wss) {
+    (wss as any).httpServer?.ref?.();
+  }
 }
 
 main().catch((err: unknown) => {

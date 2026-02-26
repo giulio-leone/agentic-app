@@ -29,13 +29,8 @@ export interface PairingToken {
   token: string;
   createdAt: Date;
   expiresAt: Date;
-  used: boolean;
-}
-
-/** Result returned by {@link ConnectionAuthenticator.authenticateConnection}. */
-export interface AuthResult {
-  authenticated: boolean;
-  clientId: string;
+  maxUses: number; // Infinity = unlimited; 1 = single-use
+  useCount: number; // Tracks current usage
 }
 
 /** Payload for QR-code generation output. */
@@ -95,44 +90,53 @@ export class PairingTokenManager {
    * Generate a cryptographically random pairing token (32 bytes, hex-encoded).
    *
    * @param ttlMs - Time-to-live in milliseconds.
+   * @param maxUses - Maximum number of connections. Default: unlimited (Infinity).
    * @returns The generated {@link PairingToken}.
    */
-  generateToken(ttlMs: number): PairingToken {
+  generateToken(ttlMs: number, maxUses: number = Infinity): PairingToken {
     const token = randomBytes(32).toString('hex');
     const now = new Date();
     const record: PairingToken = {
       token,
       createdAt: now,
       expiresAt: new Date(now.getTime() + ttlMs),
-      used: false,
+      maxUses,
+      useCount: 0,
     };
     this.tokens.set(token, record);
-    console.log(`[security] pairing token generated (expires in ${ttlMs} ms)`);
+    const limit = maxUses === Infinity ? 'unlimited' : `${maxUses} use(s)`;
+    console.log(`[security] pairing token generated (expires in ${ttlMs} ms, ${limit})`);
     return record;
   }
 
   /**
    * Validate a pairing token — it must exist, not be expired, and
-   * not have been previously used.  A valid token is marked as used.
+   * have remaining uses. Increments the use counter on success.
+   *
+   * The token remains valid for its full TTL and can be used multiple times
+   * (unless maxUses is exceeded) until it expires.
    */
   validateToken(token: string): boolean {
     const record = this.tokens.get(token);
     if (!record) return false;
-    if (record.used) return false;
     if (new Date() > record.expiresAt) return false;
+    if (record.useCount >= record.maxUses) return false;
 
-    record.used = true;
-    console.log('[security] pairing token validated and consumed');
+    record.useCount++;
+    console.log(
+      `[security] pairing token validated (use ${record.useCount}/${record.maxUses === Infinity ? '∞' : record.maxUses})`,
+    );
     return true;
   }
 
   /**
-   * Revoke (mark as used) a specific token.
+   * Revoke (prevent further use of) a specific token.
+   * Sets useCount to maxUses, making the token unusable.
    */
   revokeToken(token: string): void {
     const record = this.tokens.get(token);
     if (record) {
-      record.used = true;
+      record.useCount = record.maxUses;
       console.log('[security] pairing token revoked');
     }
   }
@@ -155,7 +159,7 @@ export class PairingTokenManager {
   }
 
   /**
-   * Return information about the current active (unused, non-expired)
+   * Return information about the current active (non-expired)
    * token suitable for QR-code generation.
    *
    * @param bridgeUrl - The WebSocket URL the client should connect to.
@@ -163,7 +167,7 @@ export class PairingTokenManager {
   getActiveTokenInfo(bridgeUrl: string): { token: string; url: string } | null {
     const now = new Date();
     for (const record of this.tokens.values()) {
-      if (!record.used && now < record.expiresAt) {
+      if (now < record.expiresAt && record.useCount < record.maxUses) {
         return { token: record.token, url: bridgeUrl };
       }
     }
@@ -222,19 +226,18 @@ export class ConnectionAuthenticator {
   constructor(private readonly tokenManager: PairingTokenManager) {}
 
   /**
-   * Authenticate a WebSocket upgrade request.
+   * Authenticate a WebSocket upgrade request using the provided token.
    *
-   * Extracts the token from the `Authorization` header or the URL
-   * query string, validates it, and records the client.
+   * Returns the authentication result. Does NOT register the client;
+   * use registerClient() after accepting the connection to map the
+   * WebSocket-assigned clientId to the authenticated session.
    */
-  authenticateConnection(token: string, req: IncomingMessage): AuthResult {
-    const clientId = uuidv4();
-
+  authenticateConnection(token: string, req: IncomingMessage): {
+    valid: boolean;
+    clientIp?: string;
+    userAgent?: string;
+  } {
     const valid = this.tokenManager.validateToken(token);
-    if (!valid) {
-      console.log(`[security] authentication failed for ${clientId}`);
-      return { authenticated: false, clientId };
-    }
 
     const clientIp =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
@@ -242,11 +245,24 @@ export class ConnectionAuthenticator {
       'unknown';
     const userAgent = req.headers['user-agent'] ?? 'unknown';
 
-    this.authenticated.set(clientId, true);
+    if (!valid) {
+      console.log(`[security] authentication failed (ip=${clientIp})`);
+      return { valid: false, clientIp, userAgent };
+    }
+
     console.log(
-      `[security] client ${clientId} authenticated (ip=${clientIp}, ua=${userAgent})`,
+      `[security] token authenticated (ip=${clientIp}, ua=${userAgent})`,
     );
-    return { authenticated: true, clientId };
+    return { valid: true, clientIp, userAgent };
+  }
+
+  /**
+   * Register a client as authenticated. Call this after accepting
+   * the WebSocket connection to map the WS-assigned clientId.
+   */
+  registerClient(clientId: string): void {
+    this.authenticated.set(clientId, true);
+    console.log(`[security] client ${clientId} registered`);
   }
 
   /**

@@ -24,7 +24,8 @@ describe('PairingTokenManager', () => {
   it('generateToken returns a valid token', () => {
     const record = mgr.generateToken(60_000);
     expect(record.token).toHaveLength(64); // 32 bytes hex
-    expect(record.used).toBe(false);
+    expect(record.useCount).toBe(0);
+    expect(record.maxUses).toBe(Infinity);
     expect(record.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
@@ -33,10 +34,19 @@ describe('PairingTokenManager', () => {
     expect(mgr.validateToken(record.token)).toBe(true);
   });
 
-  it('validateToken marks token as used (single-use)', () => {
+  it('validateToken can be called multiple times before expiry (reusable)', () => {
     const record = mgr.generateToken(60_000);
+    // Token is reusable for its full TTL
     expect(mgr.validateToken(record.token)).toBe(true);
-    // Second validation fails — already used
+    expect(mgr.validateToken(record.token)).toBe(true);
+    expect(mgr.validateToken(record.token)).toBe(true);
+  });
+
+  it('validateToken respects maxUses limit', () => {
+    const record = mgr.generateToken(60_000, 2); // Allow 2 uses
+    expect(mgr.validateToken(record.token)).toBe(true);
+    expect(mgr.validateToken(record.token)).toBe(true);
+    // Third use fails — maxUses exceeded
     expect(mgr.validateToken(record.token)).toBe(false);
   });
 
@@ -109,27 +119,28 @@ describe('ConnectionAuthenticator', () => {
   it('authenticates with valid token', () => {
     const record = tokenMgr.generateToken(60_000);
     const result = auth.authenticateConnection(record.token, fakeReq());
-    expect(result.authenticated).toBe(true);
-    expect(result.clientId).toBeTruthy();
+    expect(result.valid).toBe(true);
   });
 
   it('rejects invalid token', () => {
     const result = auth.authenticateConnection('bad-token', fakeReq());
-    expect(result.authenticated).toBe(false);
+    expect(result.valid).toBe(false);
   });
 
   it('isAuthenticated returns correct state', () => {
     const record = tokenMgr.generateToken(60_000);
-    const result = auth.authenticateConnection(record.token, fakeReq());
-    expect(auth.isAuthenticated(result.clientId)).toBe(true);
+    auth.authenticateConnection(record.token, fakeReq());
+    const clientId = 'test-client-123';
+    auth.registerClient(clientId);
+    expect(auth.isAuthenticated(clientId)).toBe(true);
     expect(auth.isAuthenticated('random-id')).toBe(false);
   });
 
   it('removeClient clears authentication', () => {
-    const record = tokenMgr.generateToken(60_000);
-    const result = auth.authenticateConnection(record.token, fakeReq());
-    auth.removeClient(result.clientId);
-    expect(auth.isAuthenticated(result.clientId)).toBe(false);
+    const clientId = 'test-client-456';
+    auth.registerClient(clientId);
+    auth.removeClient(clientId);
+    expect(auth.isAuthenticated(clientId)).toBe(false);
   });
 
   it('extractToken reads from Authorization header', () => {

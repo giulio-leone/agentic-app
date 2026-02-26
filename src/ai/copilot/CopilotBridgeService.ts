@@ -425,12 +425,21 @@ export class CopilotBridgeService {
         // no-op
         break;
       case 'message.delta':
-        callbacks.onChunk(String(data.text ?? ''));
+        callbacks.onChunk(String(data.text ?? data.content ?? ''));
         break;
-      case 'message.end':
+      case 'message.end': {
+        // The Copilot SDK sends the full response in message.end
+        // (no delta events). Extract content and emit as final chunk.
+        const content =
+          (data as any)?.data?.content ??
+          (data as any)?.content ??
+          (data as any)?.text ??
+          '';
+        if (content) callbacks.onChunk(String(content));
         callbacks.onComplete('stop');
         this.activeStreamCallbacks.delete(payload.sessionId);
         break;
+      }
       case 'tool.call':
         callbacks.onToolCall?.(
           String(data.name ?? ''),
