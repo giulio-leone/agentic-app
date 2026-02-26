@@ -23,9 +23,11 @@ import { Spacing, Radius, type ThemeColors } from '../../utils/theme';
 import { ServerType } from '../../acp-hex/domain/types';
 import type { ACPServerConfiguration } from '../../acp-hex/domain/types';
 import { getProviderInfo } from '../../ai/providers';
+import { AIProviderType } from '../../ai/types';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { getCachedModels } from '../../ai/ModelCache';
 import { getApiKey } from '../../storage/SecureStorage';
+import { CopilotBridgeService } from '../../ai/copilot/CopilotBridgeService';
 
 interface Props {
   visible: boolean;
@@ -99,7 +101,14 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
         providerName: `Bridge (${m.provider})`,
         providerServerId: bridgeServer?.id ?? 'bridge',
         displayName: m.name,
-        model: { id: m.id, name: m.name, created: 0 },
+        model: {
+          id: m.id,
+          name: m.name,
+          supportsReasoning: false,
+          supportsTools: false,
+          supportsVision: false,
+          supportedParameters: [],
+        },
       })));
       setLoading(false);
       return;
@@ -114,6 +123,36 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
       for (const provider of providers) {
         const config = provider.aiProviderConfig!;
         const info = getProviderInfo(config.providerType);
+
+        // Copilot: fetch live models from bridge
+        if (config.providerType === AIProviderType.Copilot) {
+          try {
+            const bridge = CopilotBridgeService.getInstance();
+            if (bridge.isConnected()) {
+              const resp = await bridge.listModels();
+              if (cancelled) return;
+              for (const m of resp.models) {
+                options.push({
+                  id: `${provider.id}::${m.id}`,
+                  modelId: m.id,
+                  providerName: info.name,
+                  providerServerId: provider.id,
+                  displayName: m.name || m.id,
+                  model: {
+                    id: m.id,
+                    name: m.name,
+                    supportsReasoning: false,
+                    supportsTools: false,
+                    supportsVision: false,
+                    supportedParameters: [],
+                  },
+                });
+              }
+              continue;
+            }
+          } catch { /* fall through to static list */ }
+        }
+
         let models = await getCachedModels(config.providerType);
         if (cancelled) return;
         if (!models || models.length === 0) {

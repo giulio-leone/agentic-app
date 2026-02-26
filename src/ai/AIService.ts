@@ -169,8 +169,26 @@ export function streamChat(
 
 // ── Copilot session cache ────────────────────────────────────────────────────
 
-const copilotSessionCache = new Map<string, string>(); // model -> sessionId
+const copilotSessionCache = new Map<string, string>(); // cacheKey -> sessionId
 const copilotSessionCreating = new Map<string, Promise<string>>();
+
+/** Invalidate cached Copilot session for a given model (or all if no key). */
+export function invalidateCopilotSession(cacheKey?: string): void {
+  if (cacheKey) {
+    const sessionId = copilotSessionCache.get(cacheKey);
+    if (sessionId) {
+      CopilotBridgeService.getInstance().destroySession(sessionId).catch(() => {});
+    }
+    copilotSessionCache.delete(cacheKey);
+    copilotSessionCreating.delete(cacheKey);
+  } else {
+    for (const [, sessionId] of copilotSessionCache) {
+      CopilotBridgeService.getInstance().destroySession(sessionId).catch(() => {});
+    }
+    copilotSessionCache.clear();
+    copilotSessionCreating.clear();
+  }
+}
 
 // ── Copilot bridge streaming ─────────────────────────────────────────────────
 
@@ -203,12 +221,13 @@ function streamCopilotChat(
       }
 
       const cacheKey = config.modelId || 'default';
+      const reasoningEffort = config.reasoningEffort as 'low' | 'medium' | 'high' | 'xhigh' | undefined;
       let sessionId = copilotSessionCache.get(cacheKey);
       if (!sessionId) {
         // Check if a creation is already in-flight
         let creatingPromise = copilotSessionCreating.get(cacheKey);
         if (!creatingPromise) {
-          creatingPromise = bridge.createSession(config.modelId).then(r => {
+          creatingPromise = bridge.createSession(config.modelId, { reasoningEffort }).then(r => {
             copilotSessionCache.set(cacheKey, r.sessionId);
             copilotSessionCreating.delete(cacheKey);
             return r.sessionId;
@@ -254,7 +273,7 @@ function streamCopilotChat(
             } as AgentEvent);
           }
         },
-      });
+      }, { reasoningEffort });
 
       outerController.signal.addEventListener('abort', () => {
         innerController.abort();

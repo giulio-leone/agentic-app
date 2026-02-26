@@ -27,6 +27,7 @@ export interface CreateSessionOptions {
   tools?: unknown[];
   systemMessage?: string;
   mcpServers?: unknown[];
+  reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
 }
 
 /** Public summary returned by {@link SessionManager.listSessions}. */
@@ -73,6 +74,7 @@ export class SessionManager {
       tools,
       systemMessage,
       mcpServers,
+      reasoningEffort,
     } = options;
 
     if (this.sessions.size >= this.maxSessions) {
@@ -90,6 +92,7 @@ export class SessionManager {
       systemMessage,
       mcpServers,
       infiniteSessions: { enabled: true },
+      ...(reasoningEffort ? { reasoningEffort } : {}),
     });
 
     const now = new Date();

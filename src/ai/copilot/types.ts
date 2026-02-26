@@ -66,6 +66,7 @@ export interface SessionNewRequest {
   payload: {
     model?: string;
     systemPrompt?: string;
+    reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
   };
 }
 
@@ -82,6 +83,7 @@ export interface SessionPromptRequest {
     sessionId: string;
     message: string;
     model?: string;
+    reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
   };
 }
 

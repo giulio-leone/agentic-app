@@ -37,7 +37,7 @@ import { StreamingStatusBar } from '../components/chat/StreamingStatusBar';
 import { InlineEditView } from '../components/chat/InlineEditView';
 import { QuotedMessageBar } from '../components/chat/QuotedMessageBar';
 import { ConsensusConfigSheet } from '../components/ConsensusConfigSheet';
-import { ChatMessage, ACPConnectionState, ServerType } from '../acp-hex/domain/types';
+import { ChatMessage, ACPConnectionState, ServerType, type ACPServerConfiguration } from '../acp-hex/domain/types';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing } from '../utils/theme';
 import { useChatSpeech } from '../hooks/useChatSpeech';
@@ -54,6 +54,8 @@ import {
 } from '../stores/selectors';
 import { useAppStore } from '../stores/appStore';
 import { getProviderInfo } from '../ai/providers';
+import { AIProviderType, type ReasoningEffort } from '../ai/types';
+import { invalidateCopilotSession } from '../ai/AIService';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -120,6 +122,7 @@ export function SessionDetailScreen() {
     ? cliSessions.find(s => selectedSessionId === `cli:${s.id}`)
     : undefined;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
+  const isCopilotProvider = isAIProvider && selectedServer?.aiProviderConfig?.providerType === AIProviderType.Copilot;
 
   // Provider•Model label for toolbar chip
   const currentModelLabel = React.useMemo(() => {
@@ -129,8 +132,12 @@ export function SessionDetailScreen() {
     }
     if (!isAIProvider || !selectedServer?.aiProviderConfig) return '';
     const cfg = selectedServer.aiProviderConfig;
-    return cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
-  }, [isAIProvider, selectedServer?.aiProviderConfig?.modelId, bridgeModels, selectedBridgeModel, selectedReasoningEffort]);
+    const modelName = cfg.modelId?.split('/').pop() ?? cfg.modelId ?? '';
+    if (isCopilotProvider && cfg.reasoningEffort) {
+      return `${modelName} (${cfg.reasoningEffort})`;
+    }
+    return modelName;
+  }, [isAIProvider, isCopilotProvider, selectedServer?.aiProviderConfig?.modelId, selectedServer?.aiProviderConfig?.reasoningEffort, bridgeModels, selectedBridgeModel, selectedReasoningEffort]);
 
   const providerIcon = React.useMemo(() => {
     if (!isAIProvider || !selectedServer?.aiProviderConfig) return null;
@@ -279,8 +286,10 @@ export function SessionDetailScreen() {
   const handleLongPressModelPicker = useCallback(() => {
     if (bridgeModels.length > 0 && reasoningEffortLevels.length > 0) {
       setReasoningPickerVisible(true);
+    } else if (isCopilotProvider) {
+      setReasoningPickerVisible(true);
     }
-  }, [bridgeModels, reasoningEffortLevels]);
+  }, [bridgeModels, reasoningEffortLevels, isCopilotProvider]);
 
   const handleToggleAB = useCallback(() => {
     if (abState.active) { clearTest(); }
@@ -300,8 +309,50 @@ export function SessionDetailScreen() {
     // After selecting a bridge model, open reasoning effort picker
     if (bridgeModels.length > 0 && reasoningEffortLevels.length > 0) {
       setTimeout(() => setReasoningPickerVisible(true), 300);
+    } else if (isCopilotProvider) {
+      setTimeout(() => setReasoningPickerVisible(true), 300);
     }
-  }, [bridgeModels, reasoningEffortLevels]);
+  }, [bridgeModels, reasoningEffortLevels, isCopilotProvider]);
+
+  // Wrapped updateServer that invalidates Copilot session cache on model change
+  const handleUpdateServer = useCallback((server: ACPServerConfiguration) => {
+    const prev = servers.find(s => s.id === server.id);
+    updateServer(server);
+    if (server.aiProviderConfig?.providerType === AIProviderType.Copilot &&
+        prev?.aiProviderConfig?.modelId !== server.aiProviderConfig?.modelId) {
+      invalidateCopilotSession(prev?.aiProviderConfig?.modelId || 'default');
+    }
+  }, [servers, updateServer]);
+
+  // Copilot reasoning effort: updates server config + invalidates session
+  const handleCopilotReasoningSelect = useCallback((level: string | null) => {
+    if (isCopilotProvider && selectedServer?.aiProviderConfig) {
+      const oldKey = selectedServer.aiProviderConfig.modelId || 'default';
+      updateServer({
+        ...selectedServer,
+        aiProviderConfig: {
+          ...selectedServer.aiProviderConfig,
+          reasoningEffort: (level as ReasoningEffort) ?? undefined,
+        },
+      });
+      invalidateCopilotSession(oldKey);
+    } else {
+      setSelectedReasoningEffort(level);
+    }
+  }, [isCopilotProvider, selectedServer, updateServer, setSelectedReasoningEffort]);
+
+  // Copilot reasoning effort levels & current selection
+  const copilotReasoningLevels = useMemo(
+    () => ['low', 'medium', 'high', 'xhigh'],
+    [],
+  );
+  const effectiveReasoningLevels = isCopilotProvider ? copilotReasoningLevels : reasoningEffortLevels;
+  const effectiveReasoningSelection = isCopilotProvider
+    ? (selectedServer?.aiProviderConfig?.reasoningEffort ?? null)
+    : selectedReasoningEffort;
+  const effectiveReasoningModel = isCopilotProvider
+    ? (selectedServer?.aiProviderConfig?.modelId ?? null)
+    : selectedBridgeModel;
 
   const { handleSpeak, isSpeakingMessage, speakingMessageId } = useChatSpeech();
 
@@ -548,7 +599,6 @@ export function SessionDetailScreen() {
             size="$3"
             theme="active"
             backgroundColor={colors.primary}
-            fontWeight="700"
             borderRadius={12}
             onPress={handleSpawnCli}
             disabled={isSpawning}
@@ -646,7 +696,7 @@ export function SessionDetailScreen() {
         bridgeModels={bridgeModels}
         selectedBridgeModel={selectedBridgeModel}
         onSelectServer={selectServer}
-        onUpdateServer={updateServer}
+        onUpdateServer={handleUpdateServer}
         onSelectBridgeModel={setSelectedBridgeModel}
         colors={colors}
       />
@@ -654,10 +704,10 @@ export function SessionDetailScreen() {
       <ReasoningEffortPicker
         visible={reasoningPickerVisible}
         onClose={() => setReasoningPickerVisible(false)}
-        levels={reasoningEffortLevels}
-        selectedLevel={selectedReasoningEffort}
-        selectedModel={selectedBridgeModel}
-        onSelect={setSelectedReasoningEffort}
+        levels={effectiveReasoningLevels}
+        selectedLevel={effectiveReasoningSelection}
+        selectedModel={effectiveReasoningModel}
+        onSelect={handleCopilotReasoningSelect}
         colors={colors}
       />
 

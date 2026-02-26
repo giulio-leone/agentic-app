@@ -231,6 +231,7 @@ export class ProtocolHandler {
       systemMessage: message.payload.systemPrompt,
       tools,
       mcpServers,
+      reasoningEffort: message.payload.reasoningEffort,
     });
 
     const response: SessionNewResponse = {

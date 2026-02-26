@@ -24,6 +24,7 @@ export interface ModelInfo {
   id: string;
   name: string;
   vendor: string;
+  supportsReasoningEffort?: boolean;
 }
 
 // ── Client ──
@@ -150,10 +151,15 @@ export class ResilientCopilotClient {
 
       return models.map((m) => {
         const raw = m as unknown as Record<string, unknown>;
+        const capabilities = raw.capabilities as Record<string, unknown> | undefined;
+        const supports = capabilities?.supports as Record<string, unknown> | undefined;
         return {
           id: m.id,
           name: (raw.name as string) ?? m.id,
           vendor: (raw.vendor as string) ?? 'unknown',
+          ...(supports?.reasoningEffort != null
+            ? { supportsReasoningEffort: Boolean(supports.reasoningEffort) }
+            : {}),
         };
       });
     } catch (err: unknown) {

@@ -51,6 +51,7 @@ export const SessionNewRequestSchema = z.object({
   payload: z.object({
     model: z.string().optional(),
     systemPrompt: z.string().optional(),
+    reasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh']).optional(),
   }),
 });
 export type SessionNewRequest = z.infer<typeof SessionNewRequestSchema>;
@@ -73,6 +74,7 @@ export const SessionPromptRequestSchema = z.object({
     sessionId: z.string(),
     message: z.string(),
     model: z.string().optional(),
+    reasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh']).optional(),
   }),
 });
 export type SessionPromptRequest = z.infer<typeof SessionPromptRequestSchema>;
@@ -239,6 +241,7 @@ export interface ModelsListResponse {
       id: string;
       name: string;
       vendor: string;
+      supportsReasoningEffort?: boolean;
     }>;
   };
 }

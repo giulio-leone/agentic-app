@@ -141,11 +141,11 @@ export class CopilotBridgeService {
     });
   }
 
-  async createSession(model?: string): Promise<SessionNewResponsePayload> {
+  async createSession(model?: string, options?: { reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh' }): Promise<SessionNewResponsePayload> {
     return this.sendRequest<SessionNewResponsePayload>({
       type: 'session.new',
       id: '',
-      payload: { model },
+      payload: { model, ...(options?.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}) },
     });
   }
 
@@ -160,6 +160,7 @@ export class CopilotBridgeService {
     sessionId: string,
     message: string,
     callbacks: StreamCallbacks,
+    options?: { reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh' },
   ): AbortController {
     const controller = new AbortController();
     const id = uuidv4();
@@ -179,7 +180,7 @@ export class CopilotBridgeService {
     const raw: ClientMessage = {
       type: 'session.prompt',
       id,
-      payload: { sessionId, message },
+      payload: { sessionId, message, ...(options?.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}) },
     };
 
     this.sendRaw({ ...raw, id });
