@@ -73,6 +73,7 @@ function printBanner(cfg: BridgeConfig): void {
     `│  Max sessions ${String(cfg.maxSessions).padEnd(26)}│`,
     `│  Heartbeat    ${(cfg.heartbeatInterval + ' ms').padEnd(26)}│`,
     `│  Timeout      ${(cfg.operationTimeout + ' ms').padEnd(26)}│`,
+    `│  Auth         ${(cfg.noAuth ? 'DISABLED' : 'token').padEnd(26)}│`,
     '└─────────────────────────────────────────┘',
   ];
 
@@ -182,9 +183,12 @@ async function main(): Promise<void> {
     config,
     (clientId, msg) => handler.handleMessage(clientId, msg),
     (clientId, token, req) => {
+      if (config.noAuth) {
+        authenticator.registerClient(clientId);
+        return true;
+      }
       const result = authenticator.authenticateConnection(token ?? '', req);
       if (!result.valid) return false;
-      // Register the WS-assigned clientId as authenticated
       authenticator.registerClient(clientId);
       return true;
     },

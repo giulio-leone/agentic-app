@@ -31,6 +31,8 @@ export interface BridgeConfig {
   heartbeatInterval: number;
   /** Operation timeout in ms (default 3 600 000 — 1 hour). */
   operationTimeout: number;
+  /** Disable pairing-token authentication (default false). */
+  noAuth: boolean;
 }
 
 // ── CLI helpers ──
@@ -98,6 +100,8 @@ export function parseConfig(): BridgeConfig {
     10,
   );
 
+  const noAuth = hasFlag('no-auth') || env('COPILOT_BRIDGE_NO_AUTH', '') === '1';
+
   return {
     port,
     host,
@@ -107,5 +111,6 @@ export function parseConfig(): BridgeConfig {
     pairingTokenTtl,
     heartbeatInterval,
     operationTimeout,
+    noAuth,
   };
 }
