@@ -36,6 +36,8 @@ import {
   generateSelfSignedCert,
   generatePairingQR,
 } from './infrastructure/security.js';
+import { MdnsAdvertiser } from './infrastructure/mdns-advertiser.js';
+import { PairingServer } from './infrastructure/pairing-server.js';
 import type { TlsOptions } from './infrastructure/ws-server.js';
 
 // ── Application ──
@@ -52,6 +54,8 @@ let wss: BridgeWebSocketServer | undefined;
 let sessions: SessionManager | undefined;
 let client: ResilientCopilotClient | undefined;
 let pairingManager: PairingTokenManager | undefined;
+let pairingServer: PairingServer | undefined;
+let mdnsAdvertiser: MdnsAdvertiser | undefined;
 
 // ── Startup banner ──
 
@@ -107,6 +111,18 @@ async function shutdown(signal: string): Promise<void> {
     if (client) await client.stop();
   } catch (err: unknown) {
     console.warn(`[bridge] Client stop error: ${errorMessage(err)}`);
+  }
+
+  try {
+    if (pairingServer) await pairingServer.stop();
+  } catch (err: unknown) {
+    console.warn(`[bridge] Pairing server stop error: ${errorMessage(err)}`);
+  }
+
+  try {
+    if (mdnsAdvertiser) mdnsAdvertiser.stop();
+  } catch (err: unknown) {
+    console.warn(`[bridge] mDNS stop error: ${errorMessage(err)}`);
   }
 
   pairingManager?.dispose();
@@ -174,6 +190,21 @@ async function main(): Promise<void> {
 
   await wss.listen();
 
+  // ── Start mDNS advertisement ──
+
+  mdnsAdvertiser = new MdnsAdvertiser({
+    port: config.port,
+    tls: config.tls,
+  });
+  mdnsAdvertiser.start();
+
+  const svcInfo = mdnsAdvertiser.getServiceInfo();
+  if (svcInfo) {
+    console.log(
+      `[bridge] ✓ mDNS advertising as "${svcInfo.name}" on port ${svcInfo.port}`,
+    );
+  }
+
   // ── Generate pairing token ──
 
   const token = pairingManager.generateToken(config.pairingTokenTtl);
@@ -181,6 +212,24 @@ async function main(): Promise<void> {
   console.log('[bridge] Scan this QR code to pair:\n' + qr.ascii);
   console.log(`[bridge] Or use token: ${token.token}`);
   console.log(`[bridge] URL: ${wss.url}`);
+
+  // ── Start pairing HTTP server ──
+
+  pairingServer = new PairingServer({
+    port: config.port,
+    tls: config.tls,
+    cert: tlsOptions?.cert,
+    key: tlsOptions?.key,
+    pairingManager,
+  });
+
+  await pairingServer.regenerateToken(wss.url, config.pairingTokenTtl);
+  await pairingServer.start();
+
+  const pairingProto = config.tls ? 'https' : 'http';
+  console.log(
+    `[bridge] Pairing page: ${pairingProto}://localhost:${config.port + 1}/pairing/qr`,
+  );
 
   console.log('[bridge] ✓ Server ready');
 }
