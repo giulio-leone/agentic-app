@@ -20,6 +20,7 @@ const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').the
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
 const LazyTerminalPanel = React.lazy(() => import('./components/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
+const CopilotBridgeScreen = React.lazy(() => import('./screens/CopilotBridgeScreen'));
 import { ACPServerConfiguration } from './acp-hex/domain/types';
 import { useDesignSystem, layout } from './utils/designSystem';
 import { Spacing, FontSize } from './utils/theme';
@@ -36,6 +37,7 @@ export type RootStackParamList = {
   AddServer: { editingServer?: ACPServerConfiguration } | undefined;
   QuickSetup: { editingServer?: ACPServerConfiguration } | undefined;
   Settings: undefined;
+  CopilotBridge: { url?: string; token?: string; name?: string } | undefined;
 };
 
 export type DrawerParamList = {
@@ -61,6 +63,9 @@ function LazyQuickSetup(props: NativeStackScreenProps<RootStackParamList, 'Quick
 }
 function LazySettings(props: NativeStackScreenProps<RootStackParamList, 'Settings'>) {
   return <Suspense fallback={<ScreenFallback />}><SettingsScreen {...props} /></Suspense>;
+}
+function LazyCopilotBridge(props: NativeStackScreenProps<RootStackParamList, 'CopilotBridge'>) {
+  return <Suspense fallback={<ScreenFallback />}><CopilotBridgeScreen {...props} /></Suspense>;
 }
 
 function HeaderTitle() {
@@ -233,6 +238,11 @@ function AppContent() {
           name="Settings"
           component={LazySettings}
           options={{ ...modalOptions('Settings'), animation: 'fade_from_bottom' }}
+        />
+        <RootStack.Screen
+          name="CopilotBridge"
+          component={LazyCopilotBridge}
+          options={{ ...modalOptions('Copilot Bridge'), animation: 'slide_from_bottom' }}
         />
       </RootStack.Navigator>
     </NavigationContainer>

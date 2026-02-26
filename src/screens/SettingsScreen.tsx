@@ -13,7 +13,10 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { ScrollView, YStack, XStack, Text, Separator } from 'tamagui';
-import { Palette, Smartphone, Sun, Moon, Eclipse, Check, Type, Vibrate, Trash2, TerminalSquare } from 'lucide-react-native';
+import { Palette, Smartphone, Sun, Moon, Eclipse, Check, Type, Vibrate, Trash2, TerminalSquare, Server, ChevronRight } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius, AccentColors, type AccentColorKey, type ThemeColors } from '../utils/theme';
 import { APP_DISPLAY_NAME, APP_VERSION } from '../constants/app';
@@ -29,6 +32,7 @@ import { AddMCPServerForm } from './settings/AddMCPServerForm';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import type { Artifact } from '../acp-hex/domain/types';
 import { sharedStyles } from '../utils/sharedStyles';
+import { CopilotBridgeService, type CopilotConnectionState } from '../ai/copilot';
 
 const TEST_ARTIFACTS: Artifact[] = [
   {
@@ -127,6 +131,7 @@ const MCPServerItem = React.memo(function MCPServerItem({
 
 export function SettingsScreen() {
   const { colors } = useDesignSystem();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const devModeEnabled = useDevMode();
   const developerLogs = useDeveloperLogs();
@@ -145,10 +150,17 @@ export function SettingsScreen() {
 
   const [showAddMCP, setShowAddMCP] = useState(false);
   const [testArtifact, setTestArtifact] = useState<Artifact | null>(null);
+  const [bridgeState, setBridgeState] = useState<CopilotConnectionState>(
+    CopilotBridgeService.getInstance().connectionState,
+  );
 
   useEffect(() => {
     loadMCPServers();
   }, [loadMCPServers]);
+
+  useEffect(() => {
+    return CopilotBridgeService.getInstance().onConnectionStateChange(setBridgeState);
+  }, []);
 
   return (
     <ScrollView flex={1} backgroundColor="$background">
@@ -197,6 +209,30 @@ export function SettingsScreen() {
             />
           );
         })}
+      </YStack>
+
+      {/* Copilot Bridge */}
+      <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} backgroundColor="$cardBackground">
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CopilotBridge')}
+          accessibilityLabel="Copilot Bridge settings"
+          accessibilityRole="button"
+        >
+          <XStack alignItems="center" gap={Spacing.sm}>
+            <Server size={18} color={colors.text} />
+            <YStack flex={1}>
+              <Text fontSize={16} fontWeight="500" color="$color">Copilot Bridge</Text>
+              <Text
+                fontSize={12}
+                marginTop={2}
+                color={bridgeState === 'authenticated' || bridgeState === 'connected' ? '$primary' : '$textTertiary'}
+              >
+                {bridgeState === 'authenticated' ? 'Connected' : bridgeState === 'connected' ? 'Connected' : bridgeState === 'connecting' ? 'Connecting…' : 'Not connected'}
+              </Text>
+            </YStack>
+            <ChevronRight size={16} color={colors.textTertiary} />
+          </XStack>
+        </TouchableOpacity>
       </YStack>
 
       {/* Appearance */}

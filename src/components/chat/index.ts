@@ -5,3 +5,7 @@ export { MarkdownContent, createMarkdownStyles } from './MarkdownContent';
 export { ReasoningView } from './ReasoningView';
 export { SegmentView } from './SegmentView';
 export { codeBlockRules } from './codeBlockRules';
+export { CopilotToolRequest } from './CopilotToolRequest';
+export type { CopilotToolRequestProps } from './CopilotToolRequest';
+export { CopilotStreamStatus } from './CopilotStreamStatus';
+export type { CopilotStreamStatusProps } from './CopilotStreamStatus';
