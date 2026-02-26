@@ -247,6 +247,20 @@ export async function fetchModelsFromProvider(
       return fetchOpenAICompatibleModels(apiKey, effectiveUrl);
     }
 
+    case AIProviderType.Copilot: {
+      // Models are provided by the bridge; return static defaults
+      const provider = getProviderInfo(AIProviderType.Copilot);
+      return provider.models.map(m => ({
+        id: m.id,
+        name: m.name,
+        contextWindow: m.contextWindow,
+        supportsReasoning: m.supportsReasoning,
+        supportsTools: m.supportsTools,
+        supportsVision: m.supportsVision,
+        supportedParameters: m.supportedParameters,
+      }));
+    }
+
     default:
       throw new Error(`Unknown provider type: ${providerType}`);
   }

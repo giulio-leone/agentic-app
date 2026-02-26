@@ -3,7 +3,7 @@
  */
 
 import { AIProviderType, AIProviderInfo, AIModelInfo } from './types';
-import { Bot, Brain, Hexagon, X as XIcon, Shuffle, Moon, Pentagon, Circle, Anchor, Zap, Handshake, RotateCw, Search, Wrench, Globe } from 'lucide-react-native';
+import { Bot, Brain, Hexagon, X as XIcon, Shuffle, Moon, Pentagon, Circle, Anchor, Zap, Handshake, RotateCw, Search, Wrench, Globe, Terminal } from 'lucide-react-native';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -210,6 +210,23 @@ const custom: AIProviderInfo = {
   ],
 };
 
+const copilot: AIProviderInfo = {
+  type: AIProviderType.Copilot,
+  name: 'GitHub Copilot',
+  icon: Terminal,
+  requiresApiKey: false,
+  requiresBaseUrl: false,
+  models: [
+    m('claude-sonnet-4.5', 'Anthropic via Copilot', { supportsVision: true }),
+    m('claude-opus-4.6', 'Anthropic via Copilot', { supportsVision: true }),
+    m('claude-sonnet-4', 'Anthropic via Copilot', { supportsVision: true }),
+    m('gpt-4.1', 'OpenAI via Copilot', { supportsVision: true }),
+    m('gpt-5', 'OpenAI via Copilot', { supportsVision: true }),
+    m('gpt-5-mini', 'OpenAI via Copilot', {}),
+    m('gemini-3-pro-preview', 'Google via Copilot', { supportsVision: true }),
+  ],
+};
+
 // ── exports ──────────────────────────────────────────────────────────────────
 
 export const ALL_PROVIDERS: AIProviderInfo[] = [
@@ -227,6 +244,7 @@ export const ALL_PROVIDERS: AIProviderInfo[] = [
   mistral,
   perplexity,
   custom,
+  copilot,
 ];
 
 const providerMap = new Map<AIProviderType, AIProviderInfo>(

@@ -18,6 +18,7 @@ export enum AIProviderType {
   Mistral = 'mistral',
   Perplexity = 'perplexity',
   Custom = 'custom',
+  Copilot = 'copilot',
 }
 
 import type { LucideIcon } from 'lucide-react-native';

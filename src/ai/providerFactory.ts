@@ -133,6 +133,11 @@ export async function createModel(
       })(modelId);
     }
 
+    case AIProviderType.Copilot:
+      // Copilot uses a dedicated WebSocket bridge, not AI SDK.
+      // Streaming is handled by CopilotBridgeService, not createModel.
+      throw new Error('Copilot provider does not use AI SDK createModel — use CopilotBridgeService instead');
+
     default: {
       const _exhaustive: never = providerType;
       throw new Error(`Unhandled provider type: ${_exhaustive}`);
