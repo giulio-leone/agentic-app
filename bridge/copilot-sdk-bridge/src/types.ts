@@ -261,6 +261,14 @@ export interface SessionDestroyResponse {
   payload: { sessionId: string; destroyed: boolean };
 }
 
+// ── session.cancel response ──
+
+export interface SessionCancelResponse {
+  type: 'session.cancel.result';
+  id: string;
+  payload: { sessionId: string; cancelled: boolean };
+}
+
 // ── error response ──
 
 export interface ErrorResponse {
@@ -343,6 +351,7 @@ export type BridgeMessage =
   | InitializeResponse
   | SessionNewResponse
   | SessionListResponse
+  | SessionCancelResponse
   | SessionDestroyResponse
   | ModelsListResponse
   | StreamingAckResponse

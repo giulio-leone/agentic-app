@@ -171,6 +171,7 @@ export class CopilotBridgeService {
     };
 
     controller.signal.addEventListener('abort', () => {
+      callbacks.onComplete('abort');
       cleanup();
       this.cancelPrompt(sessionId).catch(() => {});
     });
@@ -243,7 +244,10 @@ export class CopilotBridgeService {
   private openSocket(): void {
     if (!this.config) return;
 
-    const ws = new WebSocket(this.config.url);
+    const wsUrl = this.config.token
+      ? `${this.config.url}?token=${encodeURIComponent(this.config.token)}`
+      : this.config.url;
+    const ws = new WebSocket(wsUrl);
     this.ws = ws;
 
     ws.onopen = () => {

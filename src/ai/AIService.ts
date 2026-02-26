@@ -170,6 +170,7 @@ export function streamChat(
 // ── Copilot session cache ────────────────────────────────────────────────────
 
 const copilotSessionCache = new Map<string, string>(); // model -> sessionId
+const copilotSessionCreating = new Map<string, Promise<string>>();
 
 // ── Copilot bridge streaming ─────────────────────────────────────────────────
 
@@ -204,9 +205,17 @@ function streamCopilotChat(
       const cacheKey = config.modelId || 'default';
       let sessionId = copilotSessionCache.get(cacheKey);
       if (!sessionId) {
-        const result = await bridge.createSession(config.modelId);
-        sessionId = result.sessionId;
-        copilotSessionCache.set(cacheKey, sessionId);
+        // Check if a creation is already in-flight
+        let creatingPromise = copilotSessionCreating.get(cacheKey);
+        if (!creatingPromise) {
+          creatingPromise = bridge.createSession(config.modelId).then(r => {
+            copilotSessionCache.set(cacheKey, r.sessionId);
+            copilotSessionCreating.delete(cacheKey);
+            return r.sessionId;
+          });
+          copilotSessionCreating.set(cacheKey, creatingPromise);
+        }
+        sessionId = await creatingPromise;
       }
 
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();

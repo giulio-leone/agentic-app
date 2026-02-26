@@ -27,6 +27,7 @@ import type {
   ErrorResponse,
   McpListResponse,
   AuthStatusNotification,
+  SessionCancelResponse,
 } from '../types.js';
 import { BridgeError, errorMessage } from '../errors.js';
 
@@ -218,7 +219,9 @@ export class ProtocolHandler {
       this.send(clientId, notification);
     };
 
-    const tools = createAllTools(sendNotification, tm);
+    const tools = createAllTools(sendNotification, tm, {
+      allowedDirs: [process.cwd()],
+    });
     const mcpServers = this.mcpRegistry.getEnabledServers();
     const sdkClient = this.client.getClient();
 
@@ -339,6 +342,13 @@ export class ProtocolHandler {
     } catch (err: unknown) {
       console.warn(`${TAG} session.cancel failed: ${errorMessage(err)}`);
     }
+
+    // Send response ack first
+    this.send(clientId, {
+      type: 'session.cancel.result',
+      id: message.id,
+      payload: { sessionId, cancelled: true },
+    } as SessionCancelResponse);
 
     const notification: StreamEventNotification = {
       type: 'stream.event',

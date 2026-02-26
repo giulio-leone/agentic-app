@@ -53,11 +53,20 @@ function getLanIp(): string {
   return '127.0.0.1';
 }
 
-/** Read the full request body as a UTF-8 string. */
-function readBody(req: http.IncomingMessage): Promise<string> {
+/** Read the full request body as a UTF-8 string with size limit. */
+function readBody(req: http.IncomingMessage, maxBytes = 1024): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer) => chunks.push(c));
+    let totalSize = 0;
+    req.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length;
+      if (totalSize > maxBytes) {
+        req.destroy();
+        reject(new Error('Request body too large'));
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
