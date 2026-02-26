@@ -137,7 +137,7 @@ export function SessionDetailScreen() {
       return `${modelName} (${cfg.reasoningEffort})`;
     }
     return modelName;
-  }, [isAIProvider, isCopilotProvider, selectedServer?.aiProviderConfig?.modelId, selectedServer?.aiProviderConfig?.reasoningEffort, bridgeModels, selectedBridgeModel, selectedReasoningEffort]);
+  }, [isAIProvider, isCopilotProvider, selectedServer, bridgeModels, selectedBridgeModel, selectedReasoningEffort]);
 
   const providerIcon = React.useMemo(() => {
     if (!isAIProvider || !selectedServer?.aiProviderConfig) return null;
@@ -315,9 +315,9 @@ export function SessionDetailScreen() {
   }, [bridgeModels, reasoningEffortLevels, isCopilotProvider]);
 
   // Wrapped updateServer that invalidates Copilot session cache on model change
-  const handleUpdateServer = useCallback((server: ACPServerConfiguration) => {
+  const handleUpdateServer = useCallback(async (server: ACPServerConfiguration) => {
     const prev = servers.find(s => s.id === server.id);
-    updateServer(server);
+    await updateServer(server);
     if (server.aiProviderConfig?.providerType === AIProviderType.Copilot &&
         prev?.aiProviderConfig?.modelId !== server.aiProviderConfig?.modelId) {
       invalidateCopilotSession(prev?.aiProviderConfig?.modelId || 'default');
