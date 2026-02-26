@@ -13,6 +13,7 @@ import {
   setAiAbortController,
 } from '../storePrivate';
 import type { AIProviderConfig } from '../../ai/types';
+import { AIProviderType } from '../../ai/types';
 import { startAIStream, type StreamContext } from '../helpers/chatStreamHelper';
 
 export type ChatSlice = Pick<AppState, 'streamingMessageId' | 'stopReason' | 'isStreaming' | 'promptText'>
@@ -135,12 +136,16 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       if (isAI && server.aiProviderConfig) {
         const config = server.aiProviderConfig;
         try {
-          const secureKey = await getApiKey(`${server.id}_${config.providerType}`);
-          const apiKey = secureKey || config.apiKey || null;
-          if (!apiKey) {
-            throw new Error('API key not found. Please configure your API key in server settings.');
+          // Copilot provider uses the bridge — no API key needed
+          let apiKey: string | null = null;
+          if (config.providerType !== AIProviderType.Copilot) {
+            const secureKey = await getApiKey(`${server.id}_${config.providerType}`);
+            apiKey = secureKey || config.apiKey || null;
+            if (!apiKey) {
+              throw new Error('API key not found. Please configure your API key in server settings.');
+            }
           }
-          startAIStream(config, apiKey, streamCtx);
+          startAIStream(config, apiKey ?? '', streamCtx);
           return;
         } catch (error) {
           const errorMsg = (error as Error).message;
