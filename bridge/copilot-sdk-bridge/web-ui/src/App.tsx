@@ -21,9 +21,16 @@ const TAB_LABELS: Record<Tab, string> = {
   console: 'Console',
 };
 
+/** Derive the default WS URL from the page's host so it works on remote devices too. */
+function getDefaultWsUrl(): string {
+  const host = window.location.hostname;
+  const wsPort = parseInt(window.location.port || '3031', 10) - 1; // HTTP is port+1 of WS
+  return `ws://${host}:${wsPort}`;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('chat');
-  const [url, setUrl] = useState(() => localStorage.getItem('bridge-url') || 'ws://localhost:3030');
+  const [url, setUrl] = useState(() => localStorage.getItem('bridge-url') || getDefaultWsUrl());
   const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const autoConnectAttempted = useRef(false);
   const bridge = useBridgeClient();
@@ -69,7 +76,7 @@ export default function App() {
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="ws://localhost:3030"
+            placeholder="ws://host:port"
             onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
           />
           {savedUrl && <span title="URL saved to localStorage" style={{ fontSize: '12px', color: '#666' }}>💾</span>}
