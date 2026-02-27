@@ -185,6 +185,34 @@ export class SessionManager {
     return this.sessions.size;
   }
 
+  // ── CLI session registration ──
+
+  /**
+   * Register a session that was resumed from the CLI (via client.resumeSession).
+   * This adds it to the pool so it can be used with session.prompt etc.
+   */
+  registerResumedSession(
+    bridgeSessionId: string,
+    session: unknown,
+    model: string,
+    workingDirectory: string,
+  ): void {
+    if (this.sessions.size >= this.maxSessions) {
+      this.evictLRU();
+    }
+
+    const now = new Date();
+    this.sessions.set(bridgeSessionId, {
+      session,
+      sessionId: bridgeSessionId,
+      model,
+      workingDirectory,
+      createdAt: now,
+      lastActivity: now,
+    });
+    console.log(`[sessions] Registered resumed CLI session ${bridgeSessionId} (model=${model})`);
+  }
+
   // ── Project switching ──
 
   /**

@@ -152,8 +152,8 @@ export class BridgeWebSocketServer {
 
       // ── Disconnect handling ──
 
-      client.on('close', () => {
-        console.log(`[ws] client disconnected: ${clientId}`);
+      client.on('close', (code: number, reason: Buffer) => {
+        console.log(`[ws] client disconnected: ${clientId} (code=${code}, reason=${reason.toString() || 'none'})`);
         this.clients.delete(clientId);
         this.onDisconnect(clientId);
       });
@@ -181,6 +181,12 @@ export class BridgeWebSocketServer {
       json = JSON.parse(raw);
     } catch {
       this.sendError(client.clientId, undefined, 'PARSE_ERROR', 'Invalid JSON');
+      return;
+    }
+
+    // Application-level pong response (from RN clients that cannot handle WS ping frames)
+    if ((json as Record<string, unknown>)?.type === 'pong') {
+      client.isAlive = true;
       return;
     }
 
@@ -233,7 +239,11 @@ export class BridgeWebSocketServer {
 
   // ── Heartbeat ──
 
-  /** Start the ping/pong heartbeat loop. */
+  /**
+   * Start the heartbeat loop.
+   * Uses application-level JSON ping instead of WS protocol ping/pong
+   * because React Native WebSocket does not handle protocol-level ping frames.
+   */
   private startHeartbeat(): void {
     this.heartbeatTimer = setInterval(() => {
       for (const [clientId, client] of this.clients) {
@@ -245,7 +255,10 @@ export class BridgeWebSocketServer {
           continue;
         }
         client.isAlive = false;
-        client.ping();
+        // Send application-level ping as JSON text message
+        try {
+          client.send(JSON.stringify({ type: 'ping' }));
+        } catch { /* client may already be closing */ }
       }
     }, this.config.heartbeatInterval);
   }

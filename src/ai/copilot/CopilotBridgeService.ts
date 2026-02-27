@@ -22,6 +22,12 @@ import type {
   ToolRequestPayload,
   AuthStatusPayload,
   ErrorPayload,
+  CliSessionMessage,
+  CliSessionsListResponsePayload,
+  CliSessionsResumeResponsePayload,
+  CliSessionsGetMessagesResponsePayload,
+  CliSessionsDeleteResponsePayload,
+  CliSessionsGetLastIdResponsePayload,
 } from './types';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -66,6 +72,8 @@ export class CopilotBridgeService {
   private _state: CopilotConnectionState = 'disconnected';
   private pendingRequests = new Map<string, PendingRequest>();
   private activeStreamCallbacks = new Map<string, StreamCallbacks>();
+  private pollingIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  private lastKnownMessageCounts = new Map<string, number>();
   private stateListeners = new Set<ConnectionStateListener>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = INITIAL_RECONNECT_MS;
@@ -97,6 +105,13 @@ export class CopilotBridgeService {
   // ── Connection lifecycle ───────────────────────────────────────────────────
 
   connect(config: CopilotBridgeConfig): void {
+    // Skip reconnect if already connected to the same endpoint
+    if (this.ws && this.config?.url === config.url && this.isConnected()) {
+      console.log(`[CopilotBridge] connect() skipped — already connected to ${config.url}`);
+      return;
+    }
+
+    console.log(`[CopilotBridge] connect() to ${config.url} (had ws=${!!this.ws}, state=${this._state})`);
     if (this.ws) {
       this.errorAllActiveStreams(new Error('Replacing existing connection'));
       this.rejectAllPending(new Error('Replacing existing connection'));
@@ -112,6 +127,7 @@ export class CopilotBridgeService {
   }
 
   disconnect(): void {
+    this.stopAllPolling();
     this.shouldReconnect = false;
     this.clearReconnectTimer();
     this.rejectAllPending(new Error('Disconnected by client'));
@@ -232,6 +248,148 @@ export class CopilotBridgeService {
     });
   }
 
+  // ── CLI Session Management ───────────────────────────────────────────────
+
+  /**
+   * Wait until the bridge is connected, with timeout.
+   * Useful for retry logic after WS reconnects.
+   */
+  private waitForConnection(timeoutMs = 5000): Promise<void> {
+    if (this.isConnected()) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        unsub();
+        reject(new Error('Connection timeout'));
+      }, timeoutMs);
+      const unsub = this.onConnectionStateChange((state) => {
+        if (state === 'connected' || state === 'authenticated') {
+          clearTimeout(timer);
+          unsub();
+          resolve();
+        }
+      });
+    });
+  }
+
+  async listCliSessions(filter?: {
+    cwd?: string;
+    gitRoot?: string;
+    repository?: string;
+    branch?: string;
+  }): Promise<CliSessionsListResponsePayload> {
+    // Retry up to 2 times — WS may reconnect between attempts
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (!this.isConnected()) await this.waitForConnection();
+        return await this.sendRequest<CliSessionsListResponsePayload>({
+          type: 'cli.sessions.list',
+          id: '',
+          ...(filter ? { payload: { filter } } : {}),
+        });
+      } catch (err) {
+        console.log(`[CopilotBridge] listCliSessions attempt ${attempt + 1} failed: ${(err as Error).message}`);
+        if (attempt === 2) throw err;
+        // Wait for reconnect before retrying
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+    throw new Error('listCliSessions: unreachable');
+  }
+
+  async resumeCliSession(
+    sessionId: string,
+    options?: { model?: string; reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh' },
+  ): Promise<CliSessionsResumeResponsePayload> {
+    return this.sendRequest<CliSessionsResumeResponsePayload>({
+      type: 'cli.sessions.resume',
+      id: '',
+      payload: {
+        sessionId,
+        ...(options?.model ? { model: options.model } : {}),
+        ...(options?.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
+      },
+    });
+  }
+
+  async getCliSessionMessages(sessionId: string): Promise<CliSessionsGetMessagesResponsePayload> {
+    return this.sendRequest<CliSessionsGetMessagesResponsePayload>({
+      type: 'cli.sessions.getMessages',
+      id: '',
+      payload: { sessionId },
+    });
+  }
+
+  async deleteCliSession(sessionId: string): Promise<CliSessionsDeleteResponsePayload> {
+    return this.sendRequest<CliSessionsDeleteResponsePayload>({
+      type: 'cli.sessions.delete',
+      id: '',
+      payload: { sessionId },
+    });
+  }
+
+  async getLastCliSessionId(): Promise<CliSessionsGetLastIdResponsePayload> {
+    return this.sendRequest<CliSessionsGetLastIdResponsePayload>({
+      type: 'cli.sessions.getLastId',
+      id: '',
+    });
+  }
+
+  /**
+   * Start polling for new messages in a CLI session.
+   * Calls the callback whenever new messages are detected.
+   */
+  startMessagePolling(
+    sessionId: string,
+    onNewMessages: (messages: CliSessionMessage[]) => void,
+    intervalMs = 3000,
+  ): () => void {
+    this.stopMessagePolling(sessionId);
+    this.lastKnownMessageCounts.set(sessionId, 0);
+
+    const poll = async () => {
+      try {
+        const result = await this.getCliSessionMessages(sessionId);
+        const lastCount = this.lastKnownMessageCounts.get(sessionId) ?? 0;
+        if (result.messages.length > lastCount) {
+          const newMessages = result.messages.slice(lastCount);
+          this.lastKnownMessageCounts.set(sessionId, result.messages.length);
+          onNewMessages(newMessages);
+        }
+      } catch {
+        // Best-effort polling — errors are non-critical
+      }
+    };
+
+    // Initial fetch
+    poll();
+
+    const interval = setInterval(poll, intervalMs);
+    this.pollingIntervals.set(sessionId, interval);
+
+    return () => this.stopMessagePolling(sessionId);
+  }
+
+  /**
+   * Stop polling for a specific session.
+   */
+  stopMessagePolling(sessionId: string): void {
+    const interval = this.pollingIntervals.get(sessionId);
+    if (interval) {
+      clearInterval(interval);
+      this.pollingIntervals.delete(sessionId);
+    }
+    this.lastKnownMessageCounts.delete(sessionId);
+  }
+
+  /**
+   * Stop all active polling intervals.
+   */
+  stopAllPolling(): void {
+    Array.from(this.pollingIntervals.keys()).forEach((sessionId) => {
+      this.stopMessagePolling(sessionId);
+    });
+  }
+
   async toggleMcpServer(serverId: string, enabled: boolean): Promise<void> {
     await this.sendRequest({
       type: 'mcp.toggle',
@@ -253,6 +411,7 @@ export class CopilotBridgeService {
 
     ws.onopen = () => {
       if (this.ws !== ws) return;
+      console.log(`[CopilotBridge] ws.onopen — readyState=${ws.readyState}`);
       this.reconnectDelay = INITIAL_RECONNECT_MS;
       this.setState('connected');
 
@@ -267,13 +426,15 @@ export class CopilotBridgeService {
       this.handleMessage(typeof event.data === 'string' ? event.data : String(event.data));
     };
 
-    ws.onerror = () => {
+    ws.onerror = (event: Event) => {
       if (this.ws !== ws) return;
+      console.log(`[CopilotBridge] ws.onerror`, (event as any)?.message ?? 'unknown');
       // onerror is always followed by onclose on RN WebSocket
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event: CloseEvent) => {
       if (this.ws !== ws) return;
+      console.log(`[CopilotBridge] ws.onclose code=${event?.code} reason=${event?.reason || 'none'} pending=${this.pendingRequests.size}`);
       this.cleanupSocket();
       this.rejectAllPending(new Error('WebSocket closed'));
       this.errorAllActiveStreams(new Error('WebSocket connection closed'));
@@ -296,6 +457,7 @@ export class CopilotBridgeService {
   private scheduleReconnect(): void {
     this.clearReconnectTimer();
     this.setState('connecting');
+    console.log(`[CopilotBridge] scheduleReconnect in ${this.reconnectDelay}ms`);
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
@@ -328,6 +490,7 @@ export class CopilotBridgeService {
   private sendRequest<T>(message: Omit<ClientMessage, 'id'> & { id: string }): Promise<T> {
     const id = uuidv4();
     const withId = { ...message, id } as ClientMessage;
+    console.log(`[CopilotBridge] sendRequest type=${(withId as any).type} id=${id}`);
     this.sendRaw(withId);
     return this.registerPending<T>(id);
   }
@@ -378,8 +541,19 @@ export class CopilotBridgeService {
     try {
       msg = JSON.parse(raw) as BridgeEnvelope;
     } catch {
+      console.log(`[CopilotBridge] handleMessage: malformed JSON (${raw.length} bytes)`);
       return; // malformed JSON — ignore
     }
+
+    // Application-level ping/pong (RN doesn't support WS protocol ping frames)
+    if (msg.type === 'ping') {
+      try {
+        this.ws?.send(JSON.stringify({ type: 'pong' }));
+      } catch { /* best-effort */ }
+      return;
+    }
+
+    console.log(`[CopilotBridge] handleMessage type=${msg.type} id=${msg.id ?? 'none'} size=${raw.length}`);
 
     // 1. Response to a pending request
     if (msg.id && this.pendingRequests.has(msg.id)) {

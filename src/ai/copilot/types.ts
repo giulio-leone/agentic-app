@@ -135,6 +135,51 @@ export interface McpToggleRequest {
   };
 }
 
+export interface CliSessionsListRequest {
+  type: 'cli.sessions.list';
+  id: string;
+  payload?: {
+    filter?: {
+      cwd?: string;
+      gitRoot?: string;
+      repository?: string;
+      branch?: string;
+    };
+  };
+}
+
+export interface CliSessionsResumeRequest {
+  type: 'cli.sessions.resume';
+  id: string;
+  payload: {
+    sessionId: string;
+    model?: string;
+    reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
+  };
+}
+
+export interface CliSessionsGetMessagesRequest {
+  type: 'cli.sessions.getMessages';
+  id: string;
+  payload: {
+    sessionId: string;
+  };
+}
+
+export interface CliSessionsDeleteRequest {
+  type: 'cli.sessions.delete';
+  id: string;
+  payload: {
+    sessionId: string;
+  };
+}
+
+export interface CliSessionsGetLastIdRequest {
+  type: 'cli.sessions.getLastId';
+  id: string;
+  payload?: Record<string, never>;
+}
+
 export type ClientMessage =
   | InitializeRequest
   | SessionNewRequest
@@ -145,7 +190,12 @@ export type ClientMessage =
   | ModelsListRequest
   | ToolResponseMessage
   | McpListRequest
-  | McpToggleRequest;
+  | McpToggleRequest
+  | CliSessionsListRequest
+  | CliSessionsResumeRequest
+  | CliSessionsGetMessagesRequest
+  | CliSessionsDeleteRequest
+  | CliSessionsGetLastIdRequest;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Bridge → Client messages
@@ -232,6 +282,55 @@ export interface ToolRequestPayload {
   toolName: string;
   args: unknown;
   message?: string;
+}
+
+// ── CLI Session response payloads ────────────────────────────────────────────
+
+export interface CliSessionMetadata {
+  sessionId: string;
+  startTime: string;
+  modifiedTime: string;
+  summary?: string;
+  isRemote: boolean;
+  context?: {
+    cwd?: string;
+    gitRoot?: string;
+    repository?: string;
+    branch?: string;
+  };
+}
+
+export interface CliSessionsListResponsePayload {
+  sessions: CliSessionMetadata[];
+}
+
+export interface CliSessionsResumeResponsePayload {
+  sessionId: string;
+  bridgeSessionId: string;
+  model: string;
+}
+
+export interface CliSessionMessage {
+  id: string;
+  timestamp: string;
+  type: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  model?: string;
+  toolName?: string;
+}
+
+export interface CliSessionsGetMessagesResponsePayload {
+  messages: CliSessionMessage[];
+}
+
+export interface CliSessionsDeleteResponsePayload {
+  sessionId: string;
+  deleted: boolean;
+}
+
+export interface CliSessionsGetLastIdResponsePayload {
+  sessionId?: string;
 }
 
 /** Inbound message from the bridge (parsed from JSON). */

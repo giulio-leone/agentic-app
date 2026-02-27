@@ -14,10 +14,28 @@
 
 import http from 'node:http';
 import https from 'node:https';
+import path from 'node:path';
+import fs from 'node:fs';
 import { networkInterfaces } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 
 import type { PairingTokenManager } from './security.js';
+
+// ── Static file serving ──
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+};
 
 // ── Types ──
 
@@ -170,6 +188,9 @@ export class PairingServer {
         this.handleInfo(res);
       } else if (req.method === 'POST' && path === '/pairing/validate') {
         await this.handleValidate(req, res);
+      } else if (req.method === 'GET' && !path.startsWith('/pairing/')) {
+        // Serve web UI static files
+        this.serveStaticFile(path, res);
       } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Not found' }));
@@ -179,6 +200,40 @@ export class PairingServer {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal server error' }));
     }
+  }
+
+  // ── Static file serving (Web UI) ──
+
+  private serveStaticFile(urlPath: string, res: http.ServerResponse): void {
+    // Default to index.html for SPA routing
+    const filePath = urlPath === '/' ? '/index.html' : urlPath;
+    const safePath = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
+    const fullPath = path.join(WEB_UI_DIST, safePath);
+
+    // Prevent directory traversal
+    if (!fullPath.startsWith(WEB_UI_DIST)) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+
+    if (!fs.existsSync(fullPath) || fs.statSync(fullPath).isDirectory()) {
+      // SPA fallback: serve index.html for unknown routes
+      const indexPath = path.join(WEB_UI_DIST, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        fs.createReadStream(indexPath).pipe(res);
+        return;
+      }
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Web UI not built. Run: cd web-ui && npm run build' }));
+      return;
+    }
+
+    const ext = path.extname(fullPath);
+    const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': contentType });
+    fs.createReadStream(fullPath).pipe(res);
   }
 
   // ── Handlers ──

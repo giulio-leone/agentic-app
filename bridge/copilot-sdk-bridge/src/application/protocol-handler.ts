@@ -28,6 +28,12 @@ import type {
   McpListResponse,
   AuthStatusNotification,
   SessionCancelResponse,
+  CliSessionsListResponse,
+  CliSessionsResumeResponse,
+  CliSessionsGetMessagesResponse,
+  CliSessionMessage,
+  CliSessionsDeleteResponse,
+  CliSessionsGetLastIdResponse,
 } from '../types.js';
 import { BridgeError, errorMessage } from '../errors.js';
 
@@ -35,7 +41,7 @@ import { BridgeError, errorMessage } from '../errors.js';
 
 const TAG = '[protocol]';
 const BRIDGE_VERSION = '1.0.0';
-const CAPABILITIES = ['streaming', 'tools', 'mcp', 'sessions'];
+const CAPABILITIES = ['streaming', 'tools', 'mcp', 'sessions', 'cli.sessions'];
 
 // ── ProtocolHandler ──
 
@@ -114,6 +120,16 @@ export class ProtocolHandler {
           return await this.handleMcpAdd(clientId, message);
         case 'mcp.remove':
           return await this.handleMcpRemove(clientId, message);
+        case 'cli.sessions.list':
+          return await this.handleCliSessionsList(clientId, message);
+        case 'cli.sessions.resume':
+          return await this.handleCliSessionsResume(clientId, message);
+        case 'cli.sessions.getMessages':
+          return await this.handleCliSessionsGetMessages(clientId, message);
+        case 'cli.sessions.delete':
+          return await this.handleCliSessionsDelete(clientId, message);
+        case 'cli.sessions.getLastId':
+          return await this.handleCliSessionsGetLastId(clientId, message);
         default:
           this.sendError(
             clientId,
@@ -439,6 +455,227 @@ export class ProtocolHandler {
   ): Promise<void> {
     await this.mcpRegistry.removeServer(message.payload.serverId);
     this.sendMcpListResponse(clientId, message.id);
+  }
+
+  // ── 13. cli.sessions.list ──
+
+  /** List CLI sessions persisted in the session store. */
+  private async handleCliSessionsList(
+    clientId: string,
+    message: Extract<ClientMessage, { type: 'cli.sessions.list' }>,
+  ): Promise<void> {
+    const sdkClient = this.client.getClient();
+    const filter = message.payload?.filter;
+    const allSessions = await (sdkClient as any).listSessions(filter);
+
+    // Sort by modifiedTime descending and limit to 50 most recent
+    const sorted = (allSessions as any[])
+      .filter((s: any) => !s.isRemote)
+      .sort((a: any, b: any) => {
+        const aTime = a.modifiedTime instanceof Date ? a.modifiedTime.getTime() : new Date(a.modifiedTime).getTime();
+        const bTime = b.modifiedTime instanceof Date ? b.modifiedTime.getTime() : new Date(b.modifiedTime).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, 50);
+
+    const response: CliSessionsListResponse = {
+      type: 'cli.sessions.list.result',
+      id: message.id,
+      payload: {
+        sessions: sorted.map((s: any) => ({
+          sessionId: s.sessionId,
+          startTime: s.startTime instanceof Date ? s.startTime.toISOString() : String(s.startTime),
+          modifiedTime: s.modifiedTime instanceof Date ? s.modifiedTime.toISOString() : String(s.modifiedTime),
+          summary: s.summary,
+          isRemote: s.isRemote ?? false,
+          context: s.context ? {
+            cwd: s.context.cwd,
+            gitRoot: s.context.gitRoot,
+            repository: s.context.repository,
+            branch: s.context.branch,
+          } : undefined,
+        })),
+      },
+    };
+    console.log(`${TAG} cli.sessions.list — found ${allSessions.length} total, returning ${sorted.length} session(s)`);
+    this.send(clientId, response);
+  }
+
+  // ── 14. cli.sessions.resume ──
+
+  /** Resume a CLI session and register it in the bridge's session pool. */
+  private async handleCliSessionsResume(
+    clientId: string,
+    message: Extract<ClientMessage, { type: 'cli.sessions.resume' }>,
+  ): Promise<void> {
+    const { sessionId, model, reasoningEffort } = message.payload;
+
+    let tm = this.toolManagers.get(clientId);
+    if (!tm) {
+      tm = new ToolManager();
+      this.toolManagers.set(clientId, tm);
+    }
+
+    const sendNotification: SendNotification = (notification) => {
+      this.send(clientId, notification);
+    };
+
+    const tools = createAllTools(sendNotification, tm, {
+      allowedDirs: [process.cwd()],
+    });
+    const mcpServers = this.mcpRegistry.getEnabledServers();
+    const sdkClient = this.client.getClient();
+
+    const session = await (sdkClient as any).resumeSession(sessionId, {
+      tools,
+      mcpServers,
+      streaming: true,
+      ...(model ? { model } : {}),
+      ...(reasoningEffort ? { reasoningEffort } : {}),
+      infiniteSessions: { enabled: true },
+    });
+
+    const bridgeSessionId = `cli-resumed-${Date.now()}`;
+    this.sessions.registerResumedSession(bridgeSessionId, session, model || 'default', process.cwd());
+
+    const response: CliSessionsResumeResponse = {
+      type: 'cli.sessions.resume.result',
+      id: message.id,
+      payload: {
+        sessionId,
+        bridgeSessionId,
+        model: model || 'default',
+      },
+    };
+    console.log(`${TAG} cli.sessions.resume — cliId=${sessionId}, bridgeId=${bridgeSessionId}`);
+    this.send(clientId, response);
+  }
+
+  // ── 15. cli.sessions.getMessages ──
+
+  /** Retrieve messages from a persisted CLI session. */
+  private async handleCliSessionsGetMessages(
+    clientId: string,
+    message: Extract<ClientMessage, { type: 'cli.sessions.getMessages' }>,
+  ): Promise<void> {
+    const { sessionId } = message.payload;
+    const sdkClient = this.client.getClient();
+
+    const session = await (sdkClient as any).resumeSession(sessionId, { disableResume: true });
+    const events = await session.getMessages();
+    await session.destroy();
+
+    const messages: CliSessionMessage[] = [];
+    for (const event of events) {
+      const e = event as any;
+      switch (e.type) {
+        case 'user.message':
+          messages.push({
+            id: e.id,
+            timestamp: e.timestamp,
+            type: e.type,
+            role: 'user',
+            content: e.data?.content ?? '',
+          });
+          break;
+        case 'assistant.message':
+          messages.push({
+            id: e.id,
+            timestamp: e.timestamp,
+            type: e.type,
+            role: 'assistant',
+            content: e.data?.content ?? '',
+            model: e.data?.model,
+          });
+          break;
+        case 'assistant.reasoning':
+          messages.push({
+            id: e.id,
+            timestamp: e.timestamp,
+            type: e.type,
+            role: 'assistant',
+            content: e.data?.content ?? '',
+          });
+          break;
+        case 'tool.execution_start':
+          messages.push({
+            id: e.id,
+            timestamp: e.timestamp,
+            type: e.type,
+            role: 'tool',
+            content: JSON.stringify(e.data?.args ?? {}),
+            toolName: e.data?.toolName,
+          });
+          break;
+        case 'tool.execution_complete':
+          messages.push({
+            id: e.id,
+            timestamp: e.timestamp,
+            type: e.type,
+            role: 'tool',
+            content: typeof e.data?.result === 'string' ? e.data.result : JSON.stringify(e.data?.result ?? null),
+            toolName: e.data?.toolName,
+          });
+          break;
+        case 'system.message':
+          messages.push({
+            id: e.id,
+            timestamp: e.timestamp,
+            type: e.type,
+            role: 'system',
+            content: e.data?.content ?? e.data?.message ?? '',
+          });
+          break;
+        default:
+          break;
+      }
+    }
+
+    const response: CliSessionsGetMessagesResponse = {
+      type: 'cli.sessions.getMessages.result',
+      id: message.id,
+      payload: { messages },
+    };
+    console.log(`${TAG} cli.sessions.getMessages — sessionId=${sessionId}, ${messages.length} message(s)`);
+    this.send(clientId, response);
+  }
+
+  // ── 16. cli.sessions.delete ──
+
+  /** Delete a persisted CLI session. */
+  private async handleCliSessionsDelete(
+    clientId: string,
+    message: Extract<ClientMessage, { type: 'cli.sessions.delete' }>,
+  ): Promise<void> {
+    const { sessionId } = message.payload;
+    const sdkClient = this.client.getClient();
+    await (sdkClient as any).deleteSession(sessionId);
+
+    const response: CliSessionsDeleteResponse = {
+      type: 'cli.sessions.delete.result',
+      id: message.id,
+      payload: { sessionId, deleted: true },
+    };
+    console.log(`${TAG} cli.sessions.delete — sessionId=${sessionId}`);
+    this.send(clientId, response);
+  }
+
+  // ── 17. cli.sessions.getLastId ──
+
+  /** Get the most recent CLI session ID. */
+  private async handleCliSessionsGetLastId(
+    clientId: string,
+    message: Extract<ClientMessage, { type: 'cli.sessions.getLastId' }>,
+  ): Promise<void> {
+    const sdkClient = this.client.getClient();
+    const sessionId = await (sdkClient as any).getLastSessionId();
+
+    const response: CliSessionsGetLastIdResponse = {
+      type: 'cli.sessions.getLastId.result',
+      id: message.id,
+      payload: { sessionId },
+    };
+    this.send(clientId, response);
   }
 
   // ── Helpers ──

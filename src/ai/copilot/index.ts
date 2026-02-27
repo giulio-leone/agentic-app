@@ -23,4 +23,9 @@ export type {
   McpServerInfo,
   StreamEventKind,
   ToolRequestKind,
+  CliSessionMetadata,
+  CliSessionMessage,
+  CliSessionsListResponsePayload,
+  CliSessionsResumeResponsePayload,
+  CliSessionsGetMessagesResponsePayload,
 } from './types';

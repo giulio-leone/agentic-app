@@ -65,6 +65,66 @@ export const SessionListRequestSchema = z.object({
 });
 export type SessionListRequest = z.infer<typeof SessionListRequestSchema>;
 
+// ── cli.sessions.list ──
+
+export const CliSessionsListRequestSchema = z.object({
+  type: z.literal('cli.sessions.list'),
+  id: z.string(),
+  payload: z.object({
+    filter: z.object({
+      cwd: z.string().optional(),
+      gitRoot: z.string().optional(),
+      repository: z.string().optional(),
+      branch: z.string().optional(),
+    }).optional(),
+  }).optional(),
+});
+export type CliSessionsListRequest = z.infer<typeof CliSessionsListRequestSchema>;
+
+// ── cli.sessions.resume ──
+
+export const CliSessionsResumeRequestSchema = z.object({
+  type: z.literal('cli.sessions.resume'),
+  id: z.string(),
+  payload: z.object({
+    sessionId: z.string(),
+    model: z.string().optional(),
+    reasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh']).optional(),
+  }),
+});
+export type CliSessionsResumeRequest = z.infer<typeof CliSessionsResumeRequestSchema>;
+
+// ── cli.sessions.getMessages ──
+
+export const CliSessionsGetMessagesRequestSchema = z.object({
+  type: z.literal('cli.sessions.getMessages'),
+  id: z.string(),
+  payload: z.object({
+    sessionId: z.string(),
+  }),
+});
+export type CliSessionsGetMessagesRequest = z.infer<typeof CliSessionsGetMessagesRequestSchema>;
+
+// ── cli.sessions.delete ──
+
+export const CliSessionsDeleteRequestSchema = z.object({
+  type: z.literal('cli.sessions.delete'),
+  id: z.string(),
+  payload: z.object({
+    sessionId: z.string(),
+  }),
+});
+export type CliSessionsDeleteRequest = z.infer<typeof CliSessionsDeleteRequestSchema>;
+
+// ── cli.sessions.getLastId ──
+
+export const CliSessionsGetLastIdRequestSchema = z.object({
+  type: z.literal('cli.sessions.getLastId'),
+  id: z.string(),
+  payload: z.object({}).optional(),
+});
+export type CliSessionsGetLastIdRequest = z.infer<typeof CliSessionsGetLastIdRequestSchema>;
+
 // ── session.prompt ──
 
 export const SessionPromptRequestSchema = z.object({
@@ -186,6 +246,11 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   McpToggleRequestSchema,
   McpAddRequestSchema,
   McpRemoveRequestSchema,
+  CliSessionsListRequestSchema,
+  CliSessionsResumeRequestSchema,
+  CliSessionsGetMessagesRequestSchema,
+  CliSessionsDeleteRequestSchema,
+  CliSessionsGetLastIdRequestSchema,
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
@@ -348,6 +413,83 @@ export interface McpListResponse {
   };
 }
 
+// ── cli.sessions.list response ──
+
+export interface CliSessionsListResponse {
+  type: 'cli.sessions.list.result';
+  id: string;
+  payload: {
+    sessions: CliSessionMetadata[];
+  };
+}
+
+export interface CliSessionMetadata {
+  sessionId: string;
+  startTime: string;
+  modifiedTime: string;
+  summary?: string;
+  isRemote: boolean;
+  context?: {
+    cwd?: string;
+    gitRoot?: string;
+    repository?: string;
+    branch?: string;
+  };
+}
+
+// ── cli.sessions.resume response ──
+
+export interface CliSessionsResumeResponse {
+  type: 'cli.sessions.resume.result';
+  id: string;
+  payload: {
+    sessionId: string;
+    bridgeSessionId: string;
+    model: string;
+  };
+}
+
+// ── cli.sessions.getMessages response ──
+
+export interface CliSessionsGetMessagesResponse {
+  type: 'cli.sessions.getMessages.result';
+  id: string;
+  payload: {
+    messages: CliSessionMessage[];
+  };
+}
+
+export interface CliSessionMessage {
+  id: string;
+  timestamp: string;
+  type: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  model?: string;
+  toolName?: string;
+}
+
+// ── cli.sessions.delete response ──
+
+export interface CliSessionsDeleteResponse {
+  type: 'cli.sessions.delete.result';
+  id: string;
+  payload: {
+    sessionId: string;
+    deleted: boolean;
+  };
+}
+
+// ── cli.sessions.getLastId response ──
+
+export interface CliSessionsGetLastIdResponse {
+  type: 'cli.sessions.getLastId.result';
+  id: string;
+  payload: {
+    sessionId?: string;
+  };
+}
+
 // ── Bridge message discriminated union ──
 
 export type BridgeMessage =
@@ -362,4 +504,9 @@ export type BridgeMessage =
   | AuthStatusNotification
   | StreamEventNotification
   | ToolRequestNotification
-  | McpListResponse;
+  | McpListResponse
+  | CliSessionsListResponse
+  | CliSessionsResumeResponse
+  | CliSessionsGetMessagesResponse
+  | CliSessionsDeleteResponse
+  | CliSessionsGetLastIdResponse;
