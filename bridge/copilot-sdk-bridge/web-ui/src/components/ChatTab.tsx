@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { ToolCallCard } from './ToolCallCard';
 
 interface MessagePart {
   type: 'text' | 'reasoning' | 'toolCall' | 'toolResult';
@@ -9,6 +11,7 @@ interface MessagePart {
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   parts: MessagePart[];
+  timestamp: number;
 }
 
 interface Model {
@@ -68,9 +71,9 @@ export function ChatTab({ client, isConnected }: ChatTabProps) {
       const result = await client.newSession(selectedModel, cwd || undefined);
       const id = typeof result === 'string' ? result : result?.sessionId;
       setSessionId(id);
-      setMessages([{ role: 'system', parts: [{ type: 'text', content: `Session created: ${id}` }] }]);
+      setMessages([{ role: 'system', parts: [{ type: 'text', content: `Session created: ${id}` }], timestamp: Date.now() }]);
     } catch (err: any) {
-      setMessages((m) => [...m, { role: 'system', parts: [{ type: 'text', content: `Error: ${err.message}` }] }]);
+      setMessages((m) => [...m, { role: 'system', parts: [{ type: 'text', content: `Error: ${err.message}` }], timestamp: Date.now() }]);
     }
   };
 
@@ -88,7 +91,7 @@ export function ChatTab({ client, isConnected }: ChatTabProps) {
     if (!prompt || !client || !sessionId || streaming) return;
 
     setInput('');
-    setMessages((m) => [...m, { role: 'user', parts: [{ type: 'text', content: prompt }] }]);
+    setMessages((m) => [...m, { role: 'user', parts: [{ type: 'text', content: prompt }], timestamp: Date.now() }]);
     setStreaming(true);
 
     // Initialize accumulator for this assistant message
@@ -100,9 +103,9 @@ export function ChatTab({ client, isConnected }: ChatTabProps) {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === 'assistant') {
-          return [...prev.slice(0, -1), { role: 'assistant', parts: currentParts }];
+          return [...prev.slice(0, -1), { role: 'assistant', parts: currentParts, timestamp: last.timestamp }];
         }
-        return [...prev, { role: 'assistant', parts: currentParts }];
+        return [...prev, { role: 'assistant', parts: currentParts, timestamp: Date.now() }];
       });
     };
 
@@ -118,9 +121,9 @@ export function ChatTab({ client, isConnected }: ChatTabProps) {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === 'assistant') {
-          return [...prev.slice(0, -1), { role: 'assistant', parts: currentParts }];
+          return [...prev.slice(0, -1), { role: 'assistant', parts: currentParts, timestamp: last.timestamp }];
         }
-        return [...prev, { role: 'assistant', parts: currentParts }];
+        return [...prev, { role: 'assistant', parts: currentParts, timestamp: Date.now() }];
       });
     };
 
@@ -137,7 +140,7 @@ export function ChatTab({ client, isConnected }: ChatTabProps) {
         },
       });
     } catch (err: any) {
-      setMessages((m) => [...m, { role: 'system', parts: [{ type: 'text', content: `Error: ${err.message}` }] }]);
+      setMessages((m) => [...m, { role: 'system', parts: [{ type: 'text', content: `Error: ${err.message}` }], timestamp: Date.now() }]);
       setStreaming(false);
     }
   };
@@ -223,44 +226,50 @@ export function ChatTab({ client, isConnected }: ChatTabProps) {
   );
 }
 
+const roleAvatar: Record<string, string> = { user: '👤', assistant: '🤖', system: '⚙️' };
+
+function formatTime(ts: number) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`message ${message.role}`}>
-      {message.parts.map((part, i) => (
-        <MessagePartView key={i} part={part} />
-      ))}
+      <span className="avatar">{roleAvatar[message.role] || '💬'}</span>
+      <div className="msg-body">
+        {message.parts.map((part, i) => (
+          <MessagePartView key={i} part={part} role={message.role} />
+        ))}
+        <div className="msg-timestamp">{formatTime(message.timestamp)}</div>
+      </div>
     </div>
   );
 }
 
-function MessagePartView({ part }: { part: MessagePart }) {
+function MessagePartView({ part, role }: { part: MessagePart; role: string }) {
   const [collapsed, setCollapsed] = useState(true);
 
   switch (part.type) {
     case 'text':
-      return <span>{part.content}</span>;
+      return role === 'user'
+        ? <span>{part.content}</span>
+        : <MarkdownRenderer content={part.content} />;
     case 'reasoning':
       return (
         <div className={`reasoning-block ${collapsed ? 'collapsed' : ''}`} onClick={() => setCollapsed(!collapsed)}>
           <div className="reasoning-header">
-            {collapsed ? '▶' : '▼'} Reasoning
+            💭 {collapsed ? '▶' : '▼'} Reasoning
           </div>
-          <div className="reasoning-content">{part.content}</div>
+          <div className="reasoning-content">
+            <MarkdownRenderer content={part.content} />
+          </div>
         </div>
       );
     case 'toolCall':
-      return (
-        <div className="tool-call">
-          <span className="tool-name">🔧 {part.toolName}</span>
-          <pre>{part.content}</pre>
-        </div>
-      );
+      return <ToolCallCard name={part.toolName || 'unknown'} args={part.content} />;
     case 'toolResult':
-      return (
-        <div className="tool-result">
-          <pre>{part.content}</pre>
-        </div>
-      );
+      return <ToolCallCard name="result" args={part.content} status="done" />;
     default:
       return <span>{part.content}</span>;
   }

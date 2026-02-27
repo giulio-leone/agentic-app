@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useBridgeClient } from './services/useBridgeClient';
 import { ChatTab } from './components/ChatTab';
 import { StatusTab } from './components/StatusTab';
@@ -23,17 +23,40 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('chat');
-  const [url, setUrl] = useState('ws://localhost:3030');
+  const [url, setUrl] = useState(() => localStorage.getItem('bridge-url') || 'ws://localhost:3030');
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
+  const autoConnectAttempted = useRef(false);
   const bridge = useBridgeClient();
   const { client, connectionState, consoleLog, connect, disconnect } = bridge;
 
   const isConnected = connectionState === 'connected' || connectionState === 'authenticated';
   const statusClass = isConnected ? 'connected' : connectionState === 'connecting' ? 'connecting' : 'disconnected';
+  const savedUrl = localStorage.getItem('bridge-url');
+
+  // Auto-connect on mount if there's a saved URL
+  useEffect(() => {
+    if (!autoConnectAttempted.current && savedUrl && !isConnected) {
+      autoConnectAttempted.current = true;
+      const timer = setTimeout(() => {
+        setIsAutoConnecting(true);
+        connect(savedUrl);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Clear auto-connecting indicator once connected
+  useEffect(() => {
+    if (isConnected && isAutoConnecting) {
+      setIsAutoConnecting(false);
+    }
+  }, [isConnected, isAutoConnecting]);
 
   const handleConnect = () => {
     if (isConnected) {
       disconnect();
     } else {
+      localStorage.setItem('bridge-url', url);
       connect(url);
     }
   };
@@ -41,18 +64,21 @@ export default function App() {
   return (
     <div className="app">
       <div className="connection-bar">
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="ws://localhost:3030"
-          onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="ws://localhost:3030"
+            onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+          />
+          {savedUrl && <span title="URL saved to localStorage" style={{ fontSize: '12px', color: '#666' }}>💾</span>}
+        </div>
         <button className={`btn ${isConnected ? 'btn-danger' : 'btn-primary'}`} onClick={handleConnect}>
-          {isConnected ? 'Disconnect' : 'Connect'}
+          {isAutoConnecting ? 'Auto-connecting...' : isConnected ? 'Disconnect' : 'Connect'}
         </button>
         <span className={`status-dot ${statusClass}`} />
-        <span className="status-text">{connectionState}</span>
+        <span className="status-text">{isAutoConnecting ? 'auto-connecting' : connectionState}</span>
       </div>
 
       <div className="main-area">
@@ -65,6 +91,7 @@ export default function App() {
               title={TAB_LABELS[tab]}
             >
               <span className="tab-icon">{TAB_ICONS[tab]}</span>
+              <span className="tab-label">{TAB_LABELS[tab]}</span>
             </button>
           ))}
         </nav>

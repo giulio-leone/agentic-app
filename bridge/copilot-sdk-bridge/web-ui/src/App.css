@@ -14,6 +14,8 @@
   --warning: #dcdcaa;
   --user-bubble: #264f78;
   --assistant-bubble: #2d2d2d;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 }
 
 /* ── Layout ── */
@@ -57,6 +59,7 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  transition: background 0.3s ease;
 }
 
 .status-dot.connected { background: var(--success); }
@@ -67,6 +70,7 @@
   font-size: 12px;
   color: var(--text-secondary);
   min-width: 80px;
+  transition: color 0.3s;
 }
 
 /* ── Main Area ── */
@@ -98,7 +102,7 @@
   cursor: pointer;
   font-size: 18px;
   position: relative;
-  transition: color 0.15s;
+  transition: all 0.2s ease;
 }
 
 .tab-btn:hover {
@@ -139,7 +143,7 @@
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s ease;
   white-space: nowrap;
 }
 
@@ -240,80 +244,9 @@
   border-radius: 4px;
 }
 
-.message {
-  max-width: 80%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-}
+/* Old .message base styles replaced by enhanced rules below */
 
-.message.user {
-  align-self: flex-end;
-  background: var(--user-bubble);
-  color: #e0e0e0;
-  border-bottom-right-radius: 2px;
-}
-
-.message.assistant {
-  align-self: flex-start;
-  background: var(--assistant-bubble);
-  border: 1px solid var(--border);
-  border-bottom-left-radius: 2px;
-}
-
-.message.system {
-  align-self: center;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-style: italic;
-}
-
-.message .reasoning-block {
-  margin: 4px 0;
-  padding: 6px 8px;
-  background: rgba(255,255,255,0.04);
-  border-left: 2px solid var(--text-secondary);
-  border-radius: 0 4px 4px 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.message .reasoning-block.collapsed .reasoning-content {
-  display: none;
-}
-
-.message .reasoning-header {
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  user-select: none;
-}
-
-.message .tool-call,
-.message .tool-result {
-  margin: 4px 0;
-  padding: 6px 8px;
-  background: #1a1a2e;
-  border-radius: 4px;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 12px;
-  overflow-x: auto;
-}
-
-.message .tool-call .tool-name {
-  color: var(--warning);
-  font-weight: 600;
-}
-
-.message .tool-result {
-  border-left: 2px solid var(--success);
-}
+/* Old reasoning/tool styles replaced by enhanced rules below */
 
 .chat-input-area {
   display: flex;
@@ -331,7 +264,7 @@
   border-radius: 4px;
   color: var(--text-primary);
   font-size: 13px;
-  font-family: inherit;
+  font-family: var(--font-sans);
   resize: none;
   outline: none;
   min-height: 36px;
@@ -402,7 +335,7 @@
 }
 
 .cli-session-item .session-id {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-accent);
 }
@@ -539,7 +472,7 @@
 .console-entries {
   flex: 1;
   overflow-y: auto;
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -617,4 +550,118 @@
   flex: 1;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+/* ── Markdown Renderer ── */
+.markdown-content { line-height: 1.6; word-wrap: break-word; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3 { margin: 0.5em 0 0.3em; }
+.markdown-content code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85em; }
+.markdown-content pre { position: relative; margin: 0.5em 0; border-radius: 6px; overflow: hidden; }
+.markdown-content pre code { display: block; padding: 12px 16px; background: #1e1e2e; overflow-x: auto; font-size: 0.85em; }
+.markdown-content a { color: var(--accent); text-decoration: none; }
+.markdown-content a:hover { text-decoration: underline; }
+.markdown-content table { border-collapse: collapse; margin: 0.5em 0; }
+.markdown-content th, .markdown-content td { border: 1px solid var(--border); padding: 6px 12px; }
+.markdown-content blockquote { border-left: 3px solid var(--accent); margin: 0.5em 0; padding: 4px 12px; opacity: 0.8; }
+.code-block-wrapper { position: relative; }
+.copy-btn { position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.15); border: none; color: #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; opacity: 0; transition: opacity 0.2s; }
+.code-block-wrapper:hover .copy-btn { opacity: 1; }
+.copy-btn.copied { color: var(--success); }
+
+/* ── Tool Call Card ── */
+.tool-card { border: 1px solid var(--border); border-radius: 8px; margin: 6px 0; overflow: hidden; background: rgba(255,255,255,0.03); }
+.tool-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 0.9em; transition: background 0.2s; }
+.tool-card-header:hover { background: rgba(255,255,255,0.05); }
+.tool-card-header .tool-icon { font-size: 1.1em; }
+.tool-card-header .tool-name { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.tool-card-header .tool-status { margin-left: auto; }
+.tool-card-header .collapse-arrow { transition: transform 0.2s; }
+.tool-card-header .collapse-arrow.open { transform: rotate(90deg); }
+.tool-card-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+.tool-card-body.open { max-height: 500px; overflow-y: auto; }
+.tool-card-body pre { margin: 0; padding: 8px 12px; font-size: 0.8em; background: rgba(0,0,0,0.2); }
+
+/* ── Message bubbles enhanced ── */
+.message { display: flex; gap: 10px; padding: 8px 16px; align-items: flex-start; max-width: 100%; white-space: normal; }
+.message .avatar { font-size: 1.3em; flex-shrink: 0; width: 28px; text-align: center; }
+.message .msg-body { flex: 1; min-width: 0; }
+.message.user { justify-content: flex-end; }
+.message.user .msg-body { background: var(--accent); color: white; padding: 8px 14px; border-radius: 12px 12px 2px 12px; max-width: 80%; }
+.message.assistant .msg-body { padding: 8px 0; }
+.message.system .msg-body { text-align: center; opacity: 0.6; font-style: italic; font-size: 0.85em; }
+.message .msg-timestamp { font-size: 0.7em; opacity: 0.4; margin-top: 4px; }
+
+/* ── Reasoning block ── */
+.reasoning-block { border-left: 3px solid #a78bfa; margin: 6px 0; padding: 4px 12px; border-radius: 0 6px 6px 0; background: rgba(167,139,250,0.08); cursor: pointer; }
+.reasoning-header { font-size: 0.85em; font-weight: 600; color: #a78bfa; display: flex; align-items: center; gap: 6px; }
+.reasoning-content { overflow: hidden; transition: max-height 0.3s; }
+.reasoning-block.collapsed .reasoning-content { max-height: 0; }
+.reasoning-block:not(.collapsed) .reasoning-content { max-height: 2000px; }
+
+/* ── Tab labels ── */
+.tab-label { font-size: 0.75em; opacity: 0.8; }
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Responsive ────────────────────────────────────────────────── */
+
+/* Tablet: sidebar smaller */
+@media (max-width: 1024px) {
+  .tab-bar { width: 48px; }
+  .tab-btn { padding: 10px; }
+  .tab-label { display: none; }
+}
+
+/* Mobile: sidebar becomes bottom bar */
+@media (max-width: 768px) {
+  .main-area { flex-direction: column-reverse; }
+  .tab-bar {
+    flex-direction: row;
+    width: 100%;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    padding: 0;
+    gap: 0;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 0;
+  }
+  .connection-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .connection-bar input[type="text"] {
+    flex: 1 1 100%;
+    order: -1;
+  }
+  .chat-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chat-toolbar select,
+  .chat-toolbar input {
+    flex: 1 1 45%;
+  }
+  .message.user .msg-body {
+    max-width: 90%;
+  }
+  .cli-sessions-layout {
+    flex-direction: column;
+  }
+  .cli-sessions-list {
+    max-height: 40vh;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .connection-bar { padding: 8px; }
+  .tab-content { padding: 8px; }
+  .chat-input-area textarea { font-size: 16px; } /* prevents iOS zoom */
 }
