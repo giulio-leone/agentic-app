@@ -12,7 +12,7 @@ import type { AgentProfile } from '../../acp-hex/domain/types';
 import { eventBus } from '../../acp-hex/domain';
 import {
   _service, _aiAbortController, _bridgeClient,
-  setService, setAiAbortController, setBridgeClient,
+  setService, setAiAbortController, setBridgeClient, setActiveBridgeSessionId,
 } from '../storePrivate';
 import { ChatBridgeClient } from '../../ai/chatbridge/ChatBridgeClient';
 import { createChatBridgeCallbacks } from '../../ai/chatbridge/chatBridgeCallbacks';
@@ -300,6 +300,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       setService(null);
       _bridgeClient?.disconnect();
       setBridgeClient(null);
+      setActiveBridgeSessionId(null);
     }
   },
 
@@ -324,6 +325,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     setService(null);
     _bridgeClient?.disconnect();
     setBridgeClient(null);
+    setActiveBridgeSessionId(null);
     _aiAbortController?.abort();
     setAiAbortController(null);
 
@@ -516,6 +518,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     setService(null);
     _bridgeClient?.disconnect();
     setBridgeClient(null);
+    setActiveBridgeSessionId(null);
     set({
       connectionState: ACPConnectionState.Disconnected,
       isInitialized: false,

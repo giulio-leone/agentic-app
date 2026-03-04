@@ -26,11 +26,18 @@ export function Step1CopilotBridge({ w, colors }: Props) {
     setTestResult(null);
     try {
       const scheme = w.copilotTls ? 'https' : 'http';
-      const url = `${scheme}://${w.copilotUrl.trim()}/health`;
-      const res = await fetch(url, { method: 'GET' });
+      const host = w.copilotUrl.trim();
+      const url = `${scheme}://${host}/health`;
+      console.log('[ChatBridge] Testing connection:', url);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      clearTimeout(timeout);
       const data = await res.json();
+      console.log('[ChatBridge] Health response:', JSON.stringify(data));
       setTestResult(data.status === 'ok' ? 'ok' : 'fail');
-    } catch {
+    } catch (err: any) {
+      console.error('[ChatBridge] Connection test failed:', err?.message || err);
       setTestResult('fail');
     } finally {
       setTesting(false);
@@ -57,12 +64,15 @@ export function Step1CopilotBridge({ w, colors }: Props) {
         <TextInput
           value={w.copilotUrl}
           onChangeText={w.setCopilotUrl}
-          placeholder="es. localhost:3111 o 100.92.208.40:3111"
+          placeholder="es. 192.168.1.100:3111 (usa IP LAN, non localhost)"
           placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
           style={[styles.input, { color: colors.text, borderColor: colors.inputBorder, backgroundColor: colors.cardBackground }]}
         />
+        <Text fontSize={11} color={colors.textTertiary}>
+          💡 Usa l'IP del PC (non localhost). Il bridge mostra l'IP all'avvio.
+        </Text>
       </YStack>
 
       {/* Auth Token */}

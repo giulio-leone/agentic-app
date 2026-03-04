@@ -140,7 +140,7 @@ export function useQuickSetupWizard() {
   const handleCopilotSelect = useCallback(() => {
     Haptics.selectionAsync();
     setFlow('copilot');
-    setCopilotUrl(`localhost:${CHAT_BRIDGE_PRESET.defaultPort}`);
+    setCopilotUrl('');
     setCopilotHost('');
     setCopilotToken('');
     setCopilotTls(false);

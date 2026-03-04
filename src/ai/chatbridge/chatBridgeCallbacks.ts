@@ -8,6 +8,12 @@ import type { ChatBridgeCallbacks } from './ChatBridgeClient';
 import type { CliAgent, SessionInfo, NetworkInfo, UsageInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatMessage, MessageSegment } from '../../acp-hex/domain/types';
+import {
+  setActiveBridgeSessionId,
+  getPendingBridgeMessage,
+  setPendingBridgeMessage,
+  getBridgeClient,
+} from '../../stores/storePrivate';
 
 // ── Store interface (injected to avoid circular deps) ──
 
@@ -43,10 +49,24 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     },
 
     onSessionCreated(sessionId: string, cli: CliAgent, cwd: string) {
+      setActiveBridgeSessionId(sessionId);
       store.appendLog(`✓ Session created: ${sessionId} (${cli} in ${cwd})`);
+
+      // Flush any pending message that was queued before session existed
+      const pending = getPendingBridgeMessage();
+      if (pending) {
+        setPendingBridgeMessage(null);
+        const client = getBridgeClient();
+        if (client && client.state === 'connected') {
+          client.sendMessage(sessionId, pending);
+          store.appendLog(`→ bridge/message (flushed pending, session: ${sessionId})`);
+        }
+      }
     },
 
     onSessionDestroyed(sessionId: string) {
+      setActiveBridgeSessionId(null);
+      setPendingBridgeMessage(null);
       store.appendLog(`Session destroyed: ${sessionId}`);
     },
 

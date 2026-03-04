@@ -10,7 +10,10 @@ import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorag
 import { getApiKey } from '../../storage/SecureStorage';
 import {
   _service, _aiAbortController, _bridgeClient,
+  _activeBridgeSessionId,
   setAiAbortController,
+  setActiveBridgeSessionId,
+  setPendingBridgeMessage,
 } from '../storePrivate';
 import type { AIProviderConfig } from '../../ai/types';
 import { AIProviderType } from '../../ai/types';
@@ -142,10 +145,18 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           set(s => ({ chatMessages: [...s.chatMessages, errMsg], isStreaming: false }));
           return;
         }
-        // The bridge session is tracked via bridge's own session ID.
-        // The bridge callbacks (chatBridgeCallbacks) handle assistant_start/chunk/end
-        // and update chatMessages automatically.
-        _bridgeClient.sendMessage(sessionId, text);
+
+        const cliAgent = (server.aiProviderConfig?.modelId as any) || 'claude';
+
+        if (!_activeBridgeSessionId) {
+          // Queue the message; it will be sent in onSessionCreated callback
+          setPendingBridgeMessage(text);
+          _bridgeClient.createSession(cliAgent);
+          get().appendLog(`→ bridge/create_session (${cliAgent}), message queued`);
+        } else {
+          _bridgeClient.sendMessage(_activeBridgeSessionId, text);
+          get().appendLog(`→ bridge/message (session: ${_activeBridgeSessionId})`);
+        }
         return;
       }
 
@@ -240,8 +251,8 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
       const state = get();
 
       // Chat Bridge cancel
-      if (_bridgeClient && _bridgeClient.state === 'connected' && state.selectedSessionId) {
-        _bridgeClient.stopSession(state.selectedSessionId);
+      if (_bridgeClient && _bridgeClient.state === 'connected' && _activeBridgeSessionId) {
+        _bridgeClient.stopSession(_activeBridgeSessionId);
         set({ isStreaming: false });
         get().appendLog('→ bridge/stop');
         return;
