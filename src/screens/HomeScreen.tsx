@@ -22,7 +22,7 @@ import {
 } from '../stores/selectors';
 import { ServerListItem } from '../components/home/ServerListItem';
 import { SessionListItem } from '../components/home/SessionListItem';
-import { ACPConnectionState, SessionSummary } from '../acp-hex/domain/types';
+import { ACPConnectionState, SessionSummary, ServerType } from '../acp-hex/domain/types';
 import { useAppStore, type CliSessionInfo } from '../stores/appStore';
 import { useDesignSystem } from '../utils/designSystem';
 import { FontSize, Spacing, Radius } from '../utils/theme';
@@ -48,6 +48,7 @@ export function HomeScreen() {
   const { loadServers, selectServer, connect, disconnect } = useServerActions();
   const { createSession, selectSession, deleteSession, loadSessions } = useSessionActions();
   const discoverCliSessions = useAppStore(s => s.discoverCliSessions);
+  const selectedServerType = servers.find(s => s.id === selectedServerId)?.serverType;
 
   useEffect(() => {
     loadServers();
@@ -55,8 +56,8 @@ export function HomeScreen() {
 
   // Discover CLI sessions when connected
   useEffect(() => {
-    if (isInitialized) discoverCliSessions();
-  }, [isInitialized, discoverCliSessions]);
+    if (isInitialized && selectedServerType !== ServerType.AIProvider) discoverCliSessions();
+  }, [isInitialized, selectedServerType, discoverCliSessions]);
 
   // Merge bridge sessions + CLI sessions (only alive shown by default in HomeScreen)
   const allSessions = useMemo(() => {
@@ -76,6 +77,7 @@ export function HomeScreen() {
   }, [sessions, cliSessions]);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
+  const isChatBridgeServer = selectedServer?.serverType === ServerType.ChatBridge;
   const isConnected = connectionState === ACPConnectionState.Connected;
 
   const serverListStyle = useMemo(
@@ -107,7 +109,7 @@ export function HomeScreen() {
   const handleSessionPress = useCallback(
     (session: SessionSummary) => {
       selectSession(session.id);
-      if (session.isCliSession) {
+      if (session.isCliSession && !isChatBridgeServer) {
         // Extract original session ID from cli: prefix
         const cliId = session.id.replace(/^cli:/, '');
         loadCliSessionTurns(cliId);
@@ -115,7 +117,7 @@ export function HomeScreen() {
       }
       navigation.navigate('Session');
     },
-    [selectSession, loadCliSessionTurns, startCliWatch, navigation],
+    [selectSession, isChatBridgeServer, loadCliSessionTurns, startCliWatch, navigation],
   );
 
   const handleDeleteSession = useCallback(

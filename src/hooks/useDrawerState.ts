@@ -3,7 +3,7 @@
  * Follows the w. prefix pattern for clean JSX consumption.
  */
 
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
@@ -100,16 +100,22 @@ export function useDrawerState(drawerNav: { closeDrawer: () => void }) {
 
   const loadCliSessionTurns = useAppStore(s => s.loadCliSessionTurns);
   const startCliWatch = useAppStore(s => s.startCliWatch);
+  const discoverCliSessions = useAppStore(s => s.discoverCliSessions);
+
+  useEffect(() => {
+    if (!isInitialized || selectedServer?.serverType === ServerType.AIProvider) return;
+    discoverCliSessions();
+  }, [isInitialized, selectedServerId, selectedServer?.serverType, discoverCliSessions]);
 
   const handleSessionPress = useCallback((session: SessionSummary) => {
     selectSession(session.id);
-    if (session.isCliSession) {
+    if (session.isCliSession && selectedServer?.serverType !== ServerType.ChatBridge) {
       const cliId = session.id.replace(/^cli:/, '');
       loadCliSessionTurns(cliId);
       startCliWatch();
     }
     drawerNav.closeDrawer();
-  }, [selectSession, loadCliSessionTurns, startCliWatch, drawerNav]);
+  }, [selectSession, selectedServer?.serverType, loadCliSessionTurns, startCliWatch, drawerNav]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
     Alert.alert('Delete Session', 'Are you sure?', [

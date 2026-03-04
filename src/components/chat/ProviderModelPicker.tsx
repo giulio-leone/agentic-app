@@ -93,7 +93,9 @@ export const ProviderModelPicker = React.memo(function ProviderModelPicker({
 
     // Bridge models: synchronous
     if (bridgeModels.length > 0) {
-      const bridgeServer = servers.find(s => s.serverType === ServerType.ACP || s.scheme === 'tcp');
+      const bridgeServer = servers.find(
+        s => s.serverType === ServerType.ChatBridge || s.serverType === ServerType.ACP || s.scheme === 'tcp',
+      );
       setAllOptions(bridgeModels.map(m => ({
         id: `bridge::${m.id}`,
         modelId: m.id,

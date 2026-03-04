@@ -7,9 +7,10 @@
 import type { ChatBridgeCallbacks } from './ChatBridgeClient';
 import type { CliAgent, SessionInfo, NetworkInfo, UsageInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
-import type { ChatMessage, MessageSegment } from '../../acp-hex/domain/types';
+import type { ChatMessage, MessageSegment, SessionSummary } from '../../acp-hex/domain/types';
 import {
   setActiveBridgeSessionId,
+  getActiveBridgeSessionId,
   getPendingBridgeMessage,
   setPendingBridgeMessage,
   getBridgeClient,
@@ -20,6 +21,7 @@ import {
 export interface ChatBridgeStoreApi {
   get(): {
     chatMessages: ChatMessage[];
+    sessions: SessionSummary[];
     selectedSessionId: string | null;
     isStreaming: boolean;
     streamingMessageId: string | null;
@@ -33,6 +35,20 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
   const msgIdMap = new Map<string, string>();
   const textAccum = new Map<string, string>();
   const segmentAccum = new Map<string, MessageSegment[]>();
+  const mapBridgeSession = (s: SessionInfo): SessionSummary => ({
+    id: `bridge:${s.id}`,
+    title: s.title || `${s.cli} • ${s.cwd.split('/').pop() || s.cwd}`,
+    description: `${s.cli} • ${s.cwd}`,
+    cwd: s.cwd,
+    createdAt: s.createdAt,
+    updatedAt: s.lastActivity || s.createdAt,
+    isAlive: s.alive,
+  });
+  const mergeBridgeSessions = (incoming: SessionSummary[]): SessionSummary[] => {
+    const current = store.get().sessions;
+    const local = current.filter((s) => !s.id.startsWith('bridge:'));
+    return [...incoming, ...local];
+  };
 
   return {
     onConnected() {
@@ -41,6 +57,7 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
 
     onDisconnected() {
       store.appendLog('✗ Disconnected from Chat Bridge');
+      setPendingBridgeMessage(null);
       store.set({ isStreaming: false, streamingMessageId: null });
     },
 
@@ -51,6 +68,23 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     onSessionCreated(sessionId: string, cli: CliAgent, cwd: string) {
       setActiveBridgeSessionId(sessionId);
       store.appendLog(`✓ Session created: ${sessionId} (${cli} in ${cwd})`);
+      const bridgeId = `bridge:${sessionId}`;
+      const now = new Date().toISOString();
+      const state = store.get();
+      const summary: SessionSummary = {
+        id: bridgeId,
+        title: `${cli} • ${cwd.split('/').pop() || cwd}`,
+        description: `${cli} • ${cwd}`,
+        cwd,
+        createdAt: now,
+        updatedAt: now,
+        isAlive: true,
+      };
+      store.set({
+        sessions: state.sessions.some((s) => s.id === bridgeId)
+          ? state.sessions.map((s) => (s.id === bridgeId ? { ...s, ...summary } : s))
+          : [summary, ...state.sessions],
+      });
 
       // Flush any pending message that was queued before session existed
       const pending = getPendingBridgeMessage();
@@ -65,12 +99,21 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     },
 
     onSessionDestroyed(sessionId: string) {
-      setActiveBridgeSessionId(null);
+      const bridgeId = `bridge:${sessionId}`;
+      const state = store.get();
+      if (state.selectedSessionId === bridgeId) {
+        setActiveBridgeSessionId(null);
+        store.set({ selectedSessionId: null, chatMessages: [] });
+      } else if (getActiveBridgeSessionId() === sessionId) {
+        setActiveBridgeSessionId(null);
+      }
       setPendingBridgeMessage(null);
+      store.set({ sessions: state.sessions.filter((s) => s.id !== bridgeId) });
       store.appendLog(`Session destroyed: ${sessionId}`);
     },
 
     onSessionList(sessions: SessionInfo[]) {
+      store.set({ sessions: mergeBridgeSessions(sessions.map(mapBridgeSession)) });
       store.appendLog(`Sessions: ${sessions.length} active`);
     },
 
@@ -215,6 +258,7 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     },
 
     onStatus(network: NetworkInfo, sessions: SessionInfo[], uptime: number) {
+      store.set({ sessions: mergeBridgeSessions(sessions.map(mapBridgeSession)) });
       store.appendLog(
         `Bridge status: ${sessions.length} sessions, uptime ${Math.round(uptime)}s` +
         (network.tailscale?.enabled ? `, tailscale: ${network.tailscale.ip}` : '') +

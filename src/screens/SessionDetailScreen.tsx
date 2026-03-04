@@ -109,7 +109,8 @@ export function SessionDetailScreen() {
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
   const isAIProvider = selectedServer?.serverType === ServerType.AIProvider;
-  const isCliSession = !!selectedSessionId?.startsWith('cli:');
+  const isChatBridgeServer = selectedServer?.serverType === ServerType.ChatBridge;
+  const isCliSession = !isChatBridgeServer && !!selectedSessionId?.startsWith('cli:');
   const activePtySessionId = useAppStore(s => s.activePtySessionId);
   const ptyOwnerCliSessionId = useAppStore(s => s.ptyOwnerCliSessionId);
   const writeToCopilotPty = useAppStore(s => s.writeToCopilotPty);
@@ -121,7 +122,11 @@ export function SessionDetailScreen() {
     ? cliSessions.find(s => selectedSessionId === `cli:${s.id}`)
     : undefined;
   const isConnected = isAIProvider || (connectionState === ACPConnectionState.Connected && isInitialized);
-  const isCopilotProvider = isAIProvider && selectedServer?.aiProviderConfig?.providerType === AIProviderType.Copilot;
+  const isCopilotProvider = (
+    isAIProvider && selectedServer?.aiProviderConfig?.providerType === AIProviderType.Copilot
+  ) || (
+    isChatBridgeServer && (selectedBridgeModel ?? selectedServer?.aiProviderConfig?.modelId) === 'copilot'
+  );
 
   // Provider•Model label for toolbar chip
   const currentModelLabel = React.useMemo(() => {

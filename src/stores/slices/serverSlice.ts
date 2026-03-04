@@ -72,6 +72,23 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   ptyOwnerCliSessionId: null as string | null,
 
   discoverCliSessions: async () => {
+    const server = get().servers.find(s => s.id === get().selectedServerId);
+    if (isChatBridgeServer(server)) {
+      set({ isDiscoveringCli: true });
+      try {
+        if (_bridgeClient && _bridgeClient.state === 'connected') {
+          _bridgeClient.listSessions();
+          _bridgeClient.getStatus();
+          get().appendLog('→ bridge/list_sessions');
+        } else {
+          get().appendLog('bridge/discover: not connected');
+        }
+      } finally {
+        set({ isDiscoveringCli: false });
+      }
+      return;
+    }
+
     const hex = _service ?? getAcpHex();
     if (!hex) {
       get().appendLog('copilot/discover: no service');
@@ -93,6 +110,9 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   loadCliSessionTurns: async (sessionId: string) => {
+    const server = get().servers.find(s => s.id === get().selectedServerId);
+    if (isChatBridgeServer(server)) return;
+
     const hex = _service ?? getAcpHex();
     if (!hex) return;
     // Show loading state
@@ -162,6 +182,14 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   startCliWatch: async () => {
+    const server = get().servers.find(s => s.id === get().selectedServerId);
+    if (isChatBridgeServer(server)) {
+      if (_bridgeClient && _bridgeClient.state === 'connected') {
+        _bridgeClient.listSessions();
+      }
+      return;
+    }
+
     const hex = _service ?? getAcpHex();
     if (!hex) return;
     try {
@@ -172,6 +200,9 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   },
 
   stopCliWatch: async () => {
+    const server = get().servers.find(s => s.id === get().selectedServerId);
+    if (isChatBridgeServer(server)) return;
+
     const hex = _service ?? getAcpHex();
     if (!hex) return;
     try {
@@ -282,9 +313,9 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
   deleteServer: async (id) => {
     await SessionStorage.deleteServer(id);
     const state = get();
-    set({
-      servers: state.servers.filter(s => s.id !== id),
-      ...(state.selectedServerId === id
+      set({
+        servers: state.servers.filter(s => s.id !== id),
+        ...(state.selectedServerId === id
         ? {
             selectedServerId: null,
             connectionState: ACPConnectionState.Disconnected,
@@ -292,9 +323,13 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
             sessions: [],
             selectedSessionId: null,
             chatMessages: [],
+            cliSessions: [],
+            isDiscoveringCli: false,
+            activePtySessionId: null,
+            ptyOwnerCliSessionId: null,
           }
         : {}),
-    });
+      });
     if (state.selectedServerId === id) {
       _service?.disconnect();
       setService(null);
@@ -335,6 +370,10 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       isInitialized: false,
       agentInfo: null,
       connectionError: null,
+      cliSessions: [],
+      isDiscoveringCli: false,
+      activePtySessionId: null,
+      ptyOwnerCliSessionId: null,
       // Preserve sessions/messages when switching between AI providers (unified storage)
       ...(bothAI ? {} : {
         sessions: [],
@@ -403,6 +442,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       const storeApi = {
         get: () => ({
           chatMessages: get().chatMessages,
+          sessions: get().sessions,
           selectedSessionId: get().selectedSessionId,
           isStreaming: get().isStreaming,
           streamingMessageId: get().streamingMessageId,
@@ -412,14 +452,29 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       };
 
       const callbacks = createChatBridgeCallbacks(storeApi);
+      let bridgeClientRef: ChatBridgeClient | null = null;
       const wrappedCallbacks = {
         ...callbacks,
         onConnected: () => {
           callbacks.onConnected();
+          const modelChoices = [
+            { id: 'claude', name: 'Claude Code', provider: 'chat-bridge' },
+            { id: 'copilot', name: 'Copilot CLI', provider: 'chat-bridge' },
+            { id: 'codex', name: 'Codex CLI', provider: 'chat-bridge' },
+          ];
+          const defaultBridgeModel = server.aiProviderConfig?.modelId ?? 'claude';
+          const currentBridgeModel = get().selectedBridgeModel;
+          const selectedBridgeModel = modelChoices.some(m => m.id === currentBridgeModel)
+            ? currentBridgeModel
+            : defaultBridgeModel;
           set({
             connectionState: ACPConnectionState.Connected,
             isInitialized: true,
             connectionError: null,
+            bridgeModels: modelChoices,
+            selectedBridgeModel,
+            reasoningEffortLevels: ['low', 'medium', 'high', 'xhigh'],
+            selectedReasoningEffort: get().selectedReasoningEffort ?? server.aiProviderConfig?.reasoningEffort ?? null,
             agentInfo: {
               name: 'Chat Bridge',
               version: server.host ?? '',
@@ -427,9 +482,14 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
               modes: [],
             },
           });
+          setActiveBridgeSessionId(null);
+          get().loadSessions();
+          bridgeClientRef?.listSessions();
+          bridgeClientRef?.getStatus();
         },
         onDisconnected: () => {
           callbacks.onDisconnected();
+          setActiveBridgeSessionId(null);
           set({ connectionState: ACPConnectionState.Disconnected, isInitialized: false });
         },
         onError: (error: string) => {
@@ -439,6 +499,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       };
 
       const client = new ChatBridgeClient(wrappedCallbacks);
+      bridgeClientRef = client;
       setBridgeClient(client);
       client.connect(endpoint, server.token || undefined);
       return;
@@ -522,6 +583,10 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     set({
       connectionState: ACPConnectionState.Disconnected,
       isInitialized: false,
+      cliSessions: [],
+      isDiscoveringCli: false,
+      activePtySessionId: null,
+      ptyOwnerCliSessionId: null,
     });
   },
 

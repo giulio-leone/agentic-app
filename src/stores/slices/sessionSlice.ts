@@ -7,7 +7,7 @@ import {
   ServerType,
 } from '../../acp-hex/domain/types';
 import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
-import { _service } from '../storePrivate';
+import { _service, getBridgeClient, setActiveBridgeSessionId } from '../storePrivate';
 import { getAcpHex } from '../../acp-hex/integration/bootstrap';
 
 /** Returns the storage key for a server: shared for AI providers, per-server for ACP/Codex. */
@@ -32,12 +32,13 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     const state = get();
     const sid = storageId(state);
     if (!sid) return;
+    const server = state.servers.find(s => s.id === state.selectedServerId);
 
     const stored = await SessionStorage.fetchSessions(sid);
     set({ sessions: stored });
 
     const hex = _service ?? getAcpHex();
-    if (hex && state.isInitialized) {
+    if (server?.serverType === ServerType.ACP && hex && state.isInitialized) {
       try {
         const sessions = await hex.session.list.execute();
         set({ sessions });
@@ -73,6 +74,28 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
       }));
       await SessionStorage.saveSession(newSession, sid);
       get().appendLog(`✓ AI session created: ${sessionId}`);
+      return;
+    }
+
+    if (server.serverType === ServerType.ChatBridge) {
+      const sessionId = uuidv4();
+      const newSession: SessionSummary = {
+        id: sessionId,
+        title: undefined,
+        updatedAt: new Date().toISOString(),
+        cwd: get().selectedCwd || cwd || server.workingDirectory || undefined,
+      };
+      set(s => ({
+        sessions: [newSession, ...s.sessions],
+        selectedSessionId: sessionId,
+        chatMessages: [],
+        streamingMessageId: null,
+        stopReason: null,
+        isStreaming: false,
+      }));
+      setActiveBridgeSessionId(null);
+      await SessionStorage.saveSession(newSession, sid);
+      get().appendLog(`✓ Chat Bridge session created: ${sessionId}`);
       return;
     }
 
@@ -123,6 +146,24 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
 
     // CLI sessions are loaded via loadCliSessionTurns — skip ACP/local flows
     if (id?.startsWith('cli:')) return;
+
+    const server = get().servers.find(s => s.id === get().selectedServerId);
+    if (server?.serverType === ServerType.ChatBridge) {
+      if (id.startsWith('bridge:')) {
+        const bridgeSessionId = id.replace(/^bridge:/, '');
+        setActiveBridgeSessionId(bridgeSessionId);
+        const bridgeClient = getBridgeClient();
+        if (bridgeClient && bridgeClient.state === 'connected') {
+          bridgeClient.resumeSession(bridgeSessionId);
+          get().appendLog(`→ bridge/resume_session (${bridgeSessionId})`);
+        }
+      } else {
+        // Local/new chat session: force a new bridge session on first prompt
+        setActiveBridgeSessionId(null);
+      }
+      await get().loadSessionMessages(id);
+      return;
+    }
 
     // For ACP servers, try server-side session replay first
     const hex = _service ?? getAcpHex();

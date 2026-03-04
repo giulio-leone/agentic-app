@@ -146,16 +146,23 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
           return;
         }
 
-        const cliAgent = (server.aiProviderConfig?.modelId as any) || 'claude';
+        const preferredModel = state.selectedBridgeModel ?? server.aiProviderConfig?.modelId ?? 'claude';
+        const cliAgent = preferredModel === 'copilot' || preferredModel === 'codex' ? preferredModel : 'claude';
+        const selectedBridgeSessionId = sessionId.startsWith('bridge:') ? sessionId.replace(/^bridge:/, '') : null;
+        const targetBridgeSessionId = _activeBridgeSessionId ?? selectedBridgeSessionId;
 
-        if (!_activeBridgeSessionId) {
+        if (!targetBridgeSessionId) {
           // Queue the message; it will be sent in onSessionCreated callback
           setPendingBridgeMessage(text);
-          _bridgeClient.createSession(cliAgent);
+          _bridgeClient.createSession(cliAgent, get().selectedCwd ?? undefined);
           get().appendLog(`→ bridge/create_session (${cliAgent}), message queued`);
         } else {
-          _bridgeClient.sendMessage(_activeBridgeSessionId, text);
-          get().appendLog(`→ bridge/message (session: ${_activeBridgeSessionId})`);
+          if (!_activeBridgeSessionId && selectedBridgeSessionId) {
+            setActiveBridgeSessionId(selectedBridgeSessionId);
+            _bridgeClient.resumeSession(selectedBridgeSessionId);
+          }
+          _bridgeClient.sendMessage(targetBridgeSessionId, text);
+          get().appendLog(`→ bridge/message (session: ${targetBridgeSessionId})`);
         }
         return;
       }
@@ -344,4 +351,3 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
     },
   };
 };
-
