@@ -11,9 +11,9 @@
  *  - quicksetup/Step0Presets.tsx         (provider selection)
  *  - quicksetup/Step1AI.tsx             (API key input)
  *  - quicksetup/Step1ACP.tsx            (ACP host config)
- *  - quicksetup/Step1CopilotBridge.tsx  (Chat Bridge WS URL + token)
+ *  - quicksetup/Step1ChatBridge.tsx      (Chat Bridge WS URL + token)
  *  - quicksetup/Step2ModelPicker.tsx    (AI model picker + advanced)
- *  - quicksetup/Step2CopilotModels.tsx  (CLI agent selection)
+ *  - quicksetup/Step2ChatBridgeModels.tsx  (CLI agent selection)
  */
 
 import React from 'react';
@@ -34,9 +34,9 @@ import { useQuickSetupWizard } from './quicksetup/useQuickSetupWizard';
 import { Step0Presets } from './quicksetup/Step0Presets';
 import { Step1AI } from './quicksetup/Step1AI';
 import { Step1ACP } from './quicksetup/Step1ACP';
-import { Step1CopilotBridge } from './quicksetup/Step1CopilotBridge';
+import { Step1ChatBridge } from './quicksetup/Step1ChatBridge';
 import { Step2ModelPicker } from './quicksetup/Step2ModelPicker';
-import { Step2CopilotModels } from './quicksetup/Step2CopilotModels';
+import { Step2ChatBridgeModels } from './quicksetup/Step2ChatBridgeModels';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -67,13 +67,13 @@ export function QuickSetupScreen() {
   const renderStep0 = () => <Step0Presets w={w} colors={colors} />;
 
   const renderStep1 = () => {
-    if (w.flow === 'copilot') return <Step1CopilotBridge w={w} colors={colors} />;
+    if (w.flow === 'chatbridge') return <Step1ChatBridge w={w} colors={colors} />;
     if (w.flow === 'acp') return <Step1ACP w={w} colors={colors} />;
     return <Step1AI w={w} colors={colors} />;
   };
 
   const renderStep2 = () => {
-    if (w.flow === 'copilot') return <Step2CopilotModels w={w} colors={colors} />;
+    if (w.flow === 'chatbridge') return <Step2ChatBridgeModels w={w} colors={colors} />;
     return <Step2ModelPicker w={w} colors={colors} />;
   };
 

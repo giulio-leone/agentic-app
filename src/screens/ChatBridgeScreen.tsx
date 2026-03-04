@@ -1,6 +1,5 @@
 /**
  * ChatBridgeScreen — configure the Chat Bridge connection.
- * Replaces the legacy CopilotBridgeScreen with new WebSocket chat-bridge.
  */
 
 import React, { useState, useCallback } from 'react';

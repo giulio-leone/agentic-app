@@ -20,7 +20,7 @@ const AddServerScreen = React.lazy(() => import('./screens/AddServerScreen').the
 const QuickSetupScreen = React.lazy(() => import('./screens/QuickSetupScreen').then(m => ({ default: m.QuickSetupScreen })));
 const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
 const LazyTerminalPanel = React.lazy(() => import('./components/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
-const ChatBridgeScreen = React.lazy(() => import('./screens/CopilotBridgeScreen'));
+const ChatBridgeScreen = React.lazy(() => import('./screens/ChatBridgeScreen'));
 const LinkedInScreen = React.lazy(() => import('./linkedin/infrastructure/ui/LinkedInScreen'));
 import { ACPServerConfiguration } from './acp-hex/domain/types';
 import { useDesignSystem, layout } from './utils/designSystem';

@@ -1,5 +1,5 @@
 /**
- * Step0Presets — provider/ACP/Copilot selection cards for QuickSetup step 0.
+ * Step0Presets — provider/ACP/Chat Bridge selection cards for QuickSetup step 0.
  */
 
 import React from 'react';
@@ -52,7 +52,7 @@ export function Step0Presets({ w, colors }: Step0PresetsProps) {
           >
             <TouchableOpacity
               style={[styles.featuredCard, { backgroundColor: colors.cardBackground, borderColor: colors.primary }]}
-              onPress={() => w.handleCopilotSelect()}
+              onPress={() => w.handleChatBridgeSelect()}
               activeOpacity={0.7}
             >
               <XStack alignItems="center" gap={Spacing.sm}>

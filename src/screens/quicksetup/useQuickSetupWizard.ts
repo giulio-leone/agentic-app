@@ -17,7 +17,7 @@ import { saveApiKey } from '../../storage/SecureStorage';
 import type { RootStackParamList } from '../../navigation';
 import { AI_PRESETS, ACP_PRESETS, CHAT_BRIDGE_PRESET, type PresetProvider, type ACPPreset } from './presets';
 
-type SetupFlow = 'ai' | 'acp' | 'copilot';
+type SetupFlow = 'ai' | 'acp' | 'chatbridge';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function useQuickSetupWizard() {
@@ -67,12 +67,12 @@ export function useQuickSetupWizard() {
   const [acpToken, setAcpToken] = useState(editingServer?.token ?? '');
   const [acpName, setAcpName] = useState(editingServer?.name ?? '');
 
-  // Copilot state
-  const [copilotUrl, setCopilotUrl] = useState('');
-  const [copilotHost, setCopilotHost] = useState('');
-  const [copilotToken, setCopilotToken] = useState('');
-  const [copilotTls, setCopilotTls] = useState(false);
-  const [copilotModelId, setCopilotModelId] = useState('');
+  // Chat Bridge state
+  const [bridgeUrl, setBridgeUrl] = useState('');
+  const [bridgeHost, setBridgeHost] = useState('');
+  const [bridgeToken, setBridgeToken] = useState('');
+  const [bridgeTls, setBridgeTls] = useState(false);
+  const [bridgeModelId, setBridgeModelId] = useState('');
 
   const stepCount = flow === 'acp' ? 2 : 3;
 
@@ -137,14 +137,14 @@ export function useQuickSetupWizard() {
     animateStep(1);
   }, [animateStep]);
 
-  const handleCopilotSelect = useCallback(() => {
+  const handleChatBridgeSelect = useCallback(() => {
     Haptics.selectionAsync();
-    setFlow('copilot');
-    setCopilotUrl('');
-    setCopilotHost('');
-    setCopilotToken('');
-    setCopilotTls(false);
-    setCopilotModelId('claude');
+    setFlow('chatbridge');
+    setBridgeUrl('');
+    setBridgeHost('');
+    setBridgeToken('');
+    setBridgeTls(false);
+    setBridgeModelId('claude');
     animateStep(1);
   }, [animateStep]);
 
@@ -188,7 +188,7 @@ export function useQuickSetupWizard() {
     animateStep(2);
   }, [apiKey, selectedPreset, isEditing, animateStep]);
 
-  const goToCopilotModels = useCallback(() => {
+  const goToChatBridgeModels = useCallback(() => {
     Haptics.selectionAsync();
     animateStep(2);
   }, [animateStep]);
@@ -298,9 +298,9 @@ export function useQuickSetupWizard() {
     }
   }, [selectedACP, acpScheme, acpHost, acpToken, acpName, isEditing, editingServer, addServer, updateServer, navigation]);
 
-  // ── Save Copilot (Chat Bridge) ──
-  const handleSaveCopilot = useCallback(async () => {
-    if (!copilotUrl.trim()) {
+  // ── Save Chat Bridge ──
+  const handleSaveChatBridge = useCallback(async () => {
+    if (!bridgeUrl.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Incomplete configuration', 'Enter the Chat Bridge host:port.');
       return;
@@ -308,19 +308,19 @@ export function useQuickSetupWizard() {
 
     setSaving(true);
     try {
-      const scheme = copilotTls ? 'wss' : 'ws';
+      const scheme = bridgeTls ? 'wss' : 'ws';
       const serverData = {
-        name: `Chat Bridge (${copilotModelId || 'claude'})`,
+        name: `Chat Bridge (${bridgeModelId || 'claude'})`,
         scheme,
-        host: copilotUrl.trim(),
-        token: copilotToken.trim(),
+        host: bridgeUrl.trim(),
+        token: bridgeToken.trim(),
         cfAccessClientId: '',
         cfAccessClientSecret: '',
         workingDirectory: '',
         serverType: ServerType.ChatBridge,
         aiProviderConfig: {
           providerType: AIProviderType.Copilot,
-          modelId: copilotModelId || 'claude',
+          modelId: bridgeModelId || 'claude',
         },
       };
 
@@ -333,7 +333,7 @@ export function useQuickSetupWizard() {
     } finally {
       setSaving(false);
     }
-  }, [copilotUrl, copilotToken, copilotTls, copilotModelId, addServer, navigation]);
+  }, [bridgeUrl, bridgeToken, bridgeTls, bridgeModelId, addServer, navigation]);
 
   // Filtered / display models
   const filteredModels = models.filter(m => {
@@ -411,28 +411,28 @@ export function useQuickSetupWizard() {
     setAcpToken,
     acpName,
     setAcpName,
-    // Copilot state
-    copilotUrl,
-    setCopilotUrl,
-    copilotHost,
-    setCopilotHost,
-    copilotToken,
-    setCopilotToken,
-    copilotTls,
-    setCopilotTls,
-    copilotModelId,
-    setCopilotModelId,
+    // Chat Bridge state
+    bridgeUrl,
+    setBridgeUrl,
+    bridgeHost,
+    setBridgeHost,
+    bridgeToken,
+    setBridgeToken,
+    bridgeTls,
+    setBridgeTls,
+    bridgeModelId,
+    setBridgeModelId,
     // Flags
     saving,
     // Handlers
     handlePresetSelect,
     handleACPSelect,
-    handleCopilotSelect,
+    handleChatBridgeSelect,
     goToModelStep,
-    goToCopilotModels,
+    goToChatBridgeModels,
     goBack,
     handleSaveAI,
     handleSaveACP,
-    handleSaveCopilot,
+    handleSaveChatBridge,
   };
 }

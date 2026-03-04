@@ -1,5 +1,5 @@
 /**
- * Step2CopilotModels — Chat Bridge CLI agent selection + save.
+ * Step2ChatBridgeModels — Chat Bridge CLI agent selection + save.
  */
 
 import React from 'react';
@@ -23,7 +23,7 @@ const AGENTS = [
   { id: 'codex', label: 'Codex CLI', desc: 'OpenAI Codex in terminale', icon: Terminal },
 ];
 
-export function Step2CopilotModels({ w, colors }: Props) {
+export function Step2ChatBridgeModels({ w, colors }: Props) {
   return (
     <YStack flex={1} padding={Spacing.lg} gap={Spacing.md}>
       <YStack gap={Spacing.xs}>
@@ -38,11 +38,11 @@ export function Step2CopilotModels({ w, colors }: Props) {
 
       {/* Agent cards */}
       {AGENTS.map(agent => {
-        const selected = w.copilotModelId === agent.id;
+        const selected = w.bridgeModelId === agent.id;
         return (
           <TouchableOpacity
             key={agent.id}
-            onPress={() => w.setCopilotModelId(agent.id)}
+            onPress={() => w.setBridgeModelId(agent.id)}
             activeOpacity={0.7}
             style={[
               styles.agentCard,
@@ -80,19 +80,19 @@ export function Step2CopilotModels({ w, colors }: Props) {
       >
         <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary}>RIEPILOGO</Text>
         <Text fontSize={FontSize.footnote} color={colors.text}>
-          {w.copilotTls ? 'wss' : 'ws'}://{w.copilotUrl || '...'}
+          {w.bridgeTls ? 'wss' : 'ws'}://{w.bridgeUrl || '...'}
         </Text>
         <Text fontSize={FontSize.footnote} color={colors.text}>
-          Agent: {AGENTS.find(a => a.id === w.copilotModelId)?.label || '—'}
+          Agent: {AGENTS.find(a => a.id === w.bridgeModelId)?.label || '—'}
         </Text>
-        {w.copilotToken ? (
+        {w.bridgeToken ? (
           <Text fontSize={FontSize.footnote} color={colors.text}>Token: ••••••</Text>
         ) : null}
       </YStack>
 
       {/* Save button */}
       <TouchableOpacity
-        onPress={() => w.handleSaveCopilot()}
+        onPress={() => w.handleSaveChatBridge()}
         disabled={w.saving}
         style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: w.saving ? 0.6 : 1 }]}
       >
@@ -122,4 +122,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Step2CopilotModels;
+export default Step2ChatBridgeModels;

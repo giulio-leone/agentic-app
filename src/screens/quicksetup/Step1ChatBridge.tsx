@@ -1,5 +1,5 @@
 /**
- * Step1CopilotBridge — Chat Bridge connection setup (WS URL + auth token).
+ * Step1ChatBridge — Chat Bridge connection setup (WS URL + auth token).
  */
 
 import React, { useState } from 'react';
@@ -17,7 +17,7 @@ interface Props {
   colors: ThemeColors;
 }
 
-export function Step1CopilotBridge({ w, colors }: Props) {
+export function Step1ChatBridge({ w, colors }: Props) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
 
@@ -25,8 +25,8 @@ export function Step1CopilotBridge({ w, colors }: Props) {
     setTesting(true);
     setTestResult(null);
     try {
-      const scheme = w.copilotTls ? 'https' : 'http';
-      const host = w.copilotUrl.trim();
+      const scheme = w.bridgeTls ? 'https' : 'http';
+      const host = w.bridgeUrl.trim();
       const url = `${scheme}://${host}/health`;
       console.log('[ChatBridge] Testing connection:', url);
       const controller = new AbortController();
@@ -62,8 +62,8 @@ export function Step1CopilotBridge({ w, colors }: Props) {
           HOST:PORT
         </Text>
         <TextInput
-          value={w.copilotUrl}
-          onChangeText={w.setCopilotUrl}
+          value={w.bridgeUrl}
+          onChangeText={w.setBridgeUrl}
           placeholder="es. 192.168.1.100:3111 (usa IP LAN, non localhost)"
           placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
@@ -84,8 +84,8 @@ export function Step1CopilotBridge({ w, colors }: Props) {
           </Text>
         </XStack>
         <TextInput
-          value={w.copilotToken}
-          onChangeText={w.setCopilotToken}
+          value={w.bridgeToken}
+          onChangeText={w.setBridgeToken}
           placeholder="Token di autenticazione"
           placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
@@ -99,8 +99,8 @@ export function Step1CopilotBridge({ w, colors }: Props) {
       <XStack alignItems="center" justifyContent="space-between">
         <Text fontSize={FontSize.subheadline} color={colors.text}>TLS (wss://)</Text>
         <Switch
-          value={w.copilotTls}
-          onValueChange={w.setCopilotTls}
+          value={w.bridgeTls}
+          onValueChange={w.setBridgeTls}
           trackColor={{ false: colors.separator, true: colors.primary }}
         />
       </XStack>
@@ -108,8 +108,8 @@ export function Step1CopilotBridge({ w, colors }: Props) {
       {/* Test connection */}
       <TouchableOpacity
         onPress={testConnection}
-        disabled={testing || !w.copilotUrl.trim()}
-        style={[styles.testBtn, { borderColor: colors.separator, opacity: w.copilotUrl.trim() ? 1 : 0.4 }]}
+        disabled={testing || !w.bridgeUrl.trim()}
+        style={[styles.testBtn, { borderColor: colors.separator, opacity: w.bridgeUrl.trim() ? 1 : 0.4 }]}
       >
         <XStack alignItems="center" gap={Spacing.xs}>
           {testing ? (
@@ -129,9 +129,9 @@ export function Step1CopilotBridge({ w, colors }: Props) {
 
       {/* Continue */}
       <TouchableOpacity
-        onPress={() => w.goToCopilotModels()}
-        disabled={!w.copilotUrl.trim()}
-        style={[styles.continueBtn, { backgroundColor: colors.primary, opacity: w.copilotUrl.trim() ? 1 : 0.4 }]}
+        onPress={() => w.goToChatBridgeModels()}
+        disabled={!w.bridgeUrl.trim()}
+        style={[styles.continueBtn, { backgroundColor: colors.primary, opacity: w.bridgeUrl.trim() ? 1 : 0.4 }]}
       >
         <XStack alignItems="center" gap={Spacing.xs}>
           <Text color="#fff" fontWeight="600">Avanti</Text>
@@ -163,4 +163,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Step1CopilotBridge;
+export default Step1ChatBridge;
