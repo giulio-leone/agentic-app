@@ -14,6 +14,7 @@ export enum ACPConnectionState {
 export enum ServerType {
   ACP = 'acp',
   AIProvider = 'ai_provider',
+  ChatBridge = 'chat_bridge',
 }
 
 export interface ACPServerConfiguration {

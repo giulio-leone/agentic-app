@@ -1,8 +1,8 @@
 /**
- * QuickSetup — Preset data for AI providers, ACP agents, and Copilot SDK Bridge.
+ * QuickSetup — Preset data for AI providers, ACP agents, and Chat Bridge.
  */
 
-import { Server, Globe, Bot, Brain, Gem, Zap, Github, Code, Terminal, type LucideIcon } from 'lucide-react-native';
+import { Server, Globe, Bot, Brain, Gem, Zap, Code, Terminal, type LucideIcon } from 'lucide-react-native';
 import { ServerType } from '../../acp-hex/domain/types';
 import { AIProviderType } from '../../ai/types';
 
@@ -23,18 +23,20 @@ export interface ACPPreset {
   icon: LucideIcon;
 }
 
-export interface CopilotBridgePreset {
+export interface ChatBridgePreset {
   label: string;
   description: string;
   icon: LucideIcon;
   defaultPort: number;
+  defaultScheme: 'ws' | 'wss';
 }
 
-export const COPILOT_BRIDGE_PRESET: CopilotBridgePreset = {
-  label: 'Copilot SDK Bridge',
-  description: 'GitHub Copilot via SDK — discovery, pairing, 17+ modelli',
-  icon: Github,
-  defaultPort: 3030,
+export const CHAT_BRIDGE_PRESET: ChatBridgePreset = {
+  label: 'Chat Bridge',
+  description: 'Claude Code, Copilot CLI, Codex via WebSocket — remoto o locale',
+  icon: Terminal,
+  defaultPort: 3111,
+  defaultScheme: 'ws',
 };
 
 export const AI_PRESETS: PresetProvider[] = [

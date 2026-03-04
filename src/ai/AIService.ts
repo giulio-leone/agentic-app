@@ -18,7 +18,6 @@ import { AIProviderType, type AIProviderConfig } from './types';
 import { createModel } from './providerFactory';
 import { toCoreMessages } from './messageUtils';
 import type { ChatMessage } from '../acp-hex/domain/types';
-import { CopilotBridgeService } from './copilot/CopilotBridgeService';
 
 // Re-export for consumers that import from AIService
 export { createModel } from './providerFactory';
@@ -45,16 +44,6 @@ export function streamChat(
   forceAgentMode?: boolean,
   onApprovalRequired?: (req: { toolName: string; toolCallId: string; args: unknown; sessionId: string; stepIndex: number }) => Promise<boolean>,
 ): AbortController {
-  // Route Copilot provider through the WebSocket bridge
-  if (config.providerType === AIProviderType.Copilot) {
-    return streamCopilotChat(
-      messages, config,
-      onChunk, onComplete, onError,
-      onReasoning, onToolCall, onToolResult,
-      onAgentEvent, onApprovalRequired,
-    );
-  }
-
   const controller = new AbortController();
 
   (async () => {
@@ -165,129 +154,6 @@ export function streamChat(
   })();
 
   return controller;
-}
-
-// ── Copilot session cache ────────────────────────────────────────────────────
-
-const copilotSessionCache = new Map<string, string>(); // cacheKey -> sessionId
-const copilotSessionCreating = new Map<string, Promise<string>>();
-
-/** Invalidate cached Copilot session for a given model (or all if no key). */
-export function invalidateCopilotSession(cacheKey?: string): void {
-  if (cacheKey) {
-    const sessionId = copilotSessionCache.get(cacheKey);
-    if (sessionId) {
-      CopilotBridgeService.getInstance().destroySession(sessionId).catch(() => {});
-    }
-    copilotSessionCache.delete(cacheKey);
-    copilotSessionCreating.delete(cacheKey);
-  } else {
-    for (const [, sessionId] of copilotSessionCache) {
-      CopilotBridgeService.getInstance().destroySession(sessionId).catch(() => {});
-    }
-    copilotSessionCache.clear();
-    copilotSessionCreating.clear();
-  }
-}
-
-// ── Copilot bridge streaming ─────────────────────────────────────────────────
-
-/**
- * Routes a chat prompt through the CopilotBridgeService WebSocket connection.
- * Copilot manages its own conversation history, so only the last user message
- * is sent. Streaming events are mapped to the same callbacks used by DeepAgent.
- */
-function streamCopilotChat(
-  messages: ChatMessage[],
-  config: AIProviderConfig,
-  onChunk: (text: string) => void,
-  onComplete: (stopReason: string) => void,
-  onError: (error: Error) => void,
-  onReasoning?: (text: string) => void,
-  onToolCall?: (toolName: string, args: string) => void,
-  onToolResult?: (toolName: string, result: string) => void,
-  onAgentEvent?: (event: AgentEvent) => void,
-  onApprovalRequired?: (req: { toolName: string; toolCallId: string; args: unknown; sessionId: string; stepIndex: number }) => Promise<boolean>,
-): AbortController {
-  const bridge = CopilotBridgeService.getInstance();
-  const outerController = new AbortController();
-
-  (async () => {
-    try {
-      if (!bridge.isConnected()) {
-        throw new Error(
-          'Copilot bridge is not connected. Configure the bridge connection in Settings.',
-        );
-      }
-
-      const cacheKey = config.modelId || 'default';
-      const reasoningEffort = config.reasoningEffort as 'low' | 'medium' | 'high' | 'xhigh' | undefined;
-      let sessionId = copilotSessionCache.get(cacheKey);
-      if (!sessionId) {
-        // Check if a creation is already in-flight
-        let creatingPromise = copilotSessionCreating.get(cacheKey);
-        if (!creatingPromise) {
-          creatingPromise = bridge.createSession(config.modelId, { reasoningEffort }).then(r => {
-            copilotSessionCache.set(cacheKey, r.sessionId);
-            copilotSessionCreating.delete(cacheKey);
-            return r.sessionId;
-          });
-          copilotSessionCreating.set(cacheKey, creatingPromise);
-        }
-        sessionId = await creatingPromise;
-      }
-
-      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      if (!lastUserMessage) throw new Error('No user message to send');
-
-      const innerController = bridge.streamPrompt(sessionId, lastUserMessage.content, {
-        onChunk,
-        onComplete,
-        onError: (err) => {
-          // Invalidate cached session on error (may be stale)
-          copilotSessionCache.delete(cacheKey);
-          onError(err);
-        },
-        onReasoning,
-        onToolCall,
-        onToolResult,
-        onToolRequest: (request) => {
-          if (request.kind === 'approve_action' && onApprovalRequired) {
-            onApprovalRequired({
-              toolName: request.toolName,
-              toolCallId: request.toolCallId,
-              args: request.args,
-              sessionId,
-              stepIndex: 0,
-            }).then((approved) => {
-              bridge.respondToTool(sessionId!, request.toolCallId, { approved }, approved)
-                .catch(() => {});
-            }).catch(() => {
-              bridge.respondToTool(sessionId!, request.toolCallId, { approved: false }, false)
-                .catch(() => {});
-            });
-          } else if (request.kind === 'ask_user') {
-            onAgentEvent?.({
-              type: 'ask_user' as AgentEvent['type'],
-              data: { message: request.message, toolCallId: request.toolCallId },
-            } as AgentEvent);
-          }
-        },
-      }, { reasoningEffort });
-
-      outerController.signal.addEventListener('abort', () => {
-        innerController.abort();
-      });
-    } catch (err) {
-      if (outerController.signal.aborted) {
-        onComplete('abort');
-        return;
-      }
-      onError(err instanceof Error ? err : new Error(String(err)));
-    }
-  })();
-
-  return outerController;
 }
 
 // ── system prompt builder ────────────────────────────────────────────────────

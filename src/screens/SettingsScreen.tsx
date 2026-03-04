@@ -32,7 +32,6 @@ import { AddMCPServerForm } from './settings/AddMCPServerForm';
 import { CanvasPanel } from '../components/canvas/CanvasPanel';
 import type { Artifact } from '../acp-hex/domain/types';
 import { sharedStyles } from '../utils/sharedStyles';
-import { CopilotBridgeService, type CopilotConnectionState } from '../ai/copilot';
 
 const TEST_ARTIFACTS: Artifact[] = [
   {
@@ -61,7 +60,7 @@ const TEST_ARTIFACTS: Artifact[] = [
     type: 'mermaid',
     title: 'Architecture Diagram',
     content: `graph TD
-    A[Mobile App] -->|ACP Protocol| B[Copilot SDK Bridge]
+    A[Mobile App] -->|WebSocket| B[Chat Bridge]
     B --> C[Claude Code]
     B --> D[Copilot CLI]
     B --> E[Codex]
@@ -150,17 +149,10 @@ export function SettingsScreen() {
 
   const [showAddMCP, setShowAddMCP] = useState(false);
   const [testArtifact, setTestArtifact] = useState<Artifact | null>(null);
-  const [bridgeState, setBridgeState] = useState<CopilotConnectionState>(
-    CopilotBridgeService.getInstance().connectionState,
-  );
 
   useEffect(() => {
     loadMCPServers();
   }, [loadMCPServers]);
-
-  useEffect(() => {
-    return CopilotBridgeService.getInstance().onConnectionStateChange(setBridgeState);
-  }, []);
 
   return (
     <ScrollView flex={1} backgroundColor="$background">
@@ -211,23 +203,23 @@ export function SettingsScreen() {
         })}
       </YStack>
 
-      {/* Copilot Bridge */}
+      {/* Chat Bridge */}
       <YStack marginTop={Spacing.lg} marginHorizontal={Spacing.lg} borderRadius={Radius.lg} padding={Spacing.lg} backgroundColor="$cardBackground">
         <TouchableOpacity
-          onPress={() => navigation.navigate('CopilotBridge')}
-          accessibilityLabel="Copilot Bridge settings"
+          onPress={() => navigation.navigate('ChatBridge')}
+          accessibilityLabel="Chat Bridge settings"
           accessibilityRole="button"
         >
           <XStack alignItems="center" gap={Spacing.sm}>
             <Server size={18} color={colors.text} />
             <YStack flex={1}>
-              <Text fontSize={16} fontWeight="500" color="$color">Copilot Bridge</Text>
+              <Text fontSize={16} fontWeight="500" color="$color">Chat Bridge</Text>
               <Text
                 fontSize={12}
                 marginTop={2}
-                color={bridgeState === 'authenticated' || bridgeState === 'connected' ? '$primary' : '$textTertiary'}
+                color="$textTertiary"
               >
-                {bridgeState === 'authenticated' ? 'Connected' : bridgeState === 'connected' ? 'Connected' : bridgeState === 'connecting' ? 'Connecting…' : 'Not connected'}
+                Remote CLI agent connection
               </Text>
             </YStack>
             <ChevronRight size={16} color={colors.textTertiary} />

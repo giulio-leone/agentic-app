@@ -13,10 +13,14 @@
 
 import type { AcpHexInstance } from '../acp-hex/integration/bootstrap';
 import { getAcpHex } from '../acp-hex/integration/bootstrap';
+import type { ChatBridgeClient } from '../ai/chatbridge/ChatBridgeClient';
 
 export let _service: AcpHexInstance | null = null;
 export let _aiAbortController: AbortController | null = null;
+export let _bridgeClient: ChatBridgeClient | null = null;
 
 export function setService(s: AcpHexInstance | null) { _service = s; }
 export function getService(): AcpHexInstance | null { return _service ?? getAcpHex(); }
 export function setAiAbortController(c: AbortController | null) { _aiAbortController = c; }
+export function setBridgeClient(c: ChatBridgeClient | null) { _bridgeClient = c; }
+export function getBridgeClient(): ChatBridgeClient | null { return _bridgeClient; }

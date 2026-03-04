@@ -55,7 +55,6 @@ import {
 import { useAppStore } from '../stores/appStore';
 import { getProviderInfo } from '../ai/providers';
 import { AIProviderType, type ReasoningEffort } from '../ai/types';
-import { invalidateCopilotSession } from '../ai/AIService';
 
 const keyExtractor = (item: ChatMessage) => item.id;
 const emptyListStyle = { flex: 1, justifyContent: 'center', alignItems: 'center' } as const;
@@ -314,20 +313,12 @@ export function SessionDetailScreen() {
     }
   }, [bridgeModels, reasoningEffortLevels, isCopilotProvider]);
 
-  // Wrapped updateServer that invalidates Copilot session cache on model change
   const handleUpdateServer = useCallback(async (server: ACPServerConfiguration) => {
-    const prev = servers.find(s => s.id === server.id);
     await updateServer(server);
-    if (server.aiProviderConfig?.providerType === AIProviderType.Copilot &&
-        prev?.aiProviderConfig?.modelId !== server.aiProviderConfig?.modelId) {
-      invalidateCopilotSession(prev?.aiProviderConfig?.modelId || 'default');
-    }
-  }, [servers, updateServer]);
+  }, [updateServer]);
 
-  // Copilot reasoning effort: updates server config + invalidates session
   const handleCopilotReasoningSelect = useCallback((level: string | null) => {
     if (isCopilotProvider && selectedServer?.aiProviderConfig) {
-      const oldKey = selectedServer.aiProviderConfig.modelId || 'default';
       updateServer({
         ...selectedServer,
         aiProviderConfig: {
@@ -335,7 +326,6 @@ export function SessionDetailScreen() {
           reasoningEffort: (level as ReasoningEffort) ?? undefined,
         },
       });
-      invalidateCopilotSession(oldKey);
     } else {
       setSelectedReasoningEffort(level);
     }

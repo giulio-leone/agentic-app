@@ -3,7 +3,7 @@
  *
  * AI Provider flow:     Step 0: Choose provider → Step 1: API key → Step 2: Pick model
  * ACP Agent flow:       Step 0: Choose ACP → Step 1: Host + token → Save
- * Copilot Bridge flow:  Step 0: Choose Copilot → Step 1: Discovery/Pairing → Step 2: Pick model
+ * Chat Bridge flow:     Step 0: Choose Chat Bridge → Step 1: WS URL + token → Step 2: Agent select
  *
  * Logic extracted into:
  *  - quicksetup/presets.ts              (preset data)
@@ -11,9 +11,9 @@
  *  - quicksetup/Step0Presets.tsx         (provider selection)
  *  - quicksetup/Step1AI.tsx             (API key input)
  *  - quicksetup/Step1ACP.tsx            (ACP host config)
- *  - quicksetup/Step1CopilotBridge.tsx  (discovery + pairing)
+ *  - quicksetup/Step1CopilotBridge.tsx  (Chat Bridge WS URL + token)
  *  - quicksetup/Step2ModelPicker.tsx    (AI model picker + advanced)
- *  - quicksetup/Step2CopilotModels.tsx  (Copilot model picker)
+ *  - quicksetup/Step2CopilotModels.tsx  (CLI agent selection)
  */
 
 import React from 'react';

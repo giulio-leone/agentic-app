@@ -11,9 +11,12 @@ import { createAcpHex, getAcpHex } from '../../acp-hex/integration/bootstrap';
 import type { AgentProfile } from '../../acp-hex/domain/types';
 import { eventBus } from '../../acp-hex/domain';
 import {
-  _service, _aiAbortController,
-  setService, setAiAbortController,
+  _service, _aiAbortController, _bridgeClient,
+  setService, setAiAbortController, setBridgeClient,
 } from '../storePrivate';
+import { ChatBridgeClient } from '../../ai/chatbridge/ChatBridgeClient';
+import { createChatBridgeCallbacks } from '../../ai/chatbridge/chatBridgeCallbacks';
+import { ACPConnectionState as BridgeState } from '../../acp-hex/domain/types';
 import type { ACPServerConfiguration } from '../../acp-hex/domain/types';
 import { createACPListener, clearRetry } from '../helpers/acpListener';
 import { showInfoToast, showErrorToast } from '../../utils/toast';
@@ -21,6 +24,10 @@ import { showInfoToast, showErrorToast } from '../../utils/toast';
 /** Detect AI provider servers, including legacy entries without serverType. */
 const isAIServer = (s?: ACPServerConfiguration) =>
   s?.serverType === ServerType.AIProvider || (!s?.serverType && !s?.host);
+
+/** Detect ChatBridge servers. */
+const isChatBridgeServer = (s?: ACPServerConfiguration) =>
+  s?.serverType === ServerType.ChatBridge;
 
 export type ServerSlice = Pick<AppState, 'servers' | 'selectedServerId' | 'connectionState' | 'isInitialized' | 'agentInfo' | 'connectionError' | 'bridgeModels' | 'reasoningEffortLevels' | 'selectedBridgeModel' | 'selectedReasoningEffort' | 'selectedCwd' | 'cliSessions' | 'isDiscoveringCli' | 'activePtySessionId' | 'ptyOwnerCliSessionId'>
   & Pick<AppActions, 'loadServers' | 'addServer' | 'updateServer' | 'deleteServer' | 'selectServer' | 'connect' | 'disconnect' | 'initialize' | '_getService' | 'setSelectedBridgeModel' | 'setSelectedReasoningEffort' | 'setSelectedCwd' | 'listDirectory' | 'discoverCliSessions' | 'loadCliSessionTurns' | 'startCliWatch' | 'stopCliWatch' | 'spawnCopilotCli' | 'writeToCopilotPty' | 'killCopilotPty'>;
@@ -291,6 +298,8 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     if (state.selectedServerId === id) {
       _service?.disconnect();
       setService(null);
+      _bridgeClient?.disconnect();
+      setBridgeClient(null);
     }
   },
 
@@ -313,6 +322,8 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
     _service?.disconnect();
     setService(null);
+    _bridgeClient?.disconnect();
+    setBridgeClient(null);
     _aiAbortController?.abort();
     setAiAbortController(null);
 
@@ -372,6 +383,66 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
       return;
     }
 
+    // ── Chat Bridge path ──
+    if (isChatBridgeServer(server)) {
+      if (!server.host) {
+        set({ connectionError: 'Server has no host configured' });
+        return;
+      }
+      const cleanHost = server.host
+        .replace(/^(wss?|https?):\/\//i, '')
+        .replace(/\/+$/, '');
+      const scheme = server.scheme === 'wss' ? 'wss' : 'ws';
+      const endpoint = `${scheme}://${cleanHost}`;
+      get().appendLog(`Chat Bridge: connecting to ${endpoint}`);
+
+      set({ connectionState: ACPConnectionState.Connecting, connectionError: null });
+
+      const storeApi = {
+        get: () => ({
+          chatMessages: get().chatMessages,
+          selectedSessionId: get().selectedSessionId,
+          isStreaming: get().isStreaming,
+          streamingMessageId: get().streamingMessageId,
+        }),
+        set: (partial: Record<string, unknown>) => set(partial as any),
+        appendLog: (msg: string) => get().appendLog(msg),
+      };
+
+      const callbacks = createChatBridgeCallbacks(storeApi);
+      const wrappedCallbacks = {
+        ...callbacks,
+        onConnected: () => {
+          callbacks.onConnected();
+          set({
+            connectionState: ACPConnectionState.Connected,
+            isInitialized: true,
+            connectionError: null,
+            agentInfo: {
+              name: 'Chat Bridge',
+              version: server.host ?? '',
+              capabilities: { promptCapabilities: { image: false } },
+              modes: [],
+            },
+          });
+        },
+        onDisconnected: () => {
+          callbacks.onDisconnected();
+          set({ connectionState: ACPConnectionState.Disconnected, isInitialized: false });
+        },
+        onError: (error: string) => {
+          callbacks.onError(error);
+          set({ connectionError: error });
+        },
+      };
+
+      const client = new ChatBridgeClient(wrappedCallbacks);
+      setBridgeClient(client);
+      client.connect(endpoint, server.token || undefined);
+      return;
+    }
+
+    // ── ACP path ──
     // Sanitize host: strip accidental protocol prefix
     if (!server.host) {
       set({ connectionError: 'Server has no host configured' });
@@ -443,6 +514,8 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     const hex = _service ?? getAcpHex();
     hex?.disconnect();
     setService(null);
+    _bridgeClient?.disconnect();
+    setBridgeClient(null);
     set({
       connectionState: ACPConnectionState.Disconnected,
       isInitialized: false,

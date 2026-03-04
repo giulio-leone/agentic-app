@@ -9,7 +9,7 @@ import { getAcpHex } from '../../acp-hex/integration/bootstrap';
 import { SessionStorage, AI_SHARED_SERVER_ID } from '../../storage/SessionStorage';
 import { getApiKey } from '../../storage/SecureStorage';
 import {
-  _service, _aiAbortController,
+  _service, _aiAbortController, _bridgeClient,
   setAiAbortController,
 } from '../storePrivate';
 import type { AIProviderConfig } from '../../ai/types';
@@ -130,6 +130,25 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         }
       }
 
+      // ── Chat Bridge path ──
+      if (server.serverType === ServerType.ChatBridge) {
+        if (!_bridgeClient || _bridgeClient.state !== 'connected') {
+          const errMsg: ChatMessage = {
+            id: uuidv4(),
+            role: 'system',
+            content: '⚠️ Not connected to Chat Bridge. Please reconnect.',
+            timestamp: new Date().toISOString(),
+          };
+          set(s => ({ chatMessages: [...s.chatMessages, errMsg], isStreaming: false }));
+          return;
+        }
+        // The bridge session is tracked via bridge's own session ID.
+        // The bridge callbacks (chatBridgeCallbacks) handle assistant_start/chunk/end
+        // and update chatMessages automatically.
+        _bridgeClient.sendMessage(sessionId, text);
+        return;
+      }
+
       // ── AI Provider path ──
       const isAI = server.serverType === ServerType.AIProvider
         || (!server.serverType && !server.host);
@@ -219,6 +238,14 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
 
     cancelPrompt: async () => {
       const state = get();
+
+      // Chat Bridge cancel
+      if (_bridgeClient && _bridgeClient.state === 'connected' && state.selectedSessionId) {
+        _bridgeClient.stopSession(state.selectedSessionId);
+        set({ isStreaming: false });
+        get().appendLog('→ bridge/stop');
+        return;
+      }
 
       if (_aiAbortController) {
         _aiAbortController.abort();

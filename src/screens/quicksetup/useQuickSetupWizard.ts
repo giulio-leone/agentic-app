@@ -14,9 +14,8 @@ import { getProviderInfo } from '../../ai/providers';
 import { fetchModelsFromProvider, FetchedModel } from '../../ai/ModelFetcher';
 import { setCachedModels } from '../../ai/ModelCache';
 import { saveApiKey } from '../../storage/SecureStorage';
-import { CopilotBridgeService, saveBridgeConfig } from '../../ai/copilot';
 import type { RootStackParamList } from '../../navigation';
-import { AI_PRESETS, ACP_PRESETS, COPILOT_BRIDGE_PRESET, type PresetProvider, type ACPPreset } from './presets';
+import { AI_PRESETS, ACP_PRESETS, CHAT_BRIDGE_PRESET, type PresetProvider, type ACPPreset } from './presets';
 
 type SetupFlow = 'ai' | 'acp' | 'copilot';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -78,7 +77,7 @@ export function useQuickSetupWizard() {
   const stepCount = flow === 'acp' ? 2 : 3;
 
   // ── Animations ──
-  const totalCards = AI_PRESETS.length + ACP_PRESETS.length + 1; // +1 for Copilot Bridge
+  const totalCards = AI_PRESETS.length + ACP_PRESETS.length + 1; // +1 for Chat Bridge
   const cardAnims = useRef(
     Array.from({ length: totalCards }, () => new Animated.Value(0)),
   ).current;
@@ -141,11 +140,11 @@ export function useQuickSetupWizard() {
   const handleCopilotSelect = useCallback(() => {
     Haptics.selectionAsync();
     setFlow('copilot');
-    setCopilotUrl('');
+    setCopilotUrl(`localhost:${CHAT_BRIDGE_PRESET.defaultPort}`);
     setCopilotHost('');
     setCopilotToken('');
     setCopilotTls(false);
-    setCopilotModelId('');
+    setCopilotModelId('claude');
     animateStep(1);
   }, [animateStep]);
 
@@ -299,44 +298,29 @@ export function useQuickSetupWizard() {
     }
   }, [selectedACP, acpScheme, acpHost, acpToken, acpName, isEditing, editingServer, addServer, updateServer, navigation]);
 
-  // ── Save Copilot ──
+  // ── Save Copilot (Chat Bridge) ──
   const handleSaveCopilot = useCallback(async () => {
-    if (!copilotUrl.trim() || !copilotModelId) {
+    if (!copilotUrl.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Configurazione incompleta', 'Connettiti al bridge e seleziona un modello.');
+      Alert.alert('Incomplete configuration', 'Enter the Chat Bridge host:port.');
       return;
     }
 
     setSaving(true);
     try {
-      // Persist bridge config
-      await saveBridgeConfig({
-        url: copilotUrl.trim(),
-        token: copilotToken.trim() || undefined,
-        reconnect: true,
-      });
-
-      // Connect the bridge service
-      const bridge = CopilotBridgeService.getInstance();
-      await bridge.connect({
-        url: copilotUrl.trim(),
-        token: copilotToken.trim() || undefined,
-        reconnect: true,
-      });
-
-      // Create server entry for the Copilot provider
+      const scheme = copilotTls ? 'wss' : 'ws';
       const serverData = {
-        name: `Copilot — ${copilotModelId}`,
-        scheme: '',
+        name: `Chat Bridge (${copilotModelId || 'claude'})`,
+        scheme,
         host: copilotUrl.trim(),
         token: copilotToken.trim(),
         cfAccessClientId: '',
         cfAccessClientSecret: '',
         workingDirectory: '',
-        serverType: ServerType.AIProvider,
+        serverType: ServerType.ChatBridge,
         aiProviderConfig: {
           providerType: AIProviderType.Copilot,
-          modelId: copilotModelId,
+          modelId: copilotModelId || 'claude',
         },
       };
 
@@ -345,11 +329,11 @@ export function useQuickSetupWizard() {
       navigation.goBack();
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Errore', (error as Error).message);
+      Alert.alert('Error', (error as Error).message);
     } finally {
       setSaving(false);
     }
-  }, [copilotUrl, copilotToken, copilotModelId, addServer, navigation]);
+  }, [copilotUrl, copilotToken, copilotTls, copilotModelId, addServer, navigation]);
 
   // Filtered / display models
   const filteredModels = models.filter(m => {

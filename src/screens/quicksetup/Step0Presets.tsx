@@ -8,7 +8,7 @@ import { YStack, XStack, Text } from 'tamagui';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { FontSize, Spacing, Radius } from '../../utils/theme';
 import type { ThemeColors } from '../../utils/theme';
-import { AI_PRESETS, ACP_PRESETS, COPILOT_BRIDGE_PRESET } from './presets';
+import { AI_PRESETS, ACP_PRESETS, CHAT_BRIDGE_PRESET } from './presets';
 import type { useQuickSetupWizard } from './useQuickSetupWizard';
 
 type WizardState = ReturnType<typeof useQuickSetupWizard>;
@@ -39,13 +39,13 @@ export function Step0Presets({ w, colors }: Step0PresetsProps) {
         </Text>
       </YStack>
 
-      {/* Copilot SDK Bridge — featured */}
+      {/* Chat Bridge — featured */}
       <Text fontSize={FontSize.caption} fontWeight="600" color={colors.textTertiary} textTransform="uppercase" letterSpacing={0.5}>
-        Copilot SDK Bridge
+        Chat Bridge
       </Text>
       {(() => {
         const idx = cardIndex++;
-        const preset = COPILOT_BRIDGE_PRESET;
+        const preset = CHAT_BRIDGE_PRESET;
         return (
           <Animated.View
             style={{ opacity: w.cardAnims[idx], transform: [{ translateY: w.cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}
