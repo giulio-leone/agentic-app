@@ -61,11 +61,28 @@ export class SessionManager {
     return session;
   }
 
+  /** Spawn an interactive session from an external read-only session's cwd */
+  spawnFromExternal(externalSessionId: string): Session | null {
+    const ext = this.sessions.get(externalSessionId);
+    if (!ext || !ext.external) return null;
+    return this.createSession({ cli: ext.cli, cwd: ext.cwd, model: ext.model });
+  }
+
   /** Send a message (prompt) to a session */
   sendMessage(sessionId: string, content: string, sink: MessageSink): void {
     const session = this.sessions.get(sessionId);
     if (!session) {
       sink({ type: 'error', message: `Session not found: ${sessionId}`, sessionId });
+      return;
+    }
+
+    if (session.readonly) {
+      sink({
+        type: 'error',
+        message: 'This is a read-only session detected from the local Copilot CLI. Use "Spawn here" to create an interactive session in the same directory.',
+        sessionId,
+        code: 'READONLY_SESSION',
+      });
       return;
     }
 
@@ -144,6 +161,10 @@ export class SessionManager {
       createdAt: s.createdAt.toISOString(),
       lastActivity: s.lastActivity.toISOString(),
       title: s.title,
+      external: s.external,
+      readonly: s.readonly,
+      branch: s.branch,
+      repository: s.repository,
     }));
   }
 
@@ -186,6 +207,10 @@ export class SessionManager {
       createdAt: new Date(),
       lastActivity: new Date(),
       title: opts.title,
+      external: true,
+      readonly: true,
+      branch: opts.branch,
+      repository: opts.repository,
     };
     this.sessions.set(opts.id, session);
     log.info('External session registered', { id: opts.id, cli: opts.cli, cwd: opts.cwd });

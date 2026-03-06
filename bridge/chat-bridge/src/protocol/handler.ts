@@ -48,6 +48,9 @@ export function createProtocolHandler(
       case 'resume_session':
         handleResumeSession(msg);
         break;
+      case 'spawn_from_external':
+        handleSpawnFromExternal(msg);
+        break;
       case 'ping':
         sink({ type: 'pong', timestamp: Date.now() });
         break;
@@ -119,6 +122,23 @@ export function createProtocolHandler(
     sessions.registerSink(msg.sessionId, sink);
     watchingSessions.add(msg.sessionId);
     sink({ type: 'session_event', sessionId: msg.sessionId, event: 'resumed' });
+  }
+
+  function handleSpawnFromExternal(msg: ClientMsg & { type: 'spawn_from_external' }): void {
+    const newSession = sessions.spawnFromExternal(msg.sessionId);
+    if (!newSession) {
+      sink({ type: 'error', message: `Cannot spawn from session: ${msg.sessionId}`, sessionId: msg.sessionId });
+      return;
+    }
+    sessions.registerSink(newSession.id, sink);
+    watchingSessions.add(newSession.id);
+    sink({
+      type: 'session_created',
+      sessionId: newSession.id,
+      cli: newSession.cli,
+      cwd: newSession.cwd,
+      model: newSession.model,
+    });
   }
 
   function handleGetStatus(): void {

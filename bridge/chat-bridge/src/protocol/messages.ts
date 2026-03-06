@@ -47,6 +47,11 @@ export interface ClientResumeSession {
   sessionId: string;
 }
 
+export interface ClientSpawnFromExternal {
+  type: 'spawn_from_external';
+  sessionId: string;
+}
+
 export interface ClientPing {
   type: 'ping';
 }
@@ -62,6 +67,7 @@ export type ClientMsg =
   | ClientDestroySession
   | ClientListSessions
   | ClientResumeSession
+  | ClientSpawnFromExternal
   | ClientPing
   | ClientGetStatus;
 
@@ -192,6 +198,14 @@ export interface SessionInfo {
   createdAt: string;
   lastActivity?: string;
   title?: string;
+  /** True for externally-detected sessions (from ~/.copilot/session-state/) */
+  external?: boolean;
+  /** External sessions are read-only — no message sending */
+  readonly?: boolean;
+  /** Git branch */
+  branch?: string;
+  /** GitHub repository */
+  repository?: string;
 }
 
 export interface UsageInfo {

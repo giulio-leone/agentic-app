@@ -15,6 +15,14 @@ export interface Session {
   createdAt: Date;
   lastActivity: Date;
   title?: string;
+  /** True for externally-detected sessions (from ~/.copilot/session-state/) */
+  external?: boolean;
+  /** External sessions are read-only — no stdin/message sending */
+  readonly?: boolean;
+  /** Git branch from workspace.yaml */
+  branch?: string;
+  /** GitHub repository from workspace.yaml */
+  repository?: string;
 }
 
 export interface SpawnOptions {
