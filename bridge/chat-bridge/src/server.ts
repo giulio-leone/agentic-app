@@ -12,6 +12,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { WebSocketServer, type WebSocket } from 'ws';
 import { createProtocolHandler } from './protocol/handler.js';
 import { SessionManager } from './session/manager.js';
+import { SessionWatcher } from './watcher/session-watcher.js';
 import { NetworkManager } from './network/manager.js';
 import { generateQRSvg } from './network/qrcode.js';
 import type { ClientMsg, AuthConfig } from './protocol/messages.js';
@@ -28,12 +29,14 @@ export class ChatBridgeServer {
   private httpServer;
   private wss: WebSocketServer;
   private sessions = new SessionManager();
+  private watcher: SessionWatcher;
   private network: NetworkManager;
   private config: ServerConfig;
 
   constructor(config: ServerConfig) {
     this.config = config;
     this.network = new NetworkManager(config.port);
+    this.watcher = new SessionWatcher(this.sessions);
 
     this.httpServer = createHttpServer((req, res) => this.handleHttp(req, res));
     this.wss = new WebSocketServer({
@@ -51,6 +54,12 @@ export class ChatBridgeServer {
     return new Promise((resolve) => {
       this.httpServer.listen(this.config.port, '0.0.0.0', () => {
         log.info(`Chat Bridge listening on port ${this.config.port}`);
+
+        // Start watching for external Copilot sessions
+        this.watcher.start().catch(err =>
+          log.warn(`Session watcher failed to start: ${(err as Error).message}`)
+        );
+
         resolve();
       });
     });
@@ -69,6 +78,7 @@ export class ChatBridgeServer {
   /** Graceful shutdown */
   shutdown(): void {
     log.info('Shutting down...');
+    this.watcher.stop();
     this.sessions.shutdown();
     this.wss.close();
     this.httpServer.close();

@@ -162,7 +162,7 @@ export interface ServerPong {
 export interface ServerSessionEvent {
   type: 'session_event';
   sessionId: string;
-  event: 'started' | 'stopped' | 'resumed' | 'error' | 'idle';
+  event: 'started' | 'stopped' | 'resumed' | 'error' | 'idle' | 'user_message';
   detail?: string;
 }
 

@@ -163,6 +163,187 @@ export class SessionManager {
     this.activePrompts.clear();
   }
 
+  // ── External Sessions (CLI watcher) ──
+
+  /** Register an externally-detected CLI session (from ~/.copilot/session-state/) */
+  registerExternalSession(opts: {
+    id: string;
+    cli: CliAgent;
+    cwd: string;
+    title?: string;
+    repository?: string;
+    branch?: string;
+  }): boolean {
+    if (this.sessions.has(opts.id)) return false;
+
+    const session: Session = {
+      id: opts.id,
+      cli: opts.cli,
+      cwd: opts.cwd,
+      model: undefined,
+      tmuxSession: '',
+      alive: true,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      title: opts.title,
+    };
+    this.sessions.set(opts.id, session);
+    log.info('External session registered', { id: opts.id, cli: opts.cli, cwd: opts.cwd });
+
+    // Notify all connected sinks about the new session
+    this.broadcastSessionList();
+    return true;
+  }
+
+  /** Forward a parsed events.jsonl event from an external session to connected sinks */
+  forwardExternalEvent(sessionId: string, event: { type: string; data?: Record<string, unknown>; timestamp?: string }): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    session.lastActivity = new Date();
+    const sink = this.getSink(sessionId);
+    // Also broadcast to any client watching via session_list
+    const broadcastSink = this.sinks.get('__broadcast__');
+
+    const targets = [sink, broadcastSink].filter(Boolean) as MessageSink[];
+    if (targets.length === 0) return;
+
+    const send = (msg: ServerMsg) => targets.forEach(s => s(msg));
+
+    switch (event.type) {
+      case 'session.start':
+        // Session already registered; update metadata if available
+        if (event.data?.context) {
+          const ctx = event.data.context as Record<string, string>;
+          session.cwd = ctx.cwd ?? session.cwd;
+          session.title = session.title || `Copilot • ${ctx.branch ?? sessionId.slice(4, 12)}`;
+        }
+        this.broadcastSessionList();
+        break;
+
+      case 'user.message':
+        // Forward user message as a session event
+        send({
+          type: 'session_event',
+          sessionId,
+          event: 'user_message',
+          detail: String((event.data as Record<string, unknown>)?.content ?? '').slice(0, 200),
+        });
+        break;
+
+      case 'assistant.turn_start': {
+        const msgId = String((event.data as Record<string, unknown>)?.turnId ?? randomUUID().slice(0, 12));
+        this.activePrompts.set(sessionId, msgId);
+        send({ type: 'assistant_start', sessionId, messageId: msgId });
+        break;
+      }
+
+      case 'assistant.message_delta':
+        if (event.data) {
+          const msgId = this.activePrompts.get(sessionId) ?? 'unknown';
+          const text = String((event.data as Record<string, unknown>)?.text ?? '');
+          if (text) {
+            send({ type: 'assistant_chunk', sessionId, messageId: msgId, text });
+          }
+        }
+        break;
+
+      case 'assistant.message': {
+        const msgId = this.activePrompts.get(sessionId) ?? 'unknown';
+        const content = String((event.data as Record<string, unknown>)?.content ?? '');
+        if (content) {
+          send({ type: 'assistant_chunk', sessionId, messageId: msgId, text: content });
+        }
+        // Extract tool requests
+        const toolRequests = (event.data as Record<string, unknown>)?.toolRequests;
+        if (Array.isArray(toolRequests)) {
+          for (const tr of toolRequests) {
+            const tool = tr as Record<string, unknown>;
+            send({
+              type: 'tool_use',
+              sessionId,
+              messageId: msgId,
+              toolName: String(tool.name ?? 'unknown'),
+              input: (tool.arguments ?? {}) as Record<string, unknown>,
+            });
+          }
+        }
+        break;
+      }
+
+      case 'tool.execution_start': {
+        const msgId = this.activePrompts.get(sessionId) ?? 'unknown';
+        const toolName = String((event.data as Record<string, unknown>)?.name ?? 'unknown');
+        send({
+          type: 'tool_use',
+          sessionId,
+          messageId: msgId,
+          toolName,
+          input: ((event.data as Record<string, unknown>)?.arguments ?? {}) as Record<string, unknown>,
+        });
+        break;
+      }
+
+      case 'tool.execution_complete': {
+        const msgId = this.activePrompts.get(sessionId) ?? 'unknown';
+        const toolName = String((event.data as Record<string, unknown>)?.name ?? 'tool');
+        const output = String((event.data as Record<string, unknown>)?.output ?? '');
+        send({
+          type: 'tool_result',
+          sessionId,
+          messageId: msgId,
+          toolName,
+          output: output.slice(0, 5000),
+          isError: (event.data as Record<string, unknown>)?.isError === true,
+        });
+        break;
+      }
+
+      case 'assistant.turn_end': {
+        const msgId = this.activePrompts.get(sessionId) ?? 'unknown';
+        send({
+          type: 'assistant_end',
+          sessionId,
+          messageId: msgId,
+          stopReason: 'end_turn',
+        });
+        this.activePrompts.delete(sessionId);
+        break;
+      }
+
+      case 'result': {
+        const msgId = this.activePrompts.get(sessionId) ?? 'unknown';
+        const usage = event.data?.usage as Record<string, number> | undefined;
+        send({
+          type: 'assistant_end',
+          sessionId,
+          messageId: msgId,
+          stopReason: 'end_turn',
+          usage: usage ? {
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+          } : undefined,
+        });
+        this.activePrompts.delete(sessionId);
+        break;
+      }
+
+      case 'session.end':
+        session.alive = false;
+        send({ type: 'session_event', sessionId, event: 'idle', detail: 'Session ended' });
+        this.broadcastSessionList();
+        break;
+    }
+  }
+
+  /** Broadcast updated session list to all connected sinks */
+  private broadcastSessionList(): void {
+    const list = this.listSessions();
+    for (const [, sink] of this.sinks) {
+      sink({ type: 'session_list', sessions: list });
+    }
+  }
+
   // ── Internal ──
 
   private sinks = new Map<string, MessageSink>();
