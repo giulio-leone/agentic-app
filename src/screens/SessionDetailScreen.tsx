@@ -542,6 +542,28 @@ export function SessionDetailScreen() {
         <QuotedMessageBar message={quotedMessage} onClear={clearQuote} colors={colors} />
       )}
 
+      {/* Connection status banner for ChatBridge */}
+      {isChatBridgeServer && connectionState === ACPConnectionState.Connecting && (
+        <XStack paddingVertical={4} paddingHorizontal={Spacing.md} backgroundColor={`${colors.orange}15`} alignItems="center" justifyContent="center" gap={4}>
+          <Text fontSize={12} color={colors.orange}>⟳ Connecting to bridge…</Text>
+        </XStack>
+      )}
+      {isChatBridgeServer && connectionState === ACPConnectionState.Disconnected && !isConnected && (
+        <XStack
+          paddingVertical={6}
+          paddingHorizontal={Spacing.md}
+          backgroundColor={`${colors.destructive}10`}
+          alignItems="center"
+          justifyContent="center"
+          gap={6}
+          pressStyle={{ opacity: 0.7 }}
+          onPress={connect}
+        >
+          <Text fontSize={12} color={colors.destructive}>⚠ Not connected</Text>
+          <Text fontSize={11} color={colors.textTertiary}>Tap to reconnect</Text>
+        </XStack>
+      )}
+
       <ChatToolbar
         colors={colors}
         servers={servers}

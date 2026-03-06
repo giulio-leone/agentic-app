@@ -348,7 +348,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
 
     // If same server is already selected, just ensure it's connected
     if (state.selectedServerId === id) {
-      if (isAIServer(server) && !state.isInitialized) {
+      if ((isAIServer(server) || isChatBridgeServer(server)) && !state.isInitialized) {
         get().connect();
       }
       return;
@@ -387,7 +387,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
     // Persist selection
     if (id) SessionStorage.saveActiveServerId(id).catch(e => console.warn('[SessionStorage] Save active ID failed:', e));
     if (id) {
-      if (isAIServer(server)) {
+      if (isAIServer(server) || isChatBridgeServer(server)) {
         get().connect();
       }
       if (!bothAI) {
@@ -444,6 +444,7 @@ export const createServerSlice: StateCreator<AppState & AppActions, [], [], Serv
           chatMessages: get().chatMessages,
           sessions: get().sessions,
           selectedSessionId: get().selectedSessionId,
+          selectedServerId: get().selectedServerId,
           isStreaming: get().isStreaming,
           streamingMessageId: get().streamingMessageId,
         }),

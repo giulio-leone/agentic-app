@@ -88,10 +88,13 @@ export class ChatBridgeClient {
   /** Send a message to the bridge */
   send(msg: ClientMsg): void {
     if (this._state !== 'connected' || !this.ws) {
+      console.warn(`[CB] ✗ send blocked (state=${this._state}): ${msg.type}`);
       this.callbacks.onError('Not connected to bridge');
       return;
     }
-    this.ws.send(JSON.stringify(msg));
+    const json = JSON.stringify(msg);
+    console.log(`[CB] → OUT [${msg.type}] ${json.length > 300 ? json.slice(0, 300) + '…' : json}`);
+    this.ws.send(json);
   }
 
   // ── Convenience methods ──
@@ -141,6 +144,7 @@ export class ChatBridgeClient {
       this._state = 'connected';
       this.reconnectAttempts = 0;
       this.startPing();
+      console.log(`[CB] ✓ WebSocket connected to ${this.endpoint}`);
       this.callbacks.onConnected();
     };
 
@@ -149,14 +153,16 @@ export class ChatBridgeClient {
       const text = typeof event.data === 'string' ? event.data : String(event.data);
       try {
         const msg = JSON.parse(text) as ServerMsg;
+        console.log(`[CB] ← IN  [${msg.type}] ${text.length > 300 ? text.slice(0, 300) + '…' : text}`);
         this.handleMessage(msg);
-      } catch {
-        // Ignore malformed messages
+      } catch (e) {
+        console.warn(`[CB] ✗ Malformed message: ${text.slice(0, 100)}`);
       }
     };
 
     ws.onerror = () => {
       if (this.ws !== ws) return;
+      console.error(`[CB] ✗ WebSocket error`);
       this.callbacks.onError('WebSocket error');
     };
 
@@ -164,6 +170,7 @@ export class ChatBridgeClient {
       if (this.ws !== ws) return;
       this.clearTimers();
       this.ws = null;
+      console.log(`[CB] WebSocket closed (prev state=${this._state})`);
 
       if (this._state === 'connected') {
         this._state = 'disconnected';

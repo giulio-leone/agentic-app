@@ -24,7 +24,7 @@ export function useQuickSetupWizard() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'QuickSetup'>>();
   const editingServer = route.params?.editingServer;
-  const { addServer, updateServer } = useServerActions();
+  const { addServer, updateServer, selectServer } = useServerActions();
   const servers = useServers();
   const isEditing = !!editingServer;
   const editingAI = editingServer?.aiProviderConfig;
@@ -236,6 +236,7 @@ export function useQuickSetupWizard() {
         }
       } else {
         const serverId = await addServer(serverData);
+        selectServer(serverId);
         if (apiKey.trim()) {
           await saveApiKey(`${serverId}_${selectedPreset.type}`, apiKey.trim());
         }
@@ -248,7 +249,7 @@ export function useQuickSetupWizard() {
     } finally {
       setSaving(false);
     }
-  }, [selectedPreset, selectedModelId, models, apiKey, addServer, navigation]);
+  }, [selectedPreset, selectedModelId, models, apiKey, addServer, selectServer, navigation]);
 
   // ── Save ACP ──
   const handleSaveACP = useCallback(async () => {
@@ -286,7 +287,8 @@ export function useQuickSetupWizard() {
       if (isEditing && editingServer) {
         await updateServer({ ...serverData, id: editingServer.id });
       } else {
-        await addServer(serverData);
+        const serverId = await addServer(serverData);
+        selectServer(serverId);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
@@ -296,7 +298,7 @@ export function useQuickSetupWizard() {
     } finally {
       setSaving(false);
     }
-  }, [selectedACP, acpScheme, acpHost, acpToken, acpName, isEditing, editingServer, addServer, updateServer, navigation]);
+  }, [selectedACP, acpScheme, acpHost, acpToken, acpName, isEditing, editingServer, addServer, selectServer, updateServer, navigation]);
 
   // ── Save Chat Bridge ──
   const handleSaveChatBridge = useCallback(async () => {
@@ -324,7 +326,8 @@ export function useQuickSetupWizard() {
         },
       };
 
-      await addServer(serverData);
+      const serverId = await addServer(serverData);
+      selectServer(serverId);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (error) {
@@ -333,7 +336,7 @@ export function useQuickSetupWizard() {
     } finally {
       setSaving(false);
     }
-  }, [bridgeUrl, bridgeToken, bridgeTls, bridgeModelId, addServer, navigation]);
+  }, [bridgeUrl, bridgeToken, bridgeTls, bridgeModelId, addServer, selectServer, navigation]);
 
   // Filtered / display models
   const filteredModels = models.filter(m => {

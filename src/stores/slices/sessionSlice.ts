@@ -149,6 +149,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
 
     const server = get().servers.find(s => s.id === get().selectedServerId);
     if (server?.serverType === ServerType.ChatBridge) {
+      console.log(`[selectSession] ChatBridge path: id=${id}, isBridge=${id.startsWith('bridge:')}`);
       if (id.startsWith('bridge:')) {
         const bridgeSessionId = id.replace(/^bridge:/, '');
         setActiveBridgeSessionId(bridgeSessionId);
@@ -221,6 +222,7 @@ export const createSessionSlice: StateCreator<AppState & AppActions, [], [], Ses
     const sid = storageId(state);
     if (!sid) return;
     const messages = await SessionStorage.fetchMessages(sid, sessionId);
+    console.log(`[loadSessionMessages] sid=${sid} sessionId=${sessionId} loaded=${messages.length}`);
     set({ chatMessages: messages });
   },
 });

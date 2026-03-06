@@ -8,6 +8,7 @@ import type { ChatBridgeCallbacks } from './ChatBridgeClient';
 import type { CliAgent, SessionInfo, NetworkInfo, UsageInfo } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatMessage, MessageSegment, SessionSummary } from '../../acp-hex/domain/types';
+import { SessionStorage } from '../../storage/SessionStorage';
 import {
   setActiveBridgeSessionId,
   getActiveBridgeSessionId,
@@ -23,6 +24,7 @@ export interface ChatBridgeStoreApi {
     chatMessages: ChatMessage[];
     sessions: SessionSummary[];
     selectedSessionId: string | null;
+    selectedServerId: string | null;
     isStreaming: boolean;
     streamingMessageId: string | null;
   };
@@ -50,24 +52,58 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     return [...incoming, ...local];
   };
 
+  /** Persist current chatMessages to AsyncStorage under the active session. */
+  function persistMessages(sessionIdOverride?: string) {
+    const { chatMessages, selectedSessionId, selectedServerId } = store.get();
+    const sid = selectedServerId;
+    const sessionId = sessionIdOverride ?? selectedSessionId;
+    if (!sid || !sessionId || chatMessages.length === 0) return;
+    // Strip base64 from attachments to avoid overflowing storage
+    const clean = chatMessages.map(m =>
+      m.attachments ? { ...m, attachments: m.attachments.map(a => ({ ...a, base64: undefined })) } : m,
+    );
+    console.log(`[CB:cb] persistMessages: sid=${sid} sessionId=${sessionId} count=${clean.length}`);
+    SessionStorage.saveMessages(clean, sid, sessionId).catch(() => {});
+  }
+
+  /** Migrate messages stored under oldId to newId in AsyncStorage. */
+  async function migrateMessages(oldId: string, newId: string) {
+    const { selectedServerId } = store.get();
+    if (!selectedServerId) return;
+    try {
+      const msgs = await SessionStorage.fetchMessages(selectedServerId, oldId);
+      if (msgs.length > 0) {
+        console.log(`[CB:cb] migrateMessages: ${oldId} → ${newId} (${msgs.length} msgs)`);
+        await SessionStorage.saveMessages(msgs, selectedServerId, newId);
+        await SessionStorage.deleteMessages(selectedServerId, oldId);
+      }
+    } catch (e) {
+      console.warn('[CB:cb] migrateMessages failed:', e);
+    }
+  }
+
   return {
     onConnected() {
       store.appendLog('✓ Connected to Chat Bridge');
+      console.log('[CB:cb] onConnected');
     },
 
     onDisconnected() {
       store.appendLog('✗ Disconnected from Chat Bridge');
+      console.log('[CB:cb] onDisconnected');
       setPendingBridgeMessage(null);
       store.set({ isStreaming: false, streamingMessageId: null });
     },
 
     onError(error: string) {
       store.appendLog(`✗ Bridge error: ${error}`);
+      console.warn('[CB:cb] onError:', error);
     },
 
     onSessionCreated(sessionId: string, cli: CliAgent, cwd: string) {
       setActiveBridgeSessionId(sessionId);
       store.appendLog(`✓ Session created: ${sessionId} (${cli} in ${cwd})`);
+      console.log(`[CB:cb] onSessionCreated id=${sessionId} cli=${cli} cwd=${cwd}`);
       const bridgeId = `bridge:${sessionId}`;
       const now = new Date().toISOString();
       const state = store.get();
@@ -80,11 +116,37 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
         updatedAt: now,
         isAlive: true,
       };
+
+      // Replace the local placeholder session (non-bridge: ID) with the real bridge session,
+      // and update selectedSessionId to point to the bridge session
+      const currentSelected = state.selectedSessionId;
+      const isPlaceholder = currentSelected && !currentSelected.startsWith('bridge:') && !currentSelected.startsWith('cli:');
+      const updatedSessions = isPlaceholder
+        ? [summary, ...state.sessions.filter(s => s.id !== currentSelected && s.id !== bridgeId)]
+        : state.sessions.some(s => s.id === bridgeId)
+          ? state.sessions.map(s => (s.id === bridgeId ? { ...s, ...summary } : s))
+          : [summary, ...state.sessions];
+
       store.set({
-        sessions: state.sessions.some((s) => s.id === bridgeId)
-          ? state.sessions.map((s) => (s.id === bridgeId ? { ...s, ...summary } : s))
-          : [summary, ...state.sessions],
+        sessions: updatedSessions,
+        ...(isPlaceholder ? { selectedSessionId: bridgeId } : {}),
       });
+      console.log(`[CB:cb] onSessionCreated: placeholder=${!!isPlaceholder}, selectedId=${isPlaceholder ? bridgeId : state.selectedSessionId}, sessions=${updatedSessions.length}`);
+
+      // Migrate persisted messages from placeholder ID → bridge:xxx ID
+      if (isPlaceholder && currentSelected) {
+        migrateMessages(currentSelected, bridgeId);
+      }
+
+      // Persist bridge session to AsyncStorage
+      const serverId = state.selectedServerId;
+      if (serverId) {
+        SessionStorage.saveSession(summary, serverId).catch(() => {});
+        // Also remove the old placeholder session from storage
+        if (isPlaceholder && currentSelected) {
+          SessionStorage.deleteSession(currentSelected, serverId).catch(() => {});
+        }
+      }
 
       // Flush any pending message that was queued before session existed
       const pending = getPendingBridgeMessage();
@@ -113,15 +175,19 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     },
 
     onSessionList(sessions: SessionInfo[]) {
-      store.set({ sessions: mergeBridgeSessions(sessions.map(mapBridgeSession)) });
+      const merged = mergeBridgeSessions(sessions.map(mapBridgeSession));
+      store.set({ sessions: merged });
       store.appendLog(`Sessions: ${sessions.length} active`);
+      console.log(`[CB:cb] onSessionList: ${sessions.length} bridge sessions, ${merged.length} total`);
     },
 
     onSessionEvent(sessionId: string, event: string, detail?: string) {
       store.appendLog(`Session ${sessionId}: ${event}${detail ? ` — ${detail}` : ''}`);
+      console.log(`[CB:cb] onSessionEvent: ${sessionId} ${event} ${detail || ''}`);
     },
 
     onAssistantStart(_sessionId: string, messageId: string) {
+      console.log(`[CB:cb] onAssistantStart: session=${_sessionId} msg=${messageId}`);
       const chatId = uuidv4();
       msgIdMap.set(messageId, chatId);
       textAccum.set(messageId, '');
@@ -241,6 +307,7 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
     onAssistantEnd(_sessionId: string, messageId: string, stopReason?: string, _usage?: UsageInfo) {
       const chatId = msgIdMap.get(messageId);
       if (!chatId) return;
+      console.log(`[CB:cb] onAssistantEnd: session=${_sessionId} msg=${messageId} chatId=${chatId} reason=${stopReason}`);
 
       const state = store.get();
       store.set({
@@ -255,6 +322,9 @@ export function createChatBridgeCallbacks(store: ChatBridgeStoreApi): ChatBridge
       msgIdMap.delete(messageId);
       textAccum.delete(messageId);
       segmentAccum.delete(messageId);
+
+      // Persist messages to AsyncStorage so they survive session re-selection
+      persistMessages();
     },
 
     onStatus(network: NetworkInfo, sessions: SessionInfo[], uptime: number) {

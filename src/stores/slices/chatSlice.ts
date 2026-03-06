@@ -135,6 +135,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
 
       // ── Chat Bridge path ──
       if (server.serverType === ServerType.ChatBridge) {
+        console.log(`[sendPrompt] ChatBridge path: bridgeClient=${!!_bridgeClient}, state=${_bridgeClient?.state}, sessionId=${sessionId}`);
         if (!_bridgeClient || _bridgeClient.state !== 'connected') {
           const errMsg: ChatMessage = {
             id: uuidv4(),
@@ -150,6 +151,7 @@ export const createChatSlice: StateCreator<AppState & AppActions, [], [], ChatSl
         const cliAgent = preferredModel === 'copilot' || preferredModel === 'codex' ? preferredModel : 'claude';
         const selectedBridgeSessionId = sessionId.startsWith('bridge:') ? sessionId.replace(/^bridge:/, '') : null;
         const targetBridgeSessionId = _activeBridgeSessionId ?? selectedBridgeSessionId;
+        console.log(`[sendPrompt] activeBridgeSessionId=${_activeBridgeSessionId}, selectedBridgeSessionId=${selectedBridgeSessionId}, target=${targetBridgeSessionId}`);
 
         if (!targetBridgeSessionId) {
           // Queue the message; it will be sent in onSessionCreated callback
