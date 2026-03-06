@@ -23,6 +23,7 @@ import type {
   ServerMsg,
 } from '../protocol/messages.js';
 import { ClaudeStreamParser } from '../parser/stream-json.js';
+import { CopilotJsonlParser } from '../parser/copilot-jsonl.js';
 import { RawTextParser } from '../parser/raw-text.js';
 import { Logger } from '../utils/logger.js';
 
@@ -34,7 +35,7 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private spawner = new CliSpawner();
   private tmux = new TmuxManager();
-  private parsers = new Map<string, ClaudeStreamParser | RawTextParser>();
+  private parsers = new Map<string, ClaudeStreamParser | CopilotJsonlParser | RawTextParser>();
   private activePrompts = new Map<string, string>(); // sessionId → messageId
 
   constructor() {
@@ -73,10 +74,14 @@ export class SessionManager {
     session.lastActivity = new Date();
 
     // Create parser based on CLI type
-    const isStructured = session.cli === 'claude';
-    const parser = isStructured
-      ? new ClaudeStreamParser(sessionId, messageId, sink)
-      : new RawTextParser(sessionId, messageId, sink);
+    let parser: ClaudeStreamParser | CopilotJsonlParser | RawTextParser;
+    if (session.cli === 'claude') {
+      parser = new ClaudeStreamParser(sessionId, messageId, sink);
+    } else if (session.cli === 'copilot') {
+      parser = new CopilotJsonlParser(sessionId, messageId, sink);
+    } else {
+      parser = new RawTextParser(sessionId, messageId, sink);
+    }
     this.parsers.set(sessionId, parser);
 
     // Send assistant_start
@@ -198,7 +203,10 @@ export class SessionManager {
       const sink = this.getSink(evt.sessionId);
       if (sink) {
         // Emit final usage from parser if available
-        const usage = parser instanceof ClaudeStreamParser ? parser.getUsage() : undefined;
+        const usage =
+          parser instanceof ClaudeStreamParser || parser instanceof CopilotJsonlParser
+            ? parser.getUsage()
+            : undefined;
         sink({
           type: 'assistant_end',
           sessionId: evt.sessionId,

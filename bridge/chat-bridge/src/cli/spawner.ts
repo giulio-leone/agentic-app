@@ -97,8 +97,12 @@ function getCliConfig(agent: CliAgent): CliConfig {
           '/usr/local/bin/copilot',
           '/opt/homebrew/bin/copilot',
         ]),
-        structuredArgs: (prompt: string) => ['--yolo', '-m', prompt],
-        supportsStreamJson: false,
+        structuredArgs: (prompt: string, model?: string) => {
+          const args = ['-p', prompt, '--output-format', 'json', '--allow-all-tools'];
+          if (model) args.push('--model', model);
+          return args;
+        },
+        supportsStreamJson: true,
       };
     case 'codex':
       return {

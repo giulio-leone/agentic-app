@@ -95,3 +95,115 @@ export interface ClaudeResult {
     cache_creation_input_tokens?: number;
   };
 }
+
+// ── Copilot CLI JSONL event types (`copilot -p --output-format json`) ──
+
+/** Base envelope for all Copilot JSONL events */
+export interface CopilotEventBase {
+  type: string;
+  id: string;
+  timestamp: string;
+  parentId?: string;
+  ephemeral?: boolean;
+}
+
+export interface CopilotUserMessage extends CopilotEventBase {
+  type: 'user.message';
+  data: {
+    content: string;
+    transformedContent?: string;
+    attachments?: unknown[];
+    interactionId: string;
+  };
+}
+
+export interface CopilotTurnStart extends CopilotEventBase {
+  type: 'assistant.turn_start';
+  data: {
+    turnId: string;
+    interactionId: string;
+  };
+}
+
+export interface CopilotMessageDelta extends CopilotEventBase {
+  type: 'assistant.message_delta';
+  data: {
+    messageId: string;
+    deltaContent: string;
+  };
+}
+
+export interface CopilotToolRequest {
+  toolCallId: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  type: 'function';
+}
+
+export interface CopilotAssistantMessage extends CopilotEventBase {
+  type: 'assistant.message';
+  data: {
+    messageId: string;
+    content: string;
+    toolRequests: CopilotToolRequest[];
+    interactionId: string;
+    outputTokens?: number;
+  };
+}
+
+export interface CopilotToolStart extends CopilotEventBase {
+  type: 'tool.execution_start';
+  data: {
+    toolCallId: string;
+    toolName: string;
+    arguments: Record<string, unknown>;
+  };
+}
+
+export interface CopilotToolComplete extends CopilotEventBase {
+  type: 'tool.execution_complete';
+  data: {
+    toolCallId: string;
+    model?: string;
+    interactionId?: string;
+    success: boolean;
+    result: {
+      content: string;
+      detailedContent?: string;
+    };
+    toolTelemetry?: Record<string, unknown>;
+  };
+}
+
+export interface CopilotTurnEnd extends CopilotEventBase {
+  type: 'assistant.turn_end';
+  data: {
+    turnId: string;
+  };
+}
+
+export interface CopilotResult extends CopilotEventBase {
+  type: 'result';
+  sessionId: string;
+  exitCode: number;
+  usage?: {
+    premiumRequests?: number;
+    totalApiDurationMs?: number;
+    sessionDurationMs?: number;
+    codeChanges?: {
+      linesAdded: number;
+      linesRemoved: number;
+      filesModified: string[];
+    };
+  };
+}
+
+export type CopilotStreamEvent =
+  | CopilotUserMessage
+  | CopilotTurnStart
+  | CopilotMessageDelta
+  | CopilotAssistantMessage
+  | CopilotToolStart
+  | CopilotToolComplete
+  | CopilotTurnEnd
+  | CopilotResult;
