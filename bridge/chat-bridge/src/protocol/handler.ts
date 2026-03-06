@@ -18,7 +18,9 @@ export function createProtocolHandler(
   // Sink sends messages to this specific WS client
   const sink: MessageSink = (msg: ServerMsg) => {
     if (ws.readyState === 1) {
-      ws.send(JSON.stringify(msg));
+      const json = JSON.stringify(msg);
+      log.debug(`→ OUT [${msg.type}] ${json.length > 200 ? json.slice(0, 200) + '…' : json}`);
+      ws.send(json);
     }
   };
 
@@ -26,6 +28,7 @@ export function createProtocolHandler(
   const watchingSessions = new Set<string>();
 
   function handle(msg: ClientMsg): void {
+    log.debug(`← IN  [${msg.type}] ${JSON.stringify(msg).slice(0, 200)}`);
     switch (msg.type) {
       case 'create_session':
         handleCreateSession(msg);
