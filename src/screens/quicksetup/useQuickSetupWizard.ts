@@ -312,7 +312,7 @@ export function useQuickSetupWizard() {
       const serverData = {
         name: `Chat Bridge (${bridgeModelId || 'claude'})`,
         scheme,
-        host: bridgeUrl.trim(),
+        host: bridgeUrl.trim().replace(/^wss?:\/\//, '').replace(/^https?:\/\//, ''),
         token: bridgeToken.trim(),
         cfAccessClientId: '',
         cfAccessClientSecret: '',

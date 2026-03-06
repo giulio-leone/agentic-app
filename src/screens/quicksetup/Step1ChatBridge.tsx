@@ -26,7 +26,7 @@ export function Step1ChatBridge({ w, colors }: Props) {
     setTestResult(null);
     try {
       const scheme = w.bridgeTls ? 'https' : 'http';
-      const host = w.bridgeUrl.trim();
+      const host = w.bridgeUrl.trim().replace(/^wss?:\/\//, '').replace(/^https?:\/\//, '');
       const url = `${scheme}://${host}/health`;
       console.log('[ChatBridge] Testing connection:', url);
       const controller = new AbortController();
